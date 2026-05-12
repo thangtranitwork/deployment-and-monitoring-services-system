@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🖥️ Health Monitor | Internal Deploy System</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        main { padding: 32px 24px; max-width: 1400px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .card { padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .title { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { text-align: left; padding: 14px 16px; color: var(--text-dim); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--border); }
+        td { padding: 16px; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--bg-hover); }
+        .metric-value { font-weight: 600; font-family: var(--font-mono); }
+        .cpu-high { color: #f0883e; }
+        .mem-value { color: var(--accent); }
+        .uptime-value { color: var(--text-dim); font-size: 13px; }
+        .last-update { font-size: 12px; color: var(--text-dim); text-align: right; margin-top: 8px; }
+        @media (max-width: 1000px) { .hide-tablet { display: none; } }
+    </style>
+</head>
+<body class="dark-theme">
+    <header>
+        <div class="header-left">
+            <a href="/" class="logo">
+                <img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;">
+                <span>Internal</span> Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.2.0</span>
+            </a>
+        </div>
+        <div class="header-actions">
+            <button id="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
+            <button onclick="openHelp()" style="background: var(--bg-hover); border: 1px solid var(--border);">❓ Shortcuts</button>
+            <a href="/" class="btn-back">⬅ Management</a>
+        </div>
+    </header>
+
+    <!-- Help Modal -->
+    <div id="help-modal-overlay" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="card" style="width: 400px; padding: 24px; border: 1px solid var(--border);">
+            <div style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--accent);">🖥️ Monitor Shortcuts</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + R</div>
+                <div style="color: var(--text-main);">View Logs (Selected)</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + L</div>
+                <div style="color: var(--text-main);">Switch Env (Dev/Stg)</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + 1 / 2</div>
+                <div style="color: var(--text-main);">Toggle Theme / Help</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + T / H</div>
+                <div style="color: var(--text-main);">Back to Management</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + M</div>
+                <div style="color: var(--text-main);">Exit Monitor</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Esc</div>
+            </div>
+            <button onclick="closeHelp()" class="primary" style="width: 100%; margin-top: 24px;">Got it!</button>
+        </div>
+    </div>
+
+    <main>
+        <div class="card">
+            <div class="section-header">
+                <div class="title">🖥️ Remote Health Monitor</div>
+                <div class="env-selector">
+                    <button id="btn-dev" class="env-btn active" onclick="switchEnv('Development')">Development</button>
+                    <button id="btn-stg" class="env-btn" onclick="switchEnv('Staging')">Staging</button>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">STT</th>
+                            <th onclick="setSort('name')" style="cursor: pointer;">Service Name <span id="sort-name"></span></th>
+                            <th onclick="setSort('status')" style="cursor: pointer;">Status <span id="sort-status"></span></th>
+                            <th onclick="setSort('cpu')" style="cursor: pointer;">CPU Usage <span id="sort-cpu"></span></th>
+                            <th onclick="setSort('memory')" style="cursor: pointer;">Memory <span id="sort-memory"></span></th>
+                            <th onclick="setSort('uptime')" style="cursor: pointer;" class="hide-tablet">Uptime <span id="sort-uptime"></span></th>
+                            <th class="hide-tablet">Active Ports</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitor-body">
+                        <!-- Data injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="last-update" id="update-time">Last update: Never</div>
+        </div>
+    </main>
+
+    <script>
+        const devUrl = "{{.DevURL}}";
+        const stgUrl = "{{.StgURL}}";
+        
+        let currentEnv = 'Development';
+        let activeIndex = 0;
+        let servicesList = [];
+        let sortKey = 'name';
+        let sortOrder = 'asc';
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+            }
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        async function fetchMetrics() {
+            try {
+                const res = await fetch(`/api/agent-metrics?env=${currentEnv}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                servicesList = Object.keys(data).map(name => ({ name, ...data[name] }));
+                sortData();
+                renderTable();
+                document.getElementById('update-time').innerText = `Last update: ${new Date().toLocaleTimeString()}`;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function setSort(key) {
+            if (sortKey === key) {
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortKey = key;
+                sortOrder = 'asc';
+            }
+            sortData();
+            renderTable();
+            updateSortIcons();
+        }
+
+        function parseMemory(memStr) {
+            if (!memStr || memStr === '—') return 0;
+            const parts = memStr.toLowerCase().split(' ');
+            let val = parseFloat(parts[0]) || 0;
+            if (parts[1] === 'gib' || parts[1] === 'gb') val *= 1024;
+            if (parts[1] === 'kib' || parts[1] === 'kb') val /= 1024;
+            return val;
+        }
+
+        function sortData() {
+            servicesList.sort((a, b) => {
+                let valA = a[sortKey] || '';
+                let valB = b[sortKey] || '';
+
+                if (sortKey === 'cpu') {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
+                } else if (sortKey === 'memory') {
+                    valA = parseMemory(valA);
+                    valB = parseMemory(valB);
+                } else if (sortKey === 'uptime') {
+                    // Uptime is tricky, for now simple string compare or skip
+                    // Real uptime sort would need seconds from backend
+                }
+
+                if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function updateSortIcons() {
+            const keys = ['name', 'status', 'cpu', 'memory', 'uptime'];
+            keys.forEach(k => {
+                const el = document.getElementById(`sort-${k}`);
+                if (!el) return;
+                if (sortKey === k) {
+                    el.innerText = sortOrder === 'asc' ? ' 🔼' : ' 🔽';
+                    el.style.opacity = '1';
+                } else {
+                    el.innerText = ' ↕';
+                    el.style.opacity = '0.2';
+                }
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('monitor-body');
+            
+            if (servicesList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="padding: 48px; text-align: center; color: var(--text-dim);">No data from agent. Check your server configuration.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            servicesList.forEach((m, idx) => {
+                const name = m.name;
+                const isUp = m.status === 'RUNNING';
+                const tr = document.createElement('tr');
+                if (!isUp) tr.style.opacity = '0.6';
+                if (idx === activeIndex) tr.style.background = 'var(--bg-hover)';
+                tr.id = `row-${idx}`;
+
+                tr.innerHTML = `
+                    <td style="color: var(--text-dim); font-family: var(--font-mono); font-size: 12px;">${(idx + 1).toString().padStart(2, '0')}</td>
+                    <td style="font-weight: 700; font-size: 15px;">${name}</td>
+                    <td>
+                        <span class="status-badge ${isUp ? 'status-up' : 'status-down'}">
+                            ${isUp ? '● RUNNING' : '○ STOPPED'}
+                        </span>
+                    </td>
+                    <td class="metric-value ${parseFloat(m.cpu) > 50 ? 'cpu-high' : ''}">
+                        ${isUp ? m.cpu + '%' : '—'}
+                    </td>
+                    <td class="metric-value mem-value">
+                        ${isUp ? m.memory : '—'}
+                    </td>
+                    <td class="uptime-value hide-tablet">
+                        ${isUp ? m.uptime : '—'}
+                    </td>
+                    <td class="hide-tablet" style="font-size: 12px; color: var(--text-dim); font-family: var(--font-mono);">
+                        ${m.ports && m.ports.length > 0 ? m.ports.join(', ') : '—'}
+                    </td>
+                    <td style="text-align: right;">
+                        ${(isUp && m.stats_port && m.stats_port !== 'N/A') ? `
+                            <button onclick="viewLogs('${name}', '${m.stats_port}')" class="primary" style="padding: 5px 12px; font-size: 12px;">
+                                📄 Logs
+                            </button>
+                        ` : '<span style="color: var(--text-dim); font-size: 11px;">No Stats Port</span>'}
+                    </td>
+                `;
+                tr.onclick = () => { activeIndex = idx; renderTable(); };
+                tbody.appendChild(tr);
+            });
+        }
+
+        function viewLogs(serviceName, statsPort) {
+            const baseUrl = currentEnv === 'Development' ? devUrl : stgUrl;
+            if (!baseUrl) return;
+            try {
+                const urlObj = new URL(baseUrl);
+                window.open(`http://${urlObj.hostname}:${statsPort}`, '_blank');
+            } catch(e) {
+                console.error("Invalid URL", e);
+            }
+        }
+
+        function switchEnv(env) {
+            currentEnv = env;
+            activeIndex = 0;
+            document.getElementById('btn-dev').classList.toggle('active', env === 'Development');
+            document.getElementById('btn-stg').classList.toggle('active', env === 'Staging');
+            fetchMetrics();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (document.getElementById('help-modal-overlay').style.display === 'flex') {
+                    closeHelp();
+                } else {
+                    location.href = '/';
+                }
+                return;
+            }
+
+            // Alt + Up/Down for selection
+            if (e.altKey && !e.shiftKey) {
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex - 1 + servicesList.length) % servicesList.length;
+                    renderTable();
+                    const el = document.getElementById(`row-${activeIndex}`);
+                    if (el) el.scrollIntoView({ block: 'nearest' });
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex + 1) % servicesList.length;
+                    renderTable();
+                    const el = document.getElementById(`row-${activeIndex}`);
+                    if (el) el.scrollIntoView({ block: 'nearest' });
+                }
+            }
+
+            if (e.altKey && e.shiftKey) {
+                switch (e.code) {
+                    case 'Digit1': switchEnv('Development'); break;
+                    case 'Digit2': switchEnv('Staging'); break;
+                    case 'KeyT': toggleTheme(); break;
+                    case 'KeyR': fetchMetrics(); break;
+                    case 'KeyH': openHelp(); break;
+                    case 'KeyM': location.href = '/'; break;
+                    case 'KeyL':
+                        e.preventDefault();
+                        const svc = servicesList[activeIndex];
+                        if (svc && svc.status === 'RUNNING' && svc.stats_port && svc.stats_port !== 'N/A') {
+                            viewLogs(svc.name, svc.stats_port);
+                        }
+                        break;
+                }
+            }
+        });
+
+        function openHelp() { document.getElementById('help-modal-overlay').style.display = 'flex'; }
+        function closeHelp() { document.getElementById('help-modal-overlay').style.display = 'none'; }
+
+        initTheme();
+        fetchMetrics();
+        updateSortIcons();
+        setInterval(fetchMetrics, 3000);
+    </script>
+</body>
+</html>
