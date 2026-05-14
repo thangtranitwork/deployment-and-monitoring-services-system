@@ -1,6 +1,6 @@
-# 🚀 Internal Deploy System (IDS) - v1.2.0
+# 🚀 Internal Deploy System (IDS) - v1.2.1
 
-A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health monitoring.
+A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
 ## 📁 Project Structure
 
@@ -16,21 +16,30 @@ deploy-tool/
 └── README.md           # Documentation
 ```
 
-## 🛠 Features (v1.2.0)
+## 🛠 Features
 
-- **Native Performance**: Built entirely with Go's standard library for maximum speed and stability.
-- **Safe Deployment**: Post-deployment verification using binary `Mtime` comparison to ensure the new version is correctly started.
-- **Remote Health Monitor**:
-    - Real-time CPU, Memory, and Uptime metrics from multiple environments.
-    - **Excel-like Sorting**: Sort services by Name, Status, CPU, or RAM with a single click.
-- **Premium Resizable UI**:
-    - Modern dark-mode interface with glassmorphism effects.
-    - **Flexible Split-Pane**: Drag the resizer to balance space between Logs and Git Management.
-- **Git Management**:
-    - Branch/Commit/Stash management.
-    - Safe rollback & checkout with automatic stashing.
-- **Folder Aliases**: Map local folder names to remote service names to ensure accurate monitoring status.
-- **Deployment History**: SQL-based tracking with success/failure status and color-coded results.
+### 🖥️ Monitoring & Health
+- **Real-time Metrics**: Live CPU, Memory, Uptime, and Port status from remote servers via SSE.
+- **Excel-like Sorting**: Sort service tables by any metric with a single click.
+- **Post-Deploy Verification**: Automatically verifies if a service restarted correctly by comparing binary `Mtime`.
+
+### 🌳 Git Management
+- **Full Control**: Branch switching, merging, and creation directly from the UI.
+- **Commit History**: Browse the last 15 commits with "Use Message" shortcut for deployments.
+- **Unpushed Highlights**: Commits not yet pushed to the remote are marked with an "UNPUSHED" badge and blue border.
+- **Status at a Glance**: Ahead/Behind counts (↑/↓) for **every local branch** are displayed in the branch list.
+- **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal feedback.
+- **Safe Stash**: Automatic stashing during checkouts to prevent data loss, with a dedicated Stash management tab.
+
+### 🚀 Deployment Workflow
+- **Multi-Environment**: Seamlessly switch between Development and Staging targets.
+- **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
+- **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
+
+### 🎨 User Experience
+- **Premium UI**: Modern dark/light modes with glassmorphism and smooth transitions.
+- **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
+- **Theme Factory**: Deep customization of accent colors, terminal text, and background themes.
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -40,6 +49,8 @@ deploy-tool/
 | **Search Service** | `/` |
 | **Navigate Services** | `Alt + ↑ / ↓` |
 | **Run Deploy** | `Ctrl + Enter` |
+| **Cycle Deploy Msg** | `Alt + Shift + ← / →` (Left=Newer, Right=Older) |
+| **Toggle Git Card** | `Alt + Shift + G` |
 | **Switch Env (Dev/Stg)** | `Alt + Shift + 1 / 2` |
 | **Git Tabs (B/C/S)** | `Alt + Shift + Q / W / E` |
 | **View Logs** | `Alt + Shift + L` |
@@ -48,14 +59,47 @@ deploy-tool/
 | **Toggle Theme / Help** | `Alt + Shift + T / H` |
 | **Close Modal** | `Esc` |
 
-### 🖥️ Health Monitor Page
-| Action | Shortcut |
-| :--- | :--- |
-| **Select Service** | `Alt + ↑ / ↓` |
-| **View Logs (Selected)** | `Alt + Shift + L` |
-| **Switch Env (Dev/Stg)** | `Alt + Shift + 1 / 2` |
-| **Back to Management** | `Alt + Shift + M` (or `Esc`) |
-| **Refresh Data** | `Alt + Shift + R` |
+## 📐 Usage: Sample Project Structure
+
+To use IDS effectively, your workspace should follow a consistent structure. IDS looks for deployment scripts in a specific subdirectory within each service folder.
+
+### Recommended Workspace Layout
+```text
+/home/user/work/projects/
+├── service-auth/
+│   ├── .git/
+│   ├── main.go
+│   └── deploy/          <-- IDS looks here
+│       ├── dev.sh       # Script to deploy to Development
+│       └── stg.sh       # Script to deploy to Staging
+├── service-payment/
+│   ├── .git/
+│   ├── package.json
+│   └── deploy/
+│       ├── dev.sh
+│       └── stg.sh
+└── service-inventory/
+    └── deploy/
+        ├── dev.sh
+        └── stg.sh
+```
+
+### Sample `dev.sh`
+```bash
+#!/bin/bash
+# IDS passes the deployment message as the first argument
+MESSAGE=$1
+echo "Deploying with message: $MESSAGE"
+
+# 1. Build
+go build -o auth-server main.go
+
+# 2. Sync to remote
+rsync -avz auth-server user@remote-dev:/opt/services/auth/
+
+# 3. Restart remote service
+ssh user@remote-dev "sudo systemctl restart auth.service"
+```
 
 ## 🚀 Getting Started
 

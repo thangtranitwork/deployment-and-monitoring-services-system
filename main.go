@@ -63,6 +63,8 @@ type Service struct {
 	DevScript  string                    `json:"dev_script"`
 	StgScript  string                    `json:"stg_script"`
 	HasStash   bool                      `json:"has_stash"`
+	Ahead      int                       `json:"ahead"`
+	Behind     int                       `json:"behind"`
 	Metrics    map[string]ServiceMetrics `json:"metrics,omitempty"` // env -> metrics
 }
 
@@ -549,6 +551,19 @@ func getServiceInfo(workspaceURL, name, gitPath string) *Service {
 		}
 	}
 
+	ahead := 0
+	behind := 0
+	// Get ahead/behind count: git rev-list --left-right --count HEAD...@{u}
+	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "rev-list", "--left-right", "--count", "HEAD...@{u}")
+	cmd.Dir = path
+	if out, err := cmd.CombinedOutput(); err == nil {
+		parts := strings.Fields(strings.TrimSpace(string(out)))
+		if len(parts) == 2 {
+			fmt.Sscanf(parts[0], "%d", &ahead)
+			fmt.Sscanf(parts[1], "%d", &behind)
+		}
+	}
+
 	return &Service{
 		Name:       name,
 		Dir:        path,
@@ -559,6 +574,8 @@ func getServiceInfo(workspaceURL, name, gitPath string) *Service {
 		DevScript:  devScript,
 		StgScript:  stgScript,
 		HasStash:   hasStash,
+		Ahead:      ahead,
+		Behind:     behind,
 	}
 }
 
@@ -846,7 +863,7 @@ func historyHandler(w http.ResponseWriter, r *http.Request) {
 		FROM deployments 
 		WHERE service = ? 
 		ORDER BY created_at DESC 
-		LIMIT 30
+		LIMIT 100
 	`, serviceName)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -919,16 +936,40 @@ func gitCommitsHandler(w http.ResponseWriter, r *http.Request) {
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	type Commit struct {
-		Hash    string `json:"hash"`
-		Author  string `json:"author"`
-		Date    string `json:"date"`
-		Subject string `json:"subject"`
+		Hash       string `json:"hash"`
+		Author     string `json:"author"`
+		Date       string `json:"date"`
+		Subject    string `json:"subject"`
+		IsUnpushed bool   `json:"is_unpushed"`
 	}
 	var commits []Commit
+
+	// Get unpushed commit hashes
+	unpushedMap := make(map[string]bool)
+	cmdUnpushed := exec.Command(gitPath, "-c", "safe.directory=*", "rev-list", "@{u}..HEAD")
+	cmdUnpushed.Dir = svc.Dir
+	if outUnpushed, err := cmdUnpushed.CombinedOutput(); err == nil {
+		hashes := strings.Fields(string(outUnpushed))
+		for _, h := range hashes {
+			// rev-list gives full hashes, we use short hashes in the list usually
+			// but we can check if it starts with the short hash
+			unpushedMap[h] = true
+		}
+	}
+
 	for _, line := range lines {
 		parts := strings.SplitN(line, "|", 4)
 		if len(parts) == 4 {
-			commits = append(commits, Commit{Hash: parts[0], Author: parts[1], Date: parts[2], Subject: parts[3]})
+			hash := parts[0]
+			// Check if this commit hash is in unpushedMap (might need to compare short hash)
+			isUnpushed := false
+			for fullHash := range unpushedMap {
+				if strings.HasPrefix(fullHash, hash) {
+					isUnpushed = true
+					break
+				}
+			}
+			commits = append(commits, Commit{Hash: hash, Author: parts[1], Date: parts[2], Subject: parts[3], IsUnpushed: isUnpushed})
 		}
 	}
 
@@ -946,7 +987,7 @@ func gitBranchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "branch", "-a")
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "for-each-ref", "--format=%(refname:short)|%(upstream:track)", "refs/heads")
 	cmd.Dir = svc.Dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -955,17 +996,31 @@ func gitBranchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	var branches []string
+	type BranchInfo struct {
+		Name   string `json:"name"`
+		Ahead  int    `json:"ahead"`
+		Behind int    `json:"behind"`
+	}
+	var branches []BranchInfo
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) < 1 || parts[0] == "" {
 			continue
 		}
-		// Remove * if it's the current branch, but keep the name
-		line = strings.TrimPrefix(line, "* ")
-		branches = append(branches, line)
+		name := parts[0]
+		ahead := 0
+		behind := 0
+		if len(parts) > 1 {
+			track := parts[1] // e.g. [ahead 1, behind 2]
+			if strings.Contains(track, "ahead") {
+				fmt.Sscanf(track[strings.Index(track, "ahead")+6:], "%d", &ahead)
+			}
+			if strings.Contains(track, "behind") {
+				fmt.Sscanf(track[strings.Index(track, "behind")+7:], "%d", &behind)
+			}
+		}
+		branches = append(branches, BranchInfo{Name: name, Ahead: ahead, Behind: behind})
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(branches)
 }
@@ -1226,6 +1281,80 @@ func gitRollbackHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": string(out)})
 }
 
+
+func gitFetchHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "fetch", "--all")
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": string(out)})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": string(out)})
+}
+
+func gitPushHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "push")
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": string(out)})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": string(out)})
+}
+
+func gitPullHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "pull")
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": string(out)})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": string(out)})
+}
+
+
 func getLatestMetricsForService(env, serviceName string) *ServiceMetrics {
 	metricsMu.RLock()
 	defer metricsMu.RUnlock()
@@ -1482,6 +1611,9 @@ func main() {
 	mux.HandleFunc("/api/git/merge/{service_name}", gitMergeHandler)
 	mux.HandleFunc("/api/git/status/{service_name}", gitStatusHandler)
 	mux.HandleFunc("/api/git/rollback/{service_name}", gitRollbackHandler)
+	mux.HandleFunc("/api/git/fetch/{service_name}", gitFetchHandler)
+	mux.HandleFunc("/api/git/push/{service_name}", gitPushHandler)
+	mux.HandleFunc("/api/git/pull/{service_name}", gitPullHandler)
 
 	// Static files
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(basePath, "static")))))

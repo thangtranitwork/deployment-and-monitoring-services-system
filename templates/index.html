@@ -265,7 +265,9 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            overflow-y: auto;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .card {
@@ -274,6 +276,7 @@
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
 
         .label {
@@ -334,12 +337,11 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0;
+            min-height: 100px;
         }
 
         #terminal {
-            height: 300px;
-            /* Default height */
+            flex: 1;
             min-height: 100px;
             background: var(--terminal-bg);
             border: 1px solid var(--border);
@@ -504,7 +506,7 @@
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.2.0</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.2.1</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
@@ -512,6 +514,7 @@
             <button onclick="openShortcutsModal()" title="Shortcut: Alt+Shift+H">⌨️ Shortcuts</button>
             <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊 Statistics</button>
             <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️ Settings</button>
+            <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
             <button onclick="refreshServices()" title="Shortcut: Alt+Shift+R">↻ Refresh</button>
         </div>
     </header>
@@ -544,7 +547,11 @@
                     </div>
                     <div style="flex: 3">
                         <div class="label">Deploy Message</div>
-                        <input type="text" id="deploy-msg" placeholder="Deployment description...">
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <button onclick="nextCommitMsg()" style="padding: 0 8px; height: 42px;" title="Newer Commit Message">←</button>
+                            <input type="text" id="deploy-msg" placeholder="Deployment description..." style="flex: 1; width: auto;">
+                            <button onclick="prevCommitMsg()" style="padding: 0 8px; height: 42px;" title="Older Commit Message">→</button>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <div id="health-badges"
@@ -598,7 +605,15 @@
 
             <!-- Git Management Card (New) -->
             <div id="git-card" class="card" style="display: none; min-height: 400px;">
-                <div class="label">Git Management</div>
+                <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Git Management <span id="git-status-badge" style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="btn-git-fetch" onclick="gitFetch()" style="padding: 4px 12px; font-size: 11px;" title="Fetch from all remotes">↻ Fetch</button>
+                        <button id="btn-git-pull" onclick="gitPull()" style="padding: 4px 12px; font-size: 11px; background: #2ecc71; border: none; color: white;" title="Pull from remote">↓ Pull</button>
+                        <button id="btn-git-push" onclick="gitPush()" style="padding: 4px 12px; font-size: 11px; background: #3498db; border: none; color: white;" title="Push to remote">↑ Push</button>
+                        <button onclick="toggleGitManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: 8px;" title="Hide Git Management">✕</button>
+                    </div>
+                </div>
                 <div class="env-selector"
                     style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; gap: 8px;">
@@ -645,13 +660,31 @@
     <div id="history-modal-overlay" class="modal-overlay"
         style="position: fixed; top: 0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000;">
         <div class="modal"
-            style="width: 800px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            style="width: 1000px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="modal-header">📜 Deployment History - <span id="history-svc-name"></span></div>
-            <div id="history-list"
-                style="flex: 1; overflow-y: auto; padding: 10px 0; display: flex; flex-direction: column; gap: 8px;">
-                <!-- rows injected here -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; overflow: hidden; padding: 16px 0;">
+                <!-- Development Column -->
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="label" style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🛠️ DEVELOPMENT</span>
+                        <span id="count-dev" style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
+                    </div>
+                    <div id="history-list-dev" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                        <!-- rows injected here -->
+                    </div>
+                </div>
+                <!-- Staging Column -->
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="label" style="color: #3498db; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🚀 STAGING</span>
+                        <span id="count-stg" style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
+                    </div>
+                    <div id="history-list-stg" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                        <!-- rows injected here -->
+                    </div>
+                </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="margin-top: 0; padding-top: 10px; border-top: 1px solid var(--border);">
                 <button onclick="closeHistoryModal()">Close</button>
             </div>
         </div>
@@ -949,6 +982,10 @@
 
         let currentGitTab = 'branches';
 
+        let commitMessages = [];
+        let currentCommitMsgIndex = -1;
+
+
         async function init() {
             initTheme();
             await loadSettings();
@@ -963,6 +1000,12 @@
                     closeStatsModal();
                     closeShortcutsModal();
                     closeAlertModal();
+                }
+
+                if (e.altKey && e.shiftKey) {
+                    if (e.code === 'KeyG') toggleGitManagement();
+                    if (e.code === 'ArrowLeft') nextCommitMsg();
+                    if (e.code === 'ArrowRight') prevCommitMsg();
                 }
             });
         }
@@ -1023,7 +1066,9 @@
                 listEl.innerHTML = '';
 
                 if (tab === 'branches') {
-                    data.forEach(branch => {
+
+                    data.forEach(branchInfo => {
+                        const branch = branchInfo.name;
                         const row = document.createElement('div');
                         row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border); transition: 0.2s;';
 
@@ -1036,6 +1081,17 @@
                         const nameSpan = document.createElement('span');
                         nameSpan.style.cssText = 'font-family: var(--font-mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 16px;';
                         nameSpan.innerText = branch;
+                        
+                        if (branchInfo.ahead > 0 || branchInfo.behind > 0) {
+                            const statusSpan = document.createElement('span');
+                            statusSpan.style.cssText = 'font-size: 10px; margin-left: 8px; font-weight: normal;';
+                            statusSpan.innerHTML = `
+                                ${branchInfo.ahead > 0 ? `<span style="color: #2ecc71; margin-right: 4px;">↑${branchInfo.ahead}</span>` : ''}
+                                ${branchInfo.behind > 0 ? `<span style="color: #e74c3c;">↓${branchInfo.behind}</span>` : ''}
+                            `;
+                            nameSpan.appendChild(statusSpan);
+                        }
+
                         if (isCurrent) nameSpan.style.color = 'var(--text-main)';
 
                         row.appendChild(nameSpan);
@@ -1072,14 +1128,22 @@
                         listEl.appendChild(row);
                     });
                 } else if (tab === 'commits') {
+                    commitMessages = data.map(c => c.subject);
                     data.forEach(c => {
                         const row = document.createElement('div');
-                        row.style.cssText = 'padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-card); margin-bottom: 4px; border-radius: 8px;';
+                        row.style.cssText = 'padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-card); margin-bottom: 4px; border-radius: 8px; position: relative;';
+                        if (c.is_unpushed) {
+                            row.style.borderLeft = '4px solid #3498db';
+                            row.style.background = 'rgba(52, 152, 219, 0.05)';
+                        }
+                        const unpushedBadge = c.is_unpushed ? '<span style="font-size: 9px; padding: 1px 6px; background: #3498db; color: white; border-radius: 4px; margin-left: 8px; font-weight: bold;">UNPUSHED</span>' : '';
+                        
                         row.innerHTML = `
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
                                 <div>
                                     <span style="color: var(--accent); font-family: var(--font-mono); font-weight: 700; cursor: pointer;" 
                                           onclick="copyToClipboard('${c.hash}')" title="Copy hash">${c.hash}</span>
+                                    ${unpushedBadge}
                                     <span style="color: var(--text-dim); margin-left: 10px; font-size: 11px;">${c.date}</span>
                                 </div>
                                 <div style="display: flex; gap: 6px;">
@@ -1097,6 +1161,7 @@
                         listEl.appendChild(row);
                     });
                 } else if (tab === 'stash') {
+
                     if (data.length === 0) {
                         listEl.innerHTML = '<div style="padding: 10px; color: var(--text-dim);">No stashes found.</div>';
                     } else {
@@ -1680,7 +1745,11 @@
             } catch (err) { }
             document.getElementById('deploy-msg').value = svc.last_commit;
             if (!skipTerminalReset) document.getElementById('terminal').innerText = `Ready to deploy ${svc.name}...`;
-            document.getElementById('git-card').style.display = 'block';
+            if (!gitHiddenManually) {
+                document.getElementById('git-card').style.display = 'block';
+                document.getElementById('resizer').style.display = 'block';
+                document.getElementById('git-toggle').classList.add('active');
+            }
 
             // Render header actions
             const headerActions = document.getElementById('git-actions-header');
@@ -1697,10 +1766,153 @@
             }
 
             loadGitTabContent(currentGitTab);
+            updateGitStatusBadge(svc);
             updateHealthWidget();
             validateForm();
             refreshHistoryBar();
+            currentCommitMsgIndex = -1; // Reset message navigation
         }
+
+        let gitHiddenManually = false;
+        function toggleGitManagement() {
+            const card = document.getElementById('git-card');
+            const resizer = document.getElementById('resizer');
+            const btn = document.getElementById('git-toggle');
+            const terminalContainer = document.querySelector('.terminal-container');
+            
+            if (card.style.display === 'none') {
+                card.style.display = 'block';
+                resizer.style.display = 'block';
+                btn.classList.add('active');
+                gitHiddenManually = false;
+                terminalContainer.style.flex = '0 0 300px'; // Initial height when Git is shown
+            } else {
+                card.style.display = 'none';
+                resizer.style.display = 'none';
+                btn.classList.remove('active');
+                gitHiddenManually = true;
+                terminalContainer.style.flex = '1 1 100%'; // Full height when Git is hidden
+            }
+        }
+
+        function updateGitStatusBadge(svc) {
+            const badge = document.getElementById('git-status-badge');
+            if (svc.ahead > 0 || svc.behind > 0) {
+                badge.innerHTML = `
+                    <span style="color: var(--success); margin-right: 4px;">↑${svc.ahead}</span>
+                    <span style="color: var(--error);">↓${svc.behind}</span>
+                `;
+            } else {
+                badge.innerText = '(Up to date)';
+            }
+
+            // Hide push button if branch is main or master
+            const pushBtn = document.getElementById('btn-git-push');
+            if (svc.branch === 'main' || svc.branch === 'master') {
+                pushBtn.style.display = 'none';
+            } else {
+                pushBtn.style.display = 'inline-block';
+            }
+        }
+
+        async function gitFetch() {
+            if (!selectedService) return;
+            const terminal = document.getElementById('terminal');
+            const btn = document.getElementById('btn-git-fetch');
+            btn.disabled = true; btn.innerText = '...';
+            terminal.innerText = `Fetching all remotes for ${selectedService.name}...\n`;
+            try {
+                const res = await fetch(`/api/git/fetch/${selectedService.name}`, { method: 'POST' });
+                const result = await res.json();
+                if (res.ok) {
+                    terminal.innerText += result.message + '\nSuccess!\n';
+                    await refreshSelectedService();
+                } else {
+                    terminal.innerText += `Error: ${result.error}\n`;
+                    showAlert("Fetch Failed", result.error);
+                }
+            } catch (err) {
+                terminal.innerText += `Error: ${err.message}\n`;
+            }
+            btn.disabled = false; btn.innerText = '↻ Fetch';
+        }
+
+        async function gitPull() {
+            if (!selectedService) return;
+            const terminal = document.getElementById('terminal');
+            const btn = document.getElementById('btn-git-pull');
+            btn.disabled = true; btn.innerText = '...';
+            terminal.innerText = `Pulling for ${selectedService.name}...\n`;
+            try {
+                const res = await fetch(`/api/git/pull/${selectedService.name}`, { method: 'POST' });
+                const result = await res.json();
+                if (res.ok) {
+                    terminal.innerText += result.message + '\nSuccess!\n';
+                    await refreshSelectedService();
+                } else {
+                    terminal.innerText += `Error: ${result.error}\n`;
+                    showAlert("Pull Failed", result.error);
+                }
+            } catch (err) {
+                terminal.innerText += `Error: ${err.message}\n`;
+            }
+            btn.disabled = false; btn.innerText = '↓ Pull';
+        }
+
+        async function gitPush() {
+            if (!selectedService) return;
+            const terminal = document.getElementById('terminal');
+            const btn = document.getElementById('btn-git-push');
+            btn.disabled = true; btn.innerText = '...';
+            terminal.innerText = `Pushing for ${selectedService.name}...\n`;
+            try {
+                const res = await fetch(`/api/git/push/${selectedService.name}`, { method: 'POST' });
+                const result = await res.json();
+                if (res.ok) {
+                    terminal.innerText += result.message + '\nSuccess!\n';
+                    await refreshSelectedService();
+                } else {
+                    terminal.innerText += `Error: ${result.error}\n`;
+                    showAlert("Push Failed", result.error);
+                }
+            } catch (err) {
+                terminal.innerText += `Error: ${err.message}\n`;
+            }
+            btn.disabled = false; btn.innerText = '↑ Push';
+        }
+
+        function prevCommitMsg() {
+            if (commitMessages.length === 0) {
+                if (currentGitTab !== 'commits') {
+                    loadGitTabContent('commits').then(() => {
+                        if (commitMessages.length > 0) prevCommitMsg();
+                    });
+                    return;
+                }
+            }
+            if (currentCommitMsgIndex < commitMessages.length - 1) {
+                currentCommitMsgIndex++;
+                document.getElementById('deploy-msg').value = commitMessages[currentCommitMsgIndex];
+                validateForm();
+            }
+        }
+
+        function nextCommitMsg() {
+            if (commitMessages.length === 0) {
+                if (currentGitTab !== 'commits') {
+                    loadGitTabContent('commits').then(() => {
+                        if (commitMessages.length > 0) nextCommitMsg();
+                    });
+                    return;
+                }
+            }
+            if (currentCommitMsgIndex > 0) {
+                currentCommitMsgIndex--;
+                document.getElementById('deploy-msg').value = commitMessages[currentCommitMsgIndex];
+                validateForm();
+            }
+        }
+
 
         function updateHealthWidget() {
             const widget = document.getElementById('health-widget');
@@ -1771,28 +1983,57 @@
             if (!selectedService) return;
             document.getElementById('history-svc-name').innerText = selectedService.name;
             document.getElementById('history-modal-overlay').style.display = 'flex';
-            const list = document.getElementById('history-list');
-            list.innerHTML = '<div class="shimmer" style="height: 50px"></div>'.repeat(3);
-            const res = await fetch(`/api/history/${selectedService.name}`);
-            const logs = await res.json();
-            list.innerHTML = '';
-            logs.forEach(log => {
-                const row = document.createElement('div');
-                const isFailed = log.status === 'Failed';
-                const color = isFailed ? 'var(--error)' : 'var(--success)';
+            
+            const listDev = document.getElementById('history-list-dev');
+            const listStg = document.getElementById('history-list-stg');
+            const countDev = document.getElementById('count-dev');
+            const countStg = document.getElementById('count-stg');
+            
+            listDev.innerHTML = listStg.innerHTML = '<div class="shimmer" style="height: 50px"></div>'.repeat(2);
+            countDev.innerText = countStg.innerText = '0';
 
-                row.style.cssText = `background: var(--bg-hover); padding: 12px; border-radius: 8px; border-left: 4px solid ${color};`;
-                const time = log.created_at.substring(11, 16) + ' ' + log.created_at.substring(8, 10) + '/' + log.created_at.substring(5, 7) + '/' + log.created_at.substring(0, 4);
-                row.innerHTML = `
-                    <div style="font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; color: ${color};">
-                        <span>${time} | User: ${log.user_name} | Env: ${log.environment} | Status: ${log.status || 'Success'}</span>
-                        <span style="font-family: var(--font-mono); font-size: 11px;">#${log.branch}</span>
-                    </div>
-                    <div style="font-size: 13px; color: var(--text-main); margin-top: 6px;">💬 ${log.message}</div>
-                `;
-                list.appendChild(row);
-            });
-            if (logs.length === 0) list.innerHTML = '<div style="text-align: center; padding: 20px;">No history found.</div>';
+            try {
+                const res = await fetch(`/api/history/${selectedService.name}`);
+                const logs = await res.json();
+                listDev.innerHTML = listStg.innerHTML = '';
+                
+                let devCount = 0, stgCount = 0;
+
+                logs.forEach(log => {
+                    const row = document.createElement('div');
+                    const isFailed = log.status === 'Failed';
+                    const color = isFailed ? 'var(--error)' : 'var(--success)';
+
+                    row.style.cssText = `background: var(--bg-hover); padding: 12px; border-radius: 8px; border-left: 4px solid ${color}; transition: transform 0.2s; cursor: default;`;
+                    row.onmouseenter = () => row.style.transform = 'translateX(4px)';
+                    row.onmouseleave = () => row.style.transform = 'translateX(0)';
+
+                    const time = log.created_at.substring(11, 16) + ' ' + log.created_at.substring(8, 10) + '/' + log.created_at.substring(5, 7) + '/' + log.created_at.substring(0, 4);
+                    row.innerHTML = `
+                        <div style="font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; color: ${color}; margin-bottom: 4px;">
+                            <span>${time} • ${log.user_name}</span>
+                            <span style="font-family: var(--font-mono); opacity: 0.8;">#${log.branch}</span>
+                        </div>
+                        <div style="font-size: 13px; color: var(--text-main); line-height: 1.4; word-break: break-word;">${log.message}</div>
+                    `;
+
+                    if (log.environment === 'Development') {
+                        listDev.appendChild(row);
+                        devCount++;
+                    } else {
+                        listStg.appendChild(row);
+                        stgCount++;
+                    }
+                });
+
+                countDev.innerText = devCount;
+                countStg.innerText = stgCount;
+
+                if (devCount === 0) listDev.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim); font-size: 12px;">No development history.</div>';
+                if (stgCount === 0) listStg.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-dim); font-size: 12px;">No staging history.</div>';
+            } catch (err) {
+                listDev.innerHTML = listStg.innerHTML = `<div style="color: var(--error); padding: 20px;">Error loading history</div>`;
+            }
         }
 
         function closeHistoryModal() { document.getElementById('history-modal-overlay').style.display = 'none'; }
@@ -2098,7 +2339,14 @@
             }
         }
 
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Clipboard copy successful
+            });
+        }
+
         init();
+
         initResizer();
     </script>
 </body>
