@@ -483,6 +483,9 @@ func scanServices(s Settings) []Service {
 		if svc := getServiceInfo(workspaceURL, entry.Name(), gitPath); svc != nil {
 			services = append(services, *svc)
 		}
+		if svcFE := getFrontendServiceInfo(workspaceURL, entry.Name(), gitPath); svcFE != nil {
+			services = append(services, *svcFE)
+		}
 	}
 
 	sort.Slice(services, func(i, j int) bool {
@@ -516,7 +519,7 @@ func getServiceInfo(workspaceURL, name, gitPath string) *Service {
 	candidates = []string{
 		filepath.Join(path, "deploy-stg.sh"),
 		filepath.Join(path, "scripts", "deploy-stg.sh"),
-	}
+			}
 	for _, c := range candidates {
 		if _, err := os.Stat(c); err == nil {
 			stgScript = c
@@ -566,6 +569,101 @@ func getServiceInfo(workspaceURL, name, gitPath string) *Service {
 
 	return &Service{
 		Name:       name,
+		Dir:        path,
+		Branch:     branch,
+		LastCommit: lastCommit,
+		HasDev:     devScript != "",
+		HasStg:     stgScript != "",
+		DevScript:  devScript,
+		StgScript:  stgScript,
+		HasStash:   hasStash,
+		Ahead:      ahead,
+		Behind:     behind,
+	}
+}
+
+func getFrontendServiceInfo(workspaceURL, name, gitPath string) *Service {
+	path := filepath.Join(workspaceURL, name)
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() || strings.HasPrefix(name, ".") {
+		return nil
+	}
+
+	devScript := ""
+	stgScript := ""
+
+	candidates := []string{
+		filepath.Join(path, "deploy-front-end-dev.sh"),
+		filepath.Join(path, "scripts", "deploy-front-end-dev.sh"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			devScript = c
+			break
+		}
+	}
+
+	candidates = []string{
+		filepath.Join(path, "deploy-front-end.sh"),
+		filepath.Join(path, "scripts", "deploy-front-end.sh"),
+		filepath.Join(path, "deploy-front-end-prd.sh"),
+		filepath.Join(path, "scripts", "deploy-front-end-prd.sh"),
+		filepath.Join(path, "deploy-front-end-stg.sh"),
+		filepath.Join(path, "scripts", "deploy-front-end-stg.sh"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			stgScript = c
+			break
+		}
+	}
+
+	if devScript == "" && stgScript == "" {
+		return nil
+	}
+
+	serviceName := name + "-front-end"
+	if name == "crm-service" {
+		serviceName = "crm-front-end"
+	}
+
+	branch := "unknown"
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--abbrev-ref", "HEAD")
+	cmd.Dir = path
+	if out, err := cmd.CombinedOutput(); err == nil {
+		branch = strings.TrimSpace(string(out))
+	}
+
+	lastCommit := ""
+	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "log", "-1", "--pretty=%s")
+	cmd.Dir = path
+	if out, err := cmd.CombinedOutput(); err == nil {
+		lastCommit = strings.TrimSpace(string(out))
+	}
+
+	hasStash := false
+	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "stash", "list")
+	cmd.Dir = path
+	if out, err := cmd.CombinedOutput(); err == nil {
+		if len(strings.TrimSpace(string(out))) > 0 {
+			hasStash = true
+		}
+	}
+
+	ahead := 0
+	behind := 0
+	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "rev-list", "--left-right", "--count", "HEAD...@{u}")
+	cmd.Dir = path
+	if out, err := cmd.CombinedOutput(); err == nil {
+		parts := strings.Fields(strings.TrimSpace(string(out)))
+		if len(parts) == 2 {
+			fmt.Sscanf(parts[0], "%d", &ahead)
+			fmt.Sscanf(parts[1], "%d", &behind)
+		}
+	}
+
+	return &Service{
+		Name:       serviceName,
 		Dir:        path,
 		Branch:     branch,
 		LastCommit: lastCommit,

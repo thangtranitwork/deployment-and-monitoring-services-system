@@ -61,6 +61,15 @@ func getSystemUptime() float64 {
 func collectMetrics() []ServiceMetrics {
 	teamPath := os.Getenv("TEAM_PATH")
 	if teamPath == "" {
+		exePath, err := os.Executable()
+		if err == nil {
+			dir := filepath.Dir(exePath)
+			if filepath.Base(dir) == "ids-agent" {
+				teamPath = filepath.Dir(dir)
+			}
+		}
+	}
+	if teamPath == "" {
 		teamPath = DefaultTeamPath
 	}
 
@@ -103,9 +112,34 @@ func collectMetrics() []ServiceMetrics {
 		}
 
 		exe, err := os.Readlink("/proc/" + pid + "/exe")
-		if err != nil || !strings.Contains(exe, teamPath) {
+		if err != nil {
 			continue
 		}
+
+		cwd, _ := os.Readlink("/proc/" + pid + "/cwd")
+
+		// Check if it is running in the teamPath
+		inTeamPath := strings.Contains(exe, teamPath) || strings.Contains(cwd, teamPath)
+		if !inTeamPath {
+			continue
+		}
+
+		var serviceName string
+		if strings.Contains(exe, teamPath) {
+			serviceName = filepath.Base(exe)
+		} else if strings.Contains(cwd, teamPath) {
+			rel, err := filepath.Rel(teamPath, cwd)
+			if err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+				parts := strings.Split(filepath.ToSlash(rel), "/")
+				serviceName = parts[0]
+			}
+		}
+
+		if serviceName == "" {
+			continue
+		}
+
+		serviceName = strings.TrimSuffix(serviceName, " (deleted)")
 
 		// Get stats from ps (simpler for CPU %)
 		cmd := exec.Command("ps", "-p", pid, "-o", "%cpu,rss,nlwp", "--no-headers")
@@ -121,9 +155,6 @@ func collectMetrics() []ServiceMetrics {
 			threads, _ = strconv.Atoi(parts[2])
 		}
 
-		serviceName := filepath.Base(exe)
-		serviceName = strings.TrimSuffix(serviceName, " (deleted)")
-
 		ports := pidPortMap[pid]
 		uniquePorts := make(map[string]bool)
 		var pList []string
@@ -134,9 +165,6 @@ func collectMetrics() []ServiceMetrics {
 			}
 		}
 
-		// Stats port from stats.pid
-		// Heuristic: service dir is usually 2 levels up or fixed
-		// The shell script does: $(echo "$exe" | sed -E "s|($TEAM_PATH/[^/]+).*|\1|")
 		statsPort := "N/A"
 		parts_path := strings.Split(exe, "/")
 		for i, p := range parts_path {
@@ -149,6 +177,13 @@ func collectMetrics() []ServiceMetrics {
 					}
 				}
 				break
+			}
+		}
+		// If statsPort is still N/A, try based on cwd
+		if statsPort == "N/A" && cwd != "" {
+			statsFile := filepath.Join(cwd, "pid/stats.pid")
+			if data, err := ioutil.ReadFile(statsFile); err == nil {
+				statsPort = strings.TrimSpace(string(data))
 			}
 		}
 
@@ -166,7 +201,16 @@ func collectMetrics() []ServiceMetrics {
 		runningServices[serviceName] = true
 
 		var mtime int64 = 0
-		if info, err := os.Stat(exe); err == nil {
+		mtimeFile := exe
+		if !strings.Contains(exe, teamPath) && cwd != "" {
+			startSh := filepath.Join(cwd, "start.sh")
+			if _, err := os.Stat(startSh); err == nil {
+				mtimeFile = startSh
+			} else {
+				mtimeFile = cwd
+			}
+		}
+		if info, err := os.Stat(mtimeFile); err == nil {
 			mtime = info.ModTime().Unix()
 		}
 
