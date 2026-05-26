@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.2.1
+# 🚀 Internal Deploy System (IDS) - v1.3.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -57,6 +57,7 @@ deploy-tool/
 | **Go to Monitor** | `Alt + Shift + M` |
 | **Refresh / Stats / Settings** | `Alt + Shift + R / S / I` |
 | **Toggle Theme / Help** | `Alt + Shift + T / H` |
+| **Toggle VPN Card** | `Alt + Shift + U` |
 | **Close Modal** | `Esc` |
 
 ## 📐 Usage: Sample Project Structure
@@ -104,12 +105,17 @@ ssh user@remote-dev "sudo systemctl restart auth.service"
 ## 🚀 Getting Started
 
 1. **Configure Agent**: Deploy `main-health.go` to your target servers and set `DEV_AGENT_URL` / `STG_AGENT_URL` in `.env`.
-2. **Build & Run**:
+2. **Configure OpenVPN Permissions (Required)**:
+   Since OpenVPN requires root privileges to manipulate routing tables and create TUN/TAP interfaces, the system service (running as the unprivileged user `thang`) needs a passwordless sudoers exception. Run the following command on the host:
+   ```bash
+   echo "thang ALL=(ALL) NOPASSWD: /usr/sbin/openvpn" | sudo tee /etc/sudoers.d/openvpn
+   ```
+3. **Build & Run**:
    ```bash
    go build -o ids-commander main.go
    ./ids-commander
    ```
-3. **Set Aliases**: If local folder names differ from server service names, add them in **Settings > Folder Aliases** (e.g., `user-service-go:auth-service`).
+4. **Set Aliases**: If local folder names differ from server service names, add them in **Settings > Folder Aliases** (e.g., `user-service-go:auth-service`).
 
 ## 📄 License
 MIT License.

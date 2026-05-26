@@ -500,13 +500,139 @@
                 background-position: -200% 0;
             }
         }
+
+        /* VPN Card Specific Styles */
+        .vpn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 800px) {
+            .vpn-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .vpn-col-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .vpn-col-status {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .vpn-status-cards {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 12px;
+        }
+        @media (max-width: 500px) {
+            .vpn-status-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+        .vpn-status-card {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .label-field {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+        }
+        select {
+            width: 100%;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 13px;
+            transition: all 0.2s;
+            height: 38px;
+        }
+        select:focus {
+            border-color: var(--accent);
+        }
+        select option {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+        }
+        .state-glowing-ring {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .state-glowing-ring:before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+        }
+        .state-glowing-ring.disconnected:before {
+            border-color: #ff0844;
+            box-shadow: 0 0 8px rgba(255, 8, 68, 0.4);
+            opacity: 0.6;
+        }
+        .state-glowing-ring.connecting:before {
+            border-color: #f6d365;
+            box-shadow: 0 0 8px rgba(246, 211, 101, 0.4);
+            animation: rotateRing 2s linear infinite;
+        }
+        .state-glowing-ring.connected:before {
+            border-color: #00f2fe;
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+            animation: breatheRing 3s infinite ease-in-out;
+        }
+        .state-glowing-ring.error:before {
+            border-color: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+        .state-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .state-dot.disconnected { background: #ff0844; }
+        .state-dot.connecting { background: #f6d365; }
+        .state-dot.connected { background: #00f2fe; }
+        .state-dot.error { background: #ef4444; }
+
+        @keyframes rotateRing {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes breatheRing {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        @keyframes vpnPulse {
+            0% { opacity: 0.5; transform: scale(0.85); }
+            100% { opacity: 1; transform: scale(1.15); }
+        }
     </style>
 </head>
 
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.2.1</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.3.0</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
@@ -515,6 +641,7 @@
             <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊 Statistics</button>
             <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️ Settings</button>
             <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
+            <button id="vpn-toggle" onclick="toggleVPNManagement()" title="Shortcut: Alt+Shift+U">🔒 VPN</button>
             <button onclick="refreshServices()" title="Shortcut: Alt+Shift+R">↻ Refresh</button>
         </div>
     </header>
@@ -602,6 +729,127 @@
             </div>
 
             <div id="resizer" title="Drag to resize"></div>
+
+            <!-- VPN Connection Control Card -->
+            <div id="vpn-card" class="card" style="display: none; min-height: 400px; margin-bottom: 20px;">
+                <div class="label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <span>🔒 VPN Connection Control</span>
+                    <button onclick="toggleVPNManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px;" title="Hide VPN Management">✕</button>
+                </div>
+                
+                <div class="vpn-grid">
+                    <!-- Left Column: Settings -->
+                    <div class="vpn-col-form">
+                        <!-- Config Directory -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="label-field" for="vpn-config-dir">Config Directory (Optional)</label>
+                            <input type="text" id="vpn-config-dir" placeholder="e.g. /etc/openvpn (or leave empty)">
+                        </div>
+
+                        <!-- Config Select -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="label-field" for="vpn-config-select">OVPN Profile</label>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="vpn-config-select" style="flex: 1;">
+                                    <option value="" disabled selected>Select a configuration file...</option>
+                                </select>
+                                <button type="button" id="vpn-refresh-configs" style="padding: 0 12px; height: 38px;" title="Refresh list">↻</button>
+                            </div>
+                        </div>
+
+                        <!-- Account Select -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="label-field" for="vpn-account-select">Saved Accounts</label>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="vpn-account-select" style="flex: 1;">
+                                    <option value="" selected>-- Enter custom credentials --</option>
+                                </select>
+                                <button type="button" id="vpn-save-account" style="padding: 0 12px; height: 38px;" title="Save current credentials">💾</button>
+                                <button type="button" id="vpn-delete-account" style="padding: 0 12px; height: 38px; display: none; color: var(--error);" title="Delete selected account">🗑️</button>
+                            </div>
+                        </div>
+
+                        <!-- Username -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="label-field" for="vpn-username">Username</label>
+                            <input type="text" id="vpn-username" placeholder="VPN Username" autocomplete="username">
+                        </div>
+
+                        <!-- Password -->
+                        <div style="margin-bottom: 12px;">
+                            <label class="label-field" for="vpn-password">Password</label>
+                            <div style="position: relative; display: flex; align-items: center;">
+                                <input type="password" id="vpn-password" placeholder="VPN Password" autocomplete="current-password" style="padding-right: 40px; width: 100%;">
+                                <button type="button" id="vpn-toggle-password" style="position: absolute; right: 4px; background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; height: 32px;" title="Toggle Password">👁️</button>
+                            </div>
+                        </div>
+
+                        <!-- Save Credentials Checkbox -->
+                        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim);">
+                            <input type="checkbox" id="vpn-save-credentials" checked style="width: auto;">
+                            <label for="vpn-save-credentials" style="cursor: pointer;">Save credentials securely on server</label>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 12px;">
+                            <button type="button" class="primary" id="vpn-btn-connect" style="flex: 1; height: 42px; justify-content: center;">⚡ Connect</button>
+                            <button type="button" id="vpn-btn-disconnect" disabled style="flex: 1; height: 42px; justify-content: center; color: var(--error); border-color: var(--error);">🔌 Disconnect</button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Status & Logs -->
+                    <div class="vpn-col-status">
+                        <!-- Status Info Grid -->
+                        <div class="vpn-status-cards">
+                            <div class="vpn-status-card">
+                                <div class="label-field">VPN State</div>
+                                <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                                    <div class="state-glowing-ring disconnected" id="vpn-state-ring">
+                                        <div class="state-dot disconnected" id="vpn-state-dot"></div>
+                                    </div>
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span id="vpn-state-name" style="font-weight: bold; font-size: 15px;">DISCONNECTED</span>
+                                        <span id="vpn-state-sub" style="font-size: 11px; color: var(--text-dim);">Select profile and connect</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="vpn-status-card">
+                                <div class="label-field">Connection Info</div>
+                                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-top: 6px;">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: var(--text-dim);">Uptime:</span>
+                                        <span id="vpn-stat-uptime" style="font-weight: 600;">00:00:00</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: var(--text-dim);">IP Address:</span>
+                                        <span id="vpn-stat-ip" style="font-weight: 600; cursor: pointer; text-decoration: underline dotted;" title="Click to copy">---.---.---.---</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: var(--text-dim);">Interface:</span>
+                                        <span id="vpn-stat-interface" style="font-weight: 600;">none</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Live Logs Monitor -->
+                        <div class="vpn-logs-monitor">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span class="label-field">Live Logs</span>
+                                <div style="display: flex; gap: 8px; align-items: center; font-size: 11px;">
+                                    <button type="button" id="vpn-btn-clear-logs" style="padding: 2px 8px; font-size: 10px; height: 22px;">Clear</button>
+                                    <input type="checkbox" id="vpn-auto-scroll" checked style="width: auto; margin: 0;">
+                                    <label for="vpn-auto-scroll">Auto-scroll</label>
+                                </div>
+                            </div>
+                            <div style="background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 10px; height: 180px; overflow: hidden; display: flex;">
+                                <pre id="vpn-log-console" style="flex: 1; font-family: var(--font-mono); font-size: 11px; color: #a7f3d0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Waiting for connection logs...</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Git Management Card (New) -->
             <div id="git-card" class="card" style="display: none; min-height: 400px;">
@@ -764,6 +1012,8 @@
                 <div style="color: var(--text-main);">View Logs / Health Monitor</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + L / M
                 </div>
+                <div style="color: var(--text-main);">Toggle VPN Card</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + U</div>
                 <div style="color: var(--text-main);">Close Modal</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Esc</div>
             </div>
@@ -1004,10 +1254,12 @@
 
                 if (e.altKey && e.shiftKey) {
                     if (e.code === 'KeyG') toggleGitManagement();
+                    if (e.code === 'KeyU') toggleVPNManagement();
                     if (e.code === 'ArrowLeft') nextCommitMsg();
                     if (e.code === 'ArrowRight') prevCommitMsg();
                 }
             });
+            await initVPN();
         }
 
         function filterServices() {
@@ -2253,6 +2505,7 @@
                     case 'KeyQ': switchGitTab('branches'); break;
                     case 'KeyW': switchGitTab('commits'); break;
                     case 'KeyE': switchGitTab('stash'); break;
+                    case 'KeyU': toggleVPNManagement(); break;
                     case 'Digit1': setEnv('Development'); break;
                     case 'Digit2': setEnv('Staging'); break;
                 }
@@ -2343,6 +2596,528 @@
             navigator.clipboard.writeText(text).then(() => {
                 // Clipboard copy successful
             });
+        }
+
+        // ─────────────────────────────────────────────
+        // VPN UI & State Management
+        // ─────────────────────────────────────────────
+        
+        let vpnStatus = 'disconnected';
+        let vpnUptimeInterval = null;
+        let vpnUptimeSeconds = 0;
+        let vpnEventSource = null;
+        let vpnSavedConfigs = [];
+        let vpnSavedAccounts = [];
+
+        async function initVPN() {
+            const configDirInput = document.getElementById('vpn-config-dir');
+            const configSelect = document.getElementById('vpn-config-select');
+            const refreshConfigsBtn = document.getElementById('vpn-refresh-configs');
+            const accountSelect = document.getElementById('vpn-account-select');
+            const saveAccountBtn = document.getElementById('vpn-save-account');
+            const deleteAccountBtn = document.getElementById('vpn-delete-account');
+            const usernameInput = document.getElementById('vpn-username');
+            const passwordInput = document.getElementById('vpn-password');
+            const saveCredsCheckbox = document.getElementById('vpn-save-credentials');
+            const togglePasswordBtn = document.getElementById('vpn-toggle-password');
+            const btnConnect = document.getElementById('vpn-btn-connect');
+            const btnDisconnect = document.getElementById('vpn-btn-disconnect');
+            const clearLogsBtn = document.getElementById('vpn-btn-clear-logs');
+            const statIp = document.getElementById('vpn-stat-ip');
+
+            // Load saved config directory path
+            const savedConfigDir = localStorage.getItem('vpn_config_dir') || '';
+            configDirInput.value = savedConfigDir;
+
+            // Bind Event Listeners
+            refreshConfigsBtn.addEventListener('click', fetchVPNConfigs);
+            configDirInput.addEventListener('change', fetchVPNConfigs);
+            configDirInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') fetchVPNConfigs();
+            });
+            togglePasswordBtn.addEventListener('click', toggleVPNPasswordVisibility);
+            btnConnect.addEventListener('click', connectVPN);
+            btnDisconnect.addEventListener('click', disconnectVPN);
+            clearLogsBtn.addEventListener('click', () => { document.getElementById('vpn-log-console').textContent = ''; });
+            statIp.addEventListener('click', copyVPNIpToClipboard);
+            configSelect.addEventListener('change', handleVPNConfigChange);
+            accountSelect.addEventListener('change', handleVPNAccountChange);
+            saveAccountBtn.addEventListener('click', saveCurrentVPNAccount);
+            deleteAccountBtn.addEventListener('click', deleteSelectedVPNAccount);
+
+            // Initial fetches
+            await fetchVPNConfigs();
+            await fetchVPNAccounts();
+            await fetchVPNStatus();
+            setupVPNEventSource();
+
+            // Auto-show VPN card if connected or connecting
+            if (vpnStatus === 'connected' || vpnStatus === 'connecting' || vpnStatus === 'disconnecting') {
+                document.getElementById('vpn-card').style.display = 'block';
+                document.getElementById('vpn-toggle').classList.add('active');
+                vpnHiddenManually = false;
+            }
+
+            // Status Polling
+            setInterval(fetchVPNStatus, 2000);
+        }
+
+        let vpnHiddenManually = true;
+        function toggleVPNManagement() {
+            const card = document.getElementById('vpn-card');
+            const btn = document.getElementById('vpn-toggle');
+            if (card.style.display === 'none') {
+                card.style.display = 'block';
+                btn.classList.add('active');
+                vpnHiddenManually = false;
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                card.style.display = 'none';
+                btn.classList.remove('active');
+                vpnHiddenManually = true;
+            }
+        }
+
+        function toggleVPNPasswordVisibility() {
+            const passwordInput = document.getElementById('vpn-password');
+            const togglePasswordBtn = document.getElementById('vpn-toggle-password');
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            togglePasswordBtn.innerText = isPassword ? '🙈' : '👁️';
+        }
+
+        async function fetchVPNConfigs() {
+            const configDirInput = document.getElementById('vpn-config-dir');
+            const configSelect = document.getElementById('vpn-config-select');
+            const refreshConfigsBtn = document.getElementById('vpn-refresh-configs');
+            
+            try {
+                refreshConfigsBtn.disabled = true;
+                const configDir = configDirInput.value.trim();
+                localStorage.setItem('vpn_config_dir', configDir);
+                
+                const url = configDir ? `/api/configs?custom_dir=${encodeURIComponent(configDir)}` : '/api/configs';
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Failed to load configs');
+                }
+                
+                vpnSavedConfigs = await response.json();
+                const currentSelection = configSelect.value;
+                
+                configSelect.innerHTML = '<option value="" disabled selected>Select a configuration file...</option>';
+                
+                if (vpnSavedConfigs.length === 0) {
+                    configSelect.innerHTML = '<option value="" disabled selected>No .ovpn files found</option>';
+                } else {
+                    vpnSavedConfigs.forEach(cfg => {
+                        const opt = document.createElement('option');
+                        opt.value = cfg.path;
+                        opt.textContent = cfg.name;
+                        configSelect.appendChild(opt);
+                    });
+                    
+                    if (currentSelection && vpnSavedConfigs.some(c => c.path === currentSelection)) {
+                        configSelect.value = currentSelection;
+                    } else if (vpnSavedConfigs.length > 0) {
+                        configSelect.selectedIndex = 1;
+                        handleVPNConfigChange();
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                showAlert('VPN Error', 'Error fetching OVPN configs: ' + err.message);
+            } finally {
+                refreshConfigsBtn.disabled = false;
+            }
+        }
+
+        function handleVPNConfigChange() {
+            const configSelect = document.getElementById('vpn-config-select');
+            const usernameInput = document.getElementById('vpn-username');
+            const passwordInput = document.getElementById('vpn-password');
+            const selectedPath = configSelect.value;
+            const config = vpnSavedConfigs.find(c => c.path === selectedPath);
+            if (config) {
+                usernameInput.value = config.saved_username || '';
+                passwordInput.value = config.saved_password || '';
+            }
+        }
+
+        async function fetchVPNStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('Status failed');
+                const state = await response.json();
+                updateVPNUIState(state);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function updateVPNUIState(state) {
+            const status = state.status;
+            vpnStatus = status;
+
+            const stateRing = document.getElementById('vpn-state-ring');
+            const stateDot = document.getElementById('vpn-state-dot');
+            const stateName = document.getElementById('vpn-state-name');
+            const stateSub = document.getElementById('vpn-state-sub');
+            const statIp = document.getElementById('vpn-stat-ip');
+            const statInterface = document.getElementById('vpn-stat-interface');
+            const statUptime = document.getElementById('vpn-stat-uptime');
+
+            const btnConnect = document.getElementById('vpn-btn-connect');
+            const btnDisconnect = document.getElementById('vpn-btn-disconnect');
+            const configSelect = document.getElementById('vpn-config-select');
+            const configDirInput = document.getElementById('vpn-config-dir');
+            const usernameInput = document.getElementById('vpn-username');
+            const passwordInput = document.getElementById('vpn-password');
+            const saveCredsCheckbox = document.getElementById('vpn-save-credentials');
+            const accountSelect = document.getElementById('vpn-account-select');
+            const saveAccountBtn = document.getElementById('vpn-save-account');
+            const deleteAccountBtn = document.getElementById('vpn-delete-account');
+
+            stateRing.className = `state-glowing-ring ${status}`;
+            stateDot.className = `state-dot ${status}`;
+            stateName.textContent = status.toUpperCase();
+
+            // Update header toggle button state
+            const vpnToggleBtn = document.getElementById('vpn-toggle');
+            if (vpnToggleBtn) {
+                if (status === 'connected') {
+                    vpnToggleBtn.innerHTML = '🔓 VPN <span style="display:inline-block; width:8px; height:8px; background:#00f2fe; border-radius:50%; margin-left:4px; box-shadow:0 0 8px #00f2fe; animation: vpnPulse 1.5s infinite alternate;"></span>';
+                    vpnToggleBtn.style.borderColor = 'rgba(0, 242, 254, 0.4)';
+                } else if (status === 'connecting') {
+                    vpnToggleBtn.innerHTML = '⏳ VPN <span style="display:inline-block; width:8px; height:8px; background:#f6d365; border-radius:50%; margin-left:4px; box-shadow:0 0 8px #f6d365; animation: vpnPulse 0.8s infinite alternate;"></span>';
+                    vpnToggleBtn.style.borderColor = 'rgba(246, 211, 101, 0.4)';
+                } else if (status === 'error') {
+                    vpnToggleBtn.innerHTML = '⚠️ VPN <span style="display:inline-block; width:8px; height:8px; background:#ff0844; border-radius:50%; margin-left:4px; box-shadow:0 0 8px #ff0844;"></span>';
+                    vpnToggleBtn.style.borderColor = 'rgba(255, 8, 68, 0.4)';
+                } else {
+                    vpnToggleBtn.innerHTML = '🔒 VPN';
+                    vpnToggleBtn.style.borderColor = '';
+                }
+            }
+
+            if (status === 'connected') {
+                const parts = state.active_config.split('/');
+                const filename = parts[parts.length - 1];
+                stateSub.textContent = `Connected to ${filename}`;
+                statIp.textContent = state.ip_address || 'Fetching IP...';
+                statInterface.textContent = state.interface || 'tun0';
+
+                btnConnect.disabled = true;
+                btnDisconnect.disabled = false;
+                configSelect.disabled = true;
+                configDirInput.disabled = true;
+                usernameInput.disabled = true;
+                passwordInput.disabled = true;
+                saveCredsCheckbox.disabled = true;
+                accountSelect.disabled = true;
+                saveAccountBtn.disabled = true;
+                deleteAccountBtn.disabled = true;
+
+                if (!vpnUptimeInterval && state.start_time) {
+                    const start = new Date(state.start_time);
+                    vpnUptimeInterval = setInterval(() => {
+                        const diffMs = new Date() - start;
+                        vpnUptimeSeconds = Math.max(0, Math.floor(diffMs / 1000));
+                        statUptime.textContent = formatVPNDuration(vpnUptimeSeconds);
+                    }, 1000);
+                }
+            } else if (status === 'connecting') {
+                stateSub.textContent = 'Establishing secure channel...';
+                statIp.textContent = '---.---.---.---';
+                statInterface.textContent = 'negotiating';
+
+                btnConnect.disabled = true;
+                btnDisconnect.disabled = false;
+                configSelect.disabled = true;
+                configDirInput.disabled = true;
+                usernameInput.disabled = true;
+                passwordInput.disabled = true;
+                saveCredsCheckbox.disabled = true;
+                accountSelect.disabled = true;
+                saveAccountBtn.disabled = true;
+                deleteAccountBtn.disabled = true;
+
+                stopVPNUptimeCounter();
+            } else if (status === 'disconnecting') {
+                stateSub.textContent = 'Closing VPN session...';
+                btnConnect.disabled = true;
+                btnDisconnect.disabled = true;
+                configSelect.disabled = true;
+                configDirInput.disabled = true;
+                usernameInput.disabled = true;
+                passwordInput.disabled = true;
+                saveCredsCheckbox.disabled = true;
+                accountSelect.disabled = true;
+                saveAccountBtn.disabled = true;
+                deleteAccountBtn.disabled = true;
+            } else { // disconnected or error
+                stateSub.textContent = status === 'error' ? (state.error_msg || 'An error occurred') : 'Select profile and connect';
+                statIp.textContent = '---.---.---.---';
+                statInterface.textContent = 'none';
+
+                btnConnect.disabled = !configSelect.value;
+                btnDisconnect.disabled = true;
+                configSelect.disabled = false;
+                configDirInput.disabled = false;
+                usernameInput.disabled = false;
+                passwordInput.disabled = false;
+                saveCredsCheckbox.disabled = false;
+                accountSelect.disabled = false;
+                saveAccountBtn.disabled = false;
+                deleteAccountBtn.disabled = false;
+
+                stopVPNUptimeCounter();
+            }
+        }
+
+        function stopVPNUptimeCounter() {
+            if (vpnUptimeInterval) {
+                clearInterval(vpnUptimeInterval);
+                vpnUptimeInterval = null;
+            }
+            document.getElementById('vpn-stat-uptime').textContent = '00:00:00';
+            vpnUptimeSeconds = 0;
+        }
+
+        function formatVPNDuration(seconds) {
+            const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const secs = (seconds % 60).toString().padStart(2, '0');
+            return `${hrs}:${mins}:${secs}`;
+        }
+
+        function copyVPNIpToClipboard() {
+            const ip = document.getElementById('vpn-stat-ip').textContent;
+            if (ip && ip !== '---.---.---.---' && ip !== 'Fetching IP...') {
+                navigator.clipboard.writeText(ip).then(() => {
+                    showAlert('VPN Info', 'IP copied to clipboard: ' + ip);
+                });
+            }
+        }
+
+        async function connectVPN() {
+            const configPath = document.getElementById('vpn-config-select').value;
+            const username = document.getElementById('vpn-username').value.trim();
+            const password = document.getElementById('vpn-password').value;
+            const saveCreds = document.getElementById('vpn-save-credentials').checked;
+
+            if (!configPath) {
+                showAlert('VPN Error', 'Please select a config profile.');
+                return;
+            }
+            if (!username || !password) {
+                showAlert('VPN Error', 'Please enter username and password.');
+                return;
+            }
+
+            try {
+                document.getElementById('vpn-btn-connect').disabled = true;
+                const response = await fetch('/api/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        config_path: configPath,
+                        username: username,
+                        password: password,
+                        save_credentials: saveCreds
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Connection failed to start');
+                document.getElementById('vpn-log-console').textContent = '=== Starting connection ===\n';
+                fetchVPNStatus();
+            } catch (err) {
+                console.error(err);
+                showAlert('VPN Error', err.message);
+                document.getElementById('vpn-btn-connect').disabled = false;
+            }
+        }
+
+        async function disconnectVPN() {
+            try {
+                document.getElementById('vpn-btn-disconnect').disabled = true;
+                const response = await fetch('/api/disconnect', { method: 'POST' });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'Disconnect failed');
+                fetchVPNStatus();
+            } catch (err) {
+                console.error(err);
+                showAlert('VPN Error', err.message);
+                document.getElementById('vpn-btn-disconnect').disabled = false;
+            }
+        }
+
+        function setupVPNEventSource() {
+            if (vpnEventSource) vpnEventSource.close();
+            vpnEventSource = new EventSource('/api/logs');
+
+            vpnEventSource.onmessage = (event) => {
+                const text = event.data;
+                const consoleEl = document.getElementById('vpn-log-console');
+                if (consoleEl.textContent.includes('Waiting for connection logs...')) {
+                    consoleEl.textContent = '';
+                }
+                consoleEl.textContent += text + '\n';
+                if (document.getElementById('vpn-auto-scroll').checked) {
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                }
+            };
+
+            vpnEventSource.onerror = (err) => {
+                console.warn('VPN Logs EventSource disconnected, retrying...', err);
+                vpnEventSource.close();
+                setTimeout(setupVPNEventSource, 3000);
+            };
+        }
+
+        async function fetchVPNAccounts() {
+            try {
+                const response = await fetch('/api/accounts');
+                if (!response.ok) throw new Error('Failed to fetch accounts');
+                vpnSavedAccounts = await response.json();
+                
+                const select = document.getElementById('vpn-account-select');
+                const deleteBtn = document.getElementById('vpn-delete-account');
+                const prevVal = select.value;
+                
+                select.innerHTML = '<option value="">-- Enter custom credentials --</option>';
+                vpnSavedAccounts.forEach(acc => {
+                    const opt = document.createElement('option');
+                    opt.value = acc.id;
+                    opt.textContent = `${acc.label} (${acc.username})`;
+                    select.appendChild(opt);
+                });
+                
+                if (prevVal && vpnSavedAccounts.some(acc => acc.id === prevVal)) {
+                    select.value = prevVal;
+                    deleteBtn.style.display = 'inline-block';
+                } else {
+                    select.value = '';
+                    deleteBtn.style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Error fetching accounts:', err);
+            }
+        }
+
+        function handleVPNAccountChange() {
+            const select = document.getElementById('vpn-account-select');
+            const usernameInput = document.getElementById('vpn-username');
+            const passwordInput = document.getElementById('vpn-password');
+            const deleteBtn = document.getElementById('vpn-delete-account');
+            const selectedId = select.value;
+            
+            if (!selectedId) {
+                usernameInput.value = '';
+                passwordInput.value = '';
+                deleteBtn.style.display = 'none';
+                return;
+            }
+            
+            const account = vpnSavedAccounts.find(acc => acc.id === selectedId);
+            if (account) {
+                usernameInput.value = account.username;
+                passwordInput.value = account.password;
+                deleteBtn.style.display = 'inline-block';
+            }
+        }
+
+        async function saveCurrentVPNAccount() {
+            const username = document.getElementById('vpn-username').value.trim();
+            const password = document.getElementById('vpn-password').value;
+            const select = document.getElementById('vpn-account-select');
+            
+            if (!username || !password) {
+                showAlert('VPN Info', 'Please enter both username and password first');
+                return;
+            }
+            
+            const selectedId = select.value;
+            let label = '';
+            
+            if (selectedId) {
+                const existing = vpnSavedAccounts.find(acc => acc.id === selectedId);
+                if (existing) {
+                    if (confirm(`Do you want to update the password for saved account "${existing.label}"?`)) {
+                        label = existing.label;
+                    } else {
+                        return;
+                    }
+                }
+            }
+            
+            if (!label) {
+                label = prompt('Enter a label/display name for this account:');
+                if (!label) return;
+                label = label.trim();
+                if (!label) {
+                    showAlert('VPN Info', 'Label cannot be empty');
+                    return;
+                }
+            }
+            
+            try {
+                const payload = { label, username, password };
+                if (selectedId) payload.id = selectedId;
+                
+                const response = await fetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to save account');
+                }
+                
+                showAlert('VPN Info', selectedId ? 'Account updated successfully' : 'Account saved successfully');
+                await fetchVPNAccounts();
+            } catch (err) {
+                console.error(err);
+                showAlert('VPN Error', err.message);
+            }
+        }
+
+        async function deleteSelectedVPNAccount() {
+            const select = document.getElementById('vpn-account-select');
+            const selectedId = select.value;
+            if (!selectedId) return;
+            
+            const account = vpnSavedAccounts.find(acc => acc.id === selectedId);
+            if (!account) return;
+            
+            if (!confirm(`Are you sure you want to delete the saved account "${account.label}"?`)) return;
+            
+            try {
+                const response = await fetch('/api/accounts/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: selectedId })
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete account');
+                }
+                
+                showAlert('VPN Info', 'Account deleted successfully');
+                document.getElementById('vpn-username').value = '';
+                document.getElementById('vpn-password').value = '';
+                select.value = '';
+                document.getElementById('vpn-delete-account').style.display = 'none';
+                await fetchVPNAccounts();
+            } catch (err) {
+                console.error(err);
+                showAlert('VPN Error', err.message);
+            }
         }
 
         init();
