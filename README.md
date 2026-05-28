@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.3.0
+# 🚀 Internal Deploy System (IDS) - v1.4.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -26,6 +26,7 @@ deploy-tool/
 ### 🌳 Git Management
 - **Full Control**: Branch switching, merging, and creation directly from the UI.
 - **Commit History**: Browse the last 15 commits with "Use Message" shortcut for deployments.
+- **Git Tags**: Current release/git tags are fetched via `git describe --tags --always` and displayed next to the branch name as a badge.
 - **Unpushed Highlights**: Commits not yet pushed to the remote are marked with an "UNPUSHED" badge and blue border.
 - **Status at a Glance**: Ahead/Behind counts (↑/↓) for **every local branch** are displayed in the branch list.
 - **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal feedback.
@@ -101,6 +102,22 @@ rsync -avz auth-server user@remote-dev:/opt/services/auth/
 # 3. Restart remote service
 ssh user@remote-dev "sudo systemctl restart auth.service"
 ```
+
+### ⚙️ Custom Deployment Commands (Alternative)
+
+If you prefer not to use `.sh` script files in each service subdirectory, or if you have complex deployment flows, you can define custom commands directly in the **Settings** modal (or under `custom_cmds` in `settings.json`).
+
+Format in Settings (one entry per line):
+```text
+folder-name:environment:command
+```
+
+Examples:
+- `user-service:dev:go build && systemctl restart user-service`
+- `crm-front-end:stg:npm run build && rsync -avz dist/ user@stg-server:/var/www/html/`
+
+During execution, the deployment message is injected into the environment as `$DEPLOY_MSG` and `$DEPLOY_MESSAGE`. You can reference them in your commands:
+- `user-service:dev:echo "Deploying with message: $DEPLOY_MESSAGE" && go build && ...`
 
 ## 🚀 Getting Started
 

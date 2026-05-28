@@ -1,0 +1,502 @@
+package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"time"
+)
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, filepath.Join(basePath, "templates", "index.html"))
+}
+
+func settingsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var s Settings
+		if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := saveSettings(s); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		ensureGitInPath(s)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		return
+	}
+
+	s := loadSettings()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s)
+}
+
+func workspaceFoldersHandler(w http.ResponseWriter, r *http.Request) {
+	s := loadSettings()
+	entries, err := os.ReadDir(s.WorkspaceURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var folders []string
+	for _, entry := range entries {
+		if entry.IsDir() && !strings.HasPrefix(entry.Name(), ".") {
+			folders = append(folders, entry.Name())
+		}
+	}
+	sort.Strings(folders)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(folders)
+}
+
+func servicesHandler(w http.ResponseWriter, r *http.Request) {
+	s := loadSettings()
+	services := scanServices(s)
+
+	results := make([]Service, 0)
+	for _, svc := range services {
+		metricsMu.RLock()
+		svc.Metrics = make(map[string]ServiceMetrics)
+		
+		lookupName := svc.Name
+		if alias, ok := s.FolderAliases[lookupName]; ok && alias != "" {
+			lookupName = alias
+		}
+
+		if m, ok := globalMetrics["Development"][lookupName]; ok {
+			svc.Metrics["Development"] = m
+		}
+		if m, ok := globalMetrics["Staging"][lookupName]; ok {
+			svc.Metrics["Staging"] = m
+		}
+		metricsMu.RUnlock()
+		results = append(results, svc)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
+}
+
+func serviceHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	if serviceName == "" {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	lookupName := svc.Name
+	if alias, ok := s.FolderAliases[lookupName]; ok && alias != "" {
+		lookupName = alias
+	}
+
+	metricsMu.RLock()
+	svc.Metrics = make(map[string]ServiceMetrics)
+	if m, ok := globalMetrics["Development"][lookupName]; ok {
+		svc.Metrics["Development"] = m
+	}
+	if m, ok := globalMetrics["Staging"][lookupName]; ok {
+		svc.Metrics["Staging"] = m
+	}
+	metricsMu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(svc)
+}
+
+func healthMonitorHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles(filepath.Join(basePath, "templates", "health_monitor.html"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := map[string]string{
+		"DevURL": os.Getenv("DEV_AGENT_URL"),
+		"StgURL": os.Getenv("STG_AGENT_URL"),
+	}
+	tmpl.Execute(w, data)
+}
+
+func agentMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	env := r.URL.Query().Get("env")
+	if env == "" {
+		env = "Development"
+	}
+
+	metricsMu.RLock()
+	data := globalMetrics[env]
+	if data == nil {
+		data = make(map[string]ServiceMetrics)
+	}
+	metricsMu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(data)
+}
+
+func statsHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := getDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rowsS, _ := db.Query("SELECT service, COUNT(*) FROM deployments GROUP BY service")
+	defer rowsS.Close()
+	byService := make(map[string]int)
+	for rowsS.Next() {
+		var s string
+		var c int
+		rowsS.Scan(&s, &c)
+		byService[s] = c
+	}
+
+	rowsE, _ := db.Query("SELECT environment, COUNT(*) FROM deployments GROUP BY environment")
+	defer rowsE.Close()
+	byEnv := make(map[string]int)
+	for rowsE.Next() {
+		var e string
+		var c int
+		rowsE.Scan(&e, &c)
+		byEnv[e] = c
+	}
+
+	rowsD, _ := db.Query(`
+		SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as day, COUNT(*) 
+		FROM deployments 
+		WHERE created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+		GROUP BY day 
+		ORDER BY day ASC
+	`)
+	defer rowsD.Close()
+	byDay := make(map[string]int)
+	for rowsD.Next() {
+		var d string
+		var c int
+		rowsD.Scan(&d, &c)
+		byDay[d] = c
+	}
+
+	rowsU, _ := db.Query("SELECT user_name, COUNT(*) FROM deployments GROUP BY user_name")
+	defer rowsU.Close()
+	byUser := make(map[string]int)
+	for rowsU.Next() {
+		var u string
+		var c int
+		rowsU.Scan(&u, &c)
+		if u == "" {
+			u = "Unknown"
+		}
+		byUser[u] = c
+	}
+
+	rowsSD, _ := db.Query(`
+		SELECT service, DATE_FORMAT(created_at, '%Y-%m-%d') as day, COUNT(*) 
+		FROM deployments 
+		WHERE created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+		GROUP BY service, day 
+		ORDER BY day ASC
+	`)
+	defer rowsSD.Close()
+	type SvcDay struct {
+		Service string `json:"service"`
+		Day     string `json:"day"`
+		Count   int    `json:"count"`
+	}
+	var byServiceDay []SvcDay
+	for rowsSD.Next() {
+		var sd SvcDay
+		rowsSD.Scan(&sd.Service, &sd.Day, &sd.Count)
+		byServiceDay = append(byServiceDay, sd)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"by_service":     byService,
+		"by_environment": byEnv,
+		"by_day":         byDay,
+		"by_user":        byUser,
+		"by_service_day": byServiceDay,
+	})
+}
+
+func historyHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	if serviceName == "" {
+		http.Error(w, "Service name required", http.StatusBadRequest)
+		return
+	}
+
+	db, err := getDB()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	rows, err := db.Query(`
+		SELECT user_name, environment, branch, created_at, message, status 
+		FROM deployments 
+		WHERE service = ? 
+		ORDER BY created_at DESC 
+		LIMIT 100
+	`, serviceName)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var logs []DeployLog
+	for rows.Next() {
+		var l DeployLog
+		var createdAt time.Time
+		if err := rows.Scan(&l.UserName, &l.Environment, &l.Branch, &createdAt, &l.Message, &l.Status); err != nil {
+			log.Printf("[History] Scan error: %v", err)
+			continue
+		}
+		l.CreatedAt = createdAt.Add(7 * time.Hour).Format("2006-01-02 15:04:05")
+		logs = append(logs, l)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(logs)
+}
+
+func deployHandler(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Service string `json:"service"`
+		Env     string `json:"env"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	services := scanServices(s)
+
+	var svc *Service
+	for _, sv := range services {
+		if sv.Name == data.Service {
+			svc = &sv
+			break
+		}
+	}
+
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	startTime := time.Now()
+
+	scriptPath := svc.DevScript
+	if data.Env == "Staging" {
+		scriptPath = svc.StgScript
+	}
+
+	if scriptPath == "" {
+		http.Error(w, "Script not found for environment", http.StatusBadRequest)
+		return
+	}
+
+	preMetrics := getLatestMetricsForService(data.Env, svc.Name)
+	var preMtime int64 = 0
+	var prePID string = ""
+	if preMetrics != nil {
+		preMtime = preMetrics.BinaryMtime
+		prePID = preMetrics.PID
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	send := func(msg string) {
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+		flusher.Flush()
+	}
+
+	bash := getBashPath(s)
+	userName := s.UserName
+	if userName == "" {
+		userName = "WebUser"
+	}
+	nowStr := time.Now().Format("2006-01-02 15:04:05")
+	finalMsg := fmt.Sprintf("[%s] [%s] [%s] %s", userName, svc.Branch, nowStr, data.Message)
+
+	preDeployCmd := svc.PreDeployCmd
+	if preDeployCmd == "" {
+		preDeployCmd = s.PreDeployCmd
+	}
+	if preDeployCmd != "" {
+		send(fmt.Sprintf("[Pre-deploy] $ %s", preDeployCmd))
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd.exe", "/c", preDeployCmd)
+		} else {
+			cmd = exec.Command("sh", "-c", preDeployCmd)
+		}
+		cmd.Dir = svc.Dir
+		h, _ := os.UserHomeDir()
+		cmd.Env = append(os.Environ(),
+			"GIT_TERMINAL_PROMPT=0",
+			"GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no",
+			"GIT_CONFIG_COUNT=1",
+			"GIT_CONFIG_KEY_0=url.git@gitlab.com:.insteadOf",
+			"GIT_CONFIG_VALUE_0=https://gitlab.com/",
+		)
+		if h != "" {
+			cmd.Env = append(cmd.Env, "HOME="+h, "USERPROFILE="+h)
+		}
+
+		stdout, _ := cmd.StdoutPipe()
+		cmd.Stderr = cmd.Stdout
+
+		if err := cmd.Start(); err != nil {
+			send(fmt.Sprintf("Failed to start pre-deploy: %v", err))
+		} else {
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				send(scanner.Text())
+			}
+			if err := cmd.Wait(); err != nil {
+				send(fmt.Sprintf("\n[Pre-deploy failed — exit %v. Aborting.]", err))
+				duration := time.Since(startTime)
+				send(fmt.Sprintf("\n[Time] Total deployment time: %.2f seconds", duration.Seconds()))
+				send("[EOF]")
+				return
+			}
+		}
+	}
+
+	isCustomCmd := true
+	resolvedScriptPath := scriptPath
+	if strings.HasPrefix(scriptPath, "./") || strings.HasPrefix(scriptPath, "scripts/") {
+		fullPath := filepath.Join(svc.Dir, scriptPath)
+		if _, err := os.Stat(fullPath); err == nil {
+			isCustomCmd = false
+			resolvedScriptPath = fullPath
+		}
+	}
+
+	var cmd *exec.Cmd
+	if isCustomCmd {
+		send(fmt.Sprintf("[Deploy] Running custom command: %s", scriptPath))
+		bashPath := getBashPath(s)
+		cmd = exec.Command(bashPath, "-c", scriptPath)
+	} else {
+		relScriptPath, _ := filepath.Rel(svc.Dir, resolvedScriptPath)
+		send(fmt.Sprintf("$ bash %s \"%s\"", relScriptPath, finalMsg))
+		cmd = exec.Command(bash, resolvedScriptPath, finalMsg)
+	}
+
+	cmd.Dir = svc.Dir
+	h, _ := os.UserHomeDir()
+	cmd.Env = append(os.Environ(),
+		"GIT_TERMINAL_PROMPT=0",
+		"GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no",
+		"GIT_CONFIG_COUNT=1",
+		"GIT_CONFIG_KEY_0=url.git@gitlab.com:.insteadOf",
+		"GIT_CONFIG_VALUE_0=https://gitlab.com/",
+	)
+	if h != "" {
+		cmd.Env = append(cmd.Env, "HOME="+h, "USERPROFILE="+h)
+	}
+	cmd.Env = append(cmd.Env,
+		"DEPLOY_MSG="+finalMsg,
+		"DEPLOY_MESSAGE="+finalMsg,
+	)
+	stdout, _ := cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout
+
+	if err := cmd.Start(); err != nil {
+		send(fmt.Sprintf("Failed to start deploy: %v", err))
+	} else {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			send(scanner.Text())
+		}
+		if err := cmd.Wait(); err == nil {
+			send("\n[Deploy script finished ✓]")
+			send("[Verification] Waiting 5 seconds for service restart...")
+			time.Sleep(5 * time.Second)
+
+			status := "Success"
+			postMetrics := getLatestMetricsForService(data.Env, svc.Name)
+			if postMetrics == nil {
+				send("[Verification] ⚠️ Could not contact health agent for verification.")
+			} else {
+				if postMetrics.Status != "RUNNING" {
+					send("[Verification] ❌ Service is NOT RUNNING after deploy!")
+					status = "Failed"
+				} else if postMetrics.BinaryMtime <= preMtime && preMtime > 0 {
+					send(fmt.Sprintf("[Verification] ❌ Binary NOT updated! (Old: %d, New: %d)", preMtime, postMetrics.BinaryMtime))
+					status = "Failed"
+				} else if postMetrics.PID == prePID && prePID != "" {
+					send("[Verification] ⚠️ Service PID did not change. Restart might have failed.")
+				} else {
+					send("[Verification] ✅ Binary updated and service is RUNNING.")
+				}
+			}
+
+			if status == "Success" {
+				send("\n[Deploy finished successfully ✓]")
+			} else {
+				send("\n[Deploy FAILED Verification ❌]")
+			}
+
+			err = logToDB(userName, svc.Name, data.Env, svc.Branch, data.Message, status)
+			if err != nil {
+				send(fmt.Sprintf("[MySQL] Error: %v", err))
+			} else {
+				send("[MySQL] Saved deployment log ✓")
+			}
+
+			if status != "Success" {
+				send(fmt.Sprintf("[STATUS] %s", status))
+			}
+		} else {
+			send(fmt.Sprintf("\n[Deploy error — exit %v]", err))
+			logToDB(userName, svc.Name, data.Env, svc.Branch, data.Message, "Failed")
+			send("[STATUS] Failed")
+		}
+	}
+
+	duration := time.Since(startTime)
+	send(fmt.Sprintf("\n[Time] Total deployment time: %.2f seconds", duration.Seconds()))
+
+	send("[EOF]")
+}

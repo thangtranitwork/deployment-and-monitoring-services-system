@@ -1,3 +1,8 @@
 .env
 settings.json
 ids.service
+/ids-commander
+/ids-health
+credentials.json
+accounts.json
+.idea/
