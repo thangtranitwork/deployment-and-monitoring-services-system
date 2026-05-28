@@ -358,9 +358,6 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 	finalMsg := fmt.Sprintf("[%s] [%s] [%s] %s", userName, svc.Branch, nowStr, data.Message)
 
 	preDeployCmd := svc.PreDeployCmd
-	if preDeployCmd == "" {
-		preDeployCmd = s.PreDeployCmd
-	}
 	if preDeployCmd != "" {
 		send(fmt.Sprintf("[Pre-deploy] $ %s", preDeployCmd))
 		var cmd *exec.Cmd
