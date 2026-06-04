@@ -32,6 +32,7 @@ async function init() {
             closeStatsModal();
             closeShortcutsModal();
             closeAlertModal();
+            closeVPNModal();
         }
 
         if (e.altKey && e.shiftKey) {
@@ -1356,6 +1357,7 @@ document.addEventListener('keydown', (e) => {
         closeStatsModal();
         closeSettings();
         closeShortcutsModal();
+        closeVPNModal();
         return;
     }
 
@@ -1520,13 +1522,10 @@ async function initVPN() {
     await fetchVPNConfigs();
     await fetchVPNAccounts();
     await fetchVPNStatus();
-    setupVPNEventSource();
 
-    // Auto-show VPN card if connected or connecting
+    // Auto-show VPN modal if connected or connecting
     if (vpnStatus === 'connected' || vpnStatus === 'connecting' || vpnStatus === 'disconnecting') {
-        document.getElementById('vpn-card').style.display = 'block';
-        document.getElementById('vpn-toggle').classList.add('active');
-        vpnHiddenManually = false;
+        openVPNModal();
     }
 
     // Status Polling
@@ -1535,17 +1534,29 @@ async function initVPN() {
 
 let vpnHiddenManually = true;
 function toggleVPNManagement() {
-    const card = document.getElementById('vpn-card');
-    const btn = document.getElementById('vpn-toggle');
-    if (card.style.display === 'none') {
-        card.style.display = 'block';
-        btn.classList.add('active');
-        vpnHiddenManually = false;
-        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const overlay = document.getElementById('vpn-modal-overlay');
+    if (overlay.style.display === 'none' || overlay.style.display === '') {
+        openVPNModal();
     } else {
-        card.style.display = 'none';
-        btn.classList.remove('active');
-        vpnHiddenManually = true;
+        closeVPNModal();
+    }
+}
+
+function openVPNModal() {
+    document.getElementById('vpn-modal-overlay').style.display = 'flex';
+    document.getElementById('vpn-toggle').classList.add('active');
+    vpnHiddenManually = false;
+    setupVPNEventSource();
+}
+
+function closeVPNModal() {
+    document.getElementById('vpn-modal-overlay').style.display = 'none';
+    document.getElementById('vpn-toggle').classList.remove('active');
+    vpnHiddenManually = true;
+    
+    if (vpnEventSource) {
+        vpnEventSource.close();
+        vpnEventSource = null;
     }
 }
 
@@ -1844,7 +1855,10 @@ function setupVPNEventSource() {
     vpnEventSource.onerror = (err) => {
         console.warn('VPN Logs EventSource disconnected, retrying...', err);
         vpnEventSource.close();
-        setTimeout(setupVPNEventSource, 3000);
+        vpnEventSource = null;
+        if (!vpnHiddenManually) {
+            setTimeout(setupVPNEventSource, 3000);
+        }
     };
 }
 

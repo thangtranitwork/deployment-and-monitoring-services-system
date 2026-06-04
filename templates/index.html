@@ -18,7 +18,7 @@
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.4.0</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.4.1</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
@@ -116,13 +116,72 @@
 
             <div id="resizer" title="Drag to resize"></div>
 
-            <!-- VPN Connection Control Card -->
-            <div id="vpn-card" class="card" style="display: none; min-height: 400px; margin-bottom: 20px;">
-                <div class="label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <span>🔒 VPN Connection Control</span>
-                    <button onclick="toggleVPNManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px;" title="Hide VPN Management">✕</button>
+
+
+            <!-- Git Management Card (New) -->
+            <div id="git-card" class="card" style="display: none; min-height: 400px;">
+                <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Git Management <span id="git-status-badge" style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button id="btn-git-fetch" onclick="gitFetch()" style="padding: 4px 12px; font-size: 11px;" title="Fetch from all remotes">↻ Fetch</button>
+                        <button id="btn-git-pull" onclick="gitPull()" style="padding: 4px 12px; font-size: 11px; background: #2ecc71; border: none; color: white;" title="Pull from remote">↓ Pull</button>
+                        <button id="btn-git-push" onclick="gitPush()" style="padding: 4px 12px; font-size: 11px; background: #3498db; border: none; color: white;" title="Push to remote">↑ Push</button>
+                        <button onclick="toggleGitManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: 8px;" title="Hide Git Management">✕</button>
+                    </div>
                 </div>
-                
+                <div class="env-selector"
+                    style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="env-btn active" id="git-tab-branches" onclick="switchGitTab('branches')"
+                            title="Shortcut: Alt+Shift+Q">Branches (Q)</button>
+                        <button class="env-btn" id="git-tab-commits" onclick="switchGitTab('commits')"
+                            title="Shortcut: Alt+Shift+W">Commits (W)</button>
+                        <button class="env-btn" id="git-tab-stash" onclick="switchGitTab('stash')"
+                            title="Shortcut: Alt+Shift+E">Stashes (E)</button>
+                    </div>
+                    <div id="git-actions-header"></div>
+                </div>
+
+                <div id="git-tab-container" style="height: 300px; overflow-y: auto; padding-right: 4px;">
+                    <div id="git-content-branches" class="git-tab-content">
+                        <div style="margin-bottom: 10px;">
+                            <input type="text" id="branch-search" placeholder="🔍 Search branches..."
+                                oninput="filterBranches()"
+                                style="font-size: 12px; padding: 6px 12px; height: 32px; background: var(--bg-body); border-radius: 6px;">
+                        </div>
+                        <div id="branches-list" style="display: flex; flex-direction: column; gap: 6px;">
+                            <!-- branches injected here -->
+                        </div>
+                    </div>
+
+                    <div id="git-content-commits" class="git-tab-content" style="display: none;">
+                        <div id="commits-list"
+                            style="display: flex; flex-direction: column; gap: 8px; font-family: var(--font-mono); font-size: 12px;">
+                            <!-- commits injected here -->
+                        </div>
+                    </div>
+
+                    <div id="git-content-stash" class="git-tab-content" style="display: none;">
+                        <div id="stash-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- stashes injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- VPN Modal Overlay (New) -->
+    <div id="vpn-modal-overlay" class="modal-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal"
+            style="width: 1000px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: var(--accent);">
+                <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">🔒 VPN Connection Control</div>
+                <span onclick="closeVPNModal()" style="cursor: pointer; color: var(--text-dim); font-size: 24px; font-weight: bold; transition: color 0.2s; line-height: 1;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-dim)'" title="Close Modal">×</span>
+            </div>
+            
+            <div style="flex: 1; overflow-y: auto; padding: 16px 0;">
                 <div class="vpn-grid">
                     <!-- Left Column: Settings -->
                     <div class="vpn-col-form">
@@ -229,66 +288,19 @@
                                     <label for="vpn-auto-scroll">Auto-scroll</label>
                                 </div>
                             </div>
-                            <div style="background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 10px; height: 180px; overflow: hidden; display: flex;">
+                            <div style="background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 10px; height: 240px; overflow: hidden; display: flex;">
                                 <pre id="vpn-log-console" style="flex: 1; font-family: var(--font-mono); font-size: 11px; color: #a7f3d0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Waiting for connection logs...</pre>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Git Management Card (New) -->
-            <div id="git-card" class="card" style="display: none; min-height: 400px;">
-                <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Git Management <span id="git-status-badge" style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <button id="btn-git-fetch" onclick="gitFetch()" style="padding: 4px 12px; font-size: 11px;" title="Fetch from all remotes">↻ Fetch</button>
-                        <button id="btn-git-pull" onclick="gitPull()" style="padding: 4px 12px; font-size: 11px; background: #2ecc71; border: none; color: white;" title="Pull from remote">↓ Pull</button>
-                        <button id="btn-git-push" onclick="gitPush()" style="padding: 4px 12px; font-size: 11px; background: #3498db; border: none; color: white;" title="Push to remote">↑ Push</button>
-                        <button onclick="toggleGitManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: 8px;" title="Hide Git Management">✕</button>
-                    </div>
-                </div>
-                <div class="env-selector"
-                    style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; gap: 8px;">
-                        <button class="env-btn active" id="git-tab-branches" onclick="switchGitTab('branches')"
-                            title="Shortcut: Alt+Shift+Q">Branches (Q)</button>
-                        <button class="env-btn" id="git-tab-commits" onclick="switchGitTab('commits')"
-                            title="Shortcut: Alt+Shift+W">Commits (W)</button>
-                        <button class="env-btn" id="git-tab-stash" onclick="switchGitTab('stash')"
-                            title="Shortcut: Alt+Shift+E">Stashes (E)</button>
-                    </div>
-                    <div id="git-actions-header"></div>
-                </div>
-
-                <div id="git-tab-container" style="height: 300px; overflow-y: auto; padding-right: 4px;">
-                    <div id="git-content-branches" class="git-tab-content">
-                        <div style="margin-bottom: 10px;">
-                            <input type="text" id="branch-search" placeholder="🔍 Search branches..."
-                                oninput="filterBranches()"
-                                style="font-size: 12px; padding: 6px 12px; height: 32px; background: var(--bg-body); border-radius: 6px;">
-                        </div>
-                        <div id="branches-list" style="display: flex; flex-direction: column; gap: 6px;">
-                            <!-- branches injected here -->
-                        </div>
-                    </div>
-
-                    <div id="git-content-commits" class="git-tab-content" style="display: none;">
-                        <div id="commits-list"
-                            style="display: flex; flex-direction: column; gap: 8px; font-family: var(--font-mono); font-size: 12px;">
-                            <!-- commits injected here -->
-                        </div>
-                    </div>
-
-                    <div id="git-content-stash" class="git-tab-content" style="display: none;">
-                        <div id="stash-list" style="display: flex; flex-direction: column; gap: 8px;">
-                            <!-- stashes injected here -->
-                        </div>
-                    </div>
-                </div>
+            
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px;">
+                <button onclick="closeVPNModal()">Close</button>
             </div>
         </div>
-    </main>
+    </div>
 
     <!-- History Modal (New) -->
     <div id="history-modal-overlay" class="modal-overlay"

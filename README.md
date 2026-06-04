@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.4.0
+# 🚀 Internal Deploy System (IDS) - v1.4.1
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -19,11 +19,13 @@ deploy-tool/
 ## 🛠 Features
 
 ### 🖥️ Monitoring & Health
+
 - **Real-time Metrics**: Live CPU, Memory, Uptime, and Port status from remote servers via SSE.
 - **Excel-like Sorting**: Sort service tables by any metric with a single click.
 - **Post-Deploy Verification**: Automatically verifies if a service restarted correctly by comparing binary `Mtime`.
 
 ### 🌳 Git Management
+
 - **Full Control**: Branch switching, merging, and creation directly from the UI.
 - **Commit History**: Browse the last 15 commits with "Use Message" shortcut for deployments.
 - **Git Tags**: Current release/git tags are fetched via `git describe --tags --always` and displayed next to the branch name as a badge.
@@ -33,11 +35,13 @@ deploy-tool/
 - **Safe Stash**: Automatic stashing during checkouts to prevent data loss, with a dedicated Stash management tab.
 
 ### 🚀 Deployment Workflow
+
 - **Multi-Environment**: Seamlessly switch between Development and Staging targets.
 - **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
 - **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
 
 ### 🎨 User Experience
+
 - **Premium UI**: Modern dark/light modes with glassmorphism and smooth transitions.
 - **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
 - **Theme Factory**: Deep customization of accent colors, terminal text, and background themes.
@@ -45,27 +49,29 @@ deploy-tool/
 ## ⌨️ Keyboard Shortcuts
 
 ### 🏠 Management Page
-| Action | Shortcut |
-| :--- | :--- |
-| **Search Service** | `/` |
-| **Navigate Services** | `Alt + ↑ / ↓` |
-| **Run Deploy** | `Ctrl + Enter` |
-| **Cycle Deploy Msg** | `Alt + Shift + ← / →` (Left=Newer, Right=Older) |
-| **Toggle Git Card** | `Alt + Shift + G` |
-| **Switch Env (Dev/Stg)** | `Alt + Shift + 1 / 2` |
-| **Git Tabs (B/C/S)** | `Alt + Shift + Q / W / E` |
-| **View Logs** | `Alt + Shift + L` |
-| **Go to Monitor** | `Alt + Shift + M` |
-| **Refresh / Stats / Settings** | `Alt + Shift + R / S / I` |
-| **Toggle Theme / Help** | `Alt + Shift + T / H` |
-| **Toggle VPN Card** | `Alt + Shift + U` |
-| **Close Modal** | `Esc` |
+
+| Action                         | Shortcut                                        |
+| :----------------------------- | :---------------------------------------------- |
+| **Search Service**             | `/`                                             |
+| **Navigate Services**          | `Alt + ↑ / ↓`                                   |
+| **Run Deploy**                 | `Ctrl + Enter`                                  |
+| **Cycle Deploy Msg**           | `Alt + Shift + ← / →` (Left=Newer, Right=Older) |
+| **Toggle Git Card**            | `Alt + Shift + G`                               |
+| **Switch Env (Dev/Stg)**       | `Alt + Shift + 1 / 2`                           |
+| **Git Tabs (B/C/S)**           | `Alt + Shift + Q / W / E`                       |
+| **View Logs**                  | `Alt + Shift + L`                               |
+| **Go to Monitor**              | `Alt + Shift + M`                               |
+| **Refresh / Stats / Settings** | `Alt + Shift + R / S / I`                       |
+| **Toggle Theme / Help**        | `Alt + Shift + T / H`                           |
+| **Toggle VPN Card**            | `Alt + Shift + U`                               |
+| **Close Modal**                | `Esc`                                           |
 
 ## 📐 Usage: Sample Project Structure
 
 To use IDS effectively, your workspace should follow a consistent structure. IDS looks for deployment scripts in a specific subdirectory within each service folder.
 
 ### Recommended Workspace Layout
+
 ```text
 /home/user/work/projects/
 ├── service-auth/
@@ -87,6 +93,7 @@ To use IDS effectively, your workspace should follow a consistent structure. IDS
 ```
 
 ### Sample `dev.sh`
+
 ```bash
 #!/bin/bash
 # IDS passes the deployment message as the first argument
@@ -108,15 +115,18 @@ ssh user@remote-dev "sudo systemctl restart auth.service"
 If you prefer not to use `.sh` script files in each service subdirectory, or if you have complex deployment flows, you can define custom commands directly in the **Settings** modal (or under `custom_cmds` in `settings.json`).
 
 Format in Settings (one entry per line):
+
 ```text
 folder-name:environment:command
 ```
 
 Examples:
+
 - `user-service:dev:go build && systemctl restart user-service`
 - `crm-front-end:stg:npm run build && rsync -avz dist/ user@stg-server:/var/www/html/`
 
 During execution, the deployment message is injected into the environment as `$DEPLOY_MSG` and `$DEPLOY_MESSAGE`. You can reference them in your commands:
+
 - `user-service:dev:echo "Deploying with message: $DEPLOY_MESSAGE" && go build && ...`
 
 ## 🚀 Getting Started
@@ -135,4 +145,5 @@ During execution, the deployment message is injected into the environment as `$D
 4. **Set Aliases**: If local folder names differ from server service names, add them in **Settings > Folder Aliases** (e.g., `user-service-go:auth-service`).
 
 ## 📄 License
+
 MIT License.
