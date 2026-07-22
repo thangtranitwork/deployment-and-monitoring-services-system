@@ -23,7 +23,8 @@ func loadSettings() Settings {
 		GoPrivate:     "",
 		DevAgentURL:   os.Getenv("DEV_AGENT_URL"),
 		StgAgentURL:   os.Getenv("STG_AGENT_URL"),
-		FolderAliases: make(map[string]string),
+		ProdAgentURL:  os.Getenv("PROD_AGENT_URL"),
+		ShowProduction: false,
 		CustomCmds:    make(map[string]string),
 		Services:      make([]ServiceConfig, 0),
 		DarkTheme: ThemeColors{
@@ -46,9 +47,6 @@ func loadSettings() Settings {
 		_ = json.NewDecoder(f).Decode(&s)
 	}
 
-	if s.FolderAliases == nil {
-		s.FolderAliases = make(map[string]string)
-	}
 	if s.CustomCmds == nil {
 		s.CustomCmds = make(map[string]string)
 	}
@@ -99,13 +97,10 @@ func migrateSettings(s *Settings) {
 
 				cfg, ok := cmdMap[folder]
 				if !ok {
-					alias := folder
-					if a, exists := s.FolderAliases[folder]; exists {
-						alias = a
-					}
 					cfg = &ServiceConfig{
-						Folder: folder,
-						Name:   alias,
+						Enabled: true,
+						Folder:  folder,
+						Name:    folder,
 					}
 					cmdMap[folder] = cfg
 				}
@@ -134,6 +129,7 @@ func migrateSettings(s *Settings) {
 
 				devCmd := ""
 				stgCmd := ""
+				prodCmd := ""
 
 				// Check standard scripts
 				if _, err := os.Stat(filepath.Join(path, "deploy-dev.sh")); err == nil {
@@ -148,9 +144,16 @@ func migrateSettings(s *Settings) {
 					stgCmd = "./scripts/deploy-stg.sh"
 				}
 
+				if _, err := os.Stat(filepath.Join(path, "deploy-prod.sh")); err == nil {
+					prodCmd = "./deploy-prod.sh"
+				} else if _, err := os.Stat(filepath.Join(path, "scripts", "deploy-prod.sh")); err == nil {
+					prodCmd = "./scripts/deploy-prod.sh"
+				}
+
 				// Check frontend scripts
 				devFE := ""
 				stgFE := ""
+				prodFE := ""
 				if _, err := os.Stat(filepath.Join(path, "deploy-front-end-dev.sh")); err == nil {
 					devFE = "./deploy-front-end-dev.sh"
 				}
@@ -159,31 +162,37 @@ func migrateSettings(s *Settings) {
 				} else if _, err := os.Stat(filepath.Join(path, "deploy-front-end.sh")); err == nil {
 					stgFE = "./deploy-front-end.sh"
 				}
-
-				alias := folderName
-				if a, exists := s.FolderAliases[folderName]; exists {
-					alias = a
+				if _, err := os.Stat(filepath.Join(path, "deploy-front-end-prod.sh")); err == nil {
+					prodFE = "./deploy-front-end-prod.sh"
 				}
 
-				if devCmd != "" || stgCmd != "" {
+				alias := folderName
+
+				if devCmd != "" || stgCmd != "" || prodCmd != "" {
 					s.Services = append(s.Services, ServiceConfig{
-						Folder: folderName,
-						Name:   alias,
-						DevCmd: devCmd,
-						StgCmd: stgCmd,
+						Enabled:        true,
+						Folder:         folderName,
+						Name:           alias,
+						DevCmd:         devCmd,
+						StgCmd:         stgCmd,
+						ProdCmd:        prodCmd,
+						ShowProduction: prodCmd != "",
 					})
 				}
 
-				if devFE != "" || stgFE != "" {
+				if devFE != "" || stgFE != "" || prodFE != "" {
 					feAlias := alias + "-front-end"
 					if alias == "crm-service" {
 						feAlias = "crm-front-end"
 					}
 					s.Services = append(s.Services, ServiceConfig{
-						Folder: folderName,
-						Name:   feAlias,
-						DevCmd: devFE,
-						StgCmd: stgFE,
+						Enabled:        true,
+						Folder:         folderName,
+						Name:           feAlias,
+						DevCmd:         devFE,
+						StgCmd:         stgFE,
+						ProdCmd:        prodFE,
+						ShowProduction: prodFE != "",
 					})
 				}
 			}

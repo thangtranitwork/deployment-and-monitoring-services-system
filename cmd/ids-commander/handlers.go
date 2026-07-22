@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,26 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		oldSettings := loadSettings()
+		for i, svc := range s.Services {
+			// If password is changed (not the placeholder)
+			if svc.ProdPasswordHash != "" && svc.ProdPasswordHash != "********" {
+				hash, err := bcrypt.GenerateFromPassword([]byte(svc.ProdPasswordHash), bcrypt.DefaultCost)
+				if err == nil {
+					s.Services[i].ProdPasswordHash = string(hash)
+				}
+			} else if svc.ProdPasswordHash == "********" {
+				// Keep old hash
+				for _, oldSvc := range oldSettings.Services {
+					if oldSvc.Folder == svc.Folder && oldSvc.Name == svc.Name {
+						s.Services[i].ProdPasswordHash = oldSvc.ProdPasswordHash
+						break
+					}
+				}
+			}
+		}
+
 		if err := saveSettings(s); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -38,6 +60,12 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := loadSettings()
+	// Hide real hashes from frontend
+	for i := range s.Services {
+		if s.Services[i].ProdPasswordHash != "" {
+			s.Services[i].ProdPasswordHash = "********"
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
 }
@@ -72,15 +100,15 @@ func servicesHandler(w http.ResponseWriter, r *http.Request) {
 		svc.Metrics = make(map[string]ServiceMetrics)
 		
 		lookupName := svc.Name
-		if alias, ok := s.FolderAliases[lookupName]; ok && alias != "" {
-			lookupName = alias
-		}
 
 		if m, ok := globalMetrics["Development"][lookupName]; ok {
 			svc.Metrics["Development"] = m
 		}
 		if m, ok := globalMetrics["Staging"][lookupName]; ok {
 			svc.Metrics["Staging"] = m
+		}
+		if m, ok := globalMetrics["Production"][lookupName]; ok {
+			svc.Metrics["Production"] = m
 		}
 		metricsMu.RUnlock()
 		results = append(results, svc)
@@ -106,9 +134,6 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lookupName := svc.Name
-	if alias, ok := s.FolderAliases[lookupName]; ok && alias != "" {
-		lookupName = alias
-	}
 
 	metricsMu.RLock()
 	svc.Metrics = make(map[string]ServiceMetrics)
@@ -117,6 +142,9 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if m, ok := globalMetrics["Staging"][lookupName]; ok {
 		svc.Metrics["Staging"] = m
+	}
+	if m, ok := globalMetrics["Production"][lookupName]; ok {
+		svc.Metrics["Production"] = m
 	}
 	metricsMu.RUnlock()
 
@@ -288,9 +316,10 @@ func historyHandler(w http.ResponseWriter, r *http.Request) {
 
 func deployHandler(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		Service string `json:"service"`
-		Env     string `json:"env"`
-		Message string `json:"message"`
+		Service  string `json:"service"`
+		Env      string `json:"env"`
+		Message  string `json:"message"`
+		Password string `json:"password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -298,6 +327,26 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := loadSettings()
+	
+	// Verify production password
+	if data.Env == "Production" {
+		var targetCfg *ServiceConfig
+		for _, cfg := range s.Services {
+			if cfg.Name == data.Service {
+				targetCfg = &cfg
+				break
+			}
+		}
+		
+		if targetCfg != nil && targetCfg.ProdPasswordHash != "" {
+			err := bcrypt.CompareHashAndPassword([]byte(targetCfg.ProdPasswordHash), []byte(data.Password))
+			if err != nil {
+				http.Error(w, "Invalid production password", http.StatusUnauthorized)
+				return
+			}
+		}
+	}
+
 	services := scanServices(s)
 
 	var svc *Service
@@ -318,6 +367,8 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 	scriptPath := svc.DevScript
 	if data.Env == "Staging" {
 		scriptPath = svc.StgScript
+	} else if data.Env == "Production" {
+		scriptPath = svc.ProdScript
 	}
 
 	if scriptPath == "" {

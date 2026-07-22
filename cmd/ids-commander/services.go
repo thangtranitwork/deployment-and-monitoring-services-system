@@ -17,15 +17,38 @@ func scanServices(s Settings) []Service {
 	gitPath := getGitPath(s)
 	var services []Service
 
+	// 1. Get all folders in workspace
+	entries, err := os.ReadDir(s.WorkspaceURL)
+	if err != nil {
+		log.Printf("[Scan] Error reading workspace: %v", err)
+		return services
+	}
+
+	// Track folders that are explicitly configured
+	configuredFolders := make(map[string]bool)
+
+	// 2. Process all explicitly configured services
 	for _, cfg := range s.Services {
-		folderPath := filepath.Join(s.WorkspaceURL, cfg.Folder)
-		if _, err := os.Stat(folderPath); err != nil {
-			log.Printf("[Scan] Folder %s not found for service %s", folderPath, cfg.Name)
+		configuredFolders[cfg.Folder] = true
+		if !cfg.Enabled {
+			continue
+		}
+		if svc := getServiceInfo(s.WorkspaceURL, cfg.Name, gitPath); svc != nil {
+			services = append(services, *svc)
+		}
+	}
+
+	// 3. Scan workspace for any new/unconfigured folders
+	for _, entry := range entries {
+		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
 			continue
 		}
 
-		if svc := getServiceInfo(s.WorkspaceURL, cfg.Name, gitPath); svc != nil {
-			services = append(services, *svc)
+		folderName := entry.Name()
+		if !configuredFolders[folderName] {
+			if svc := getServiceInfo(s.WorkspaceURL, folderName, gitPath); svc != nil {
+				services = append(services, *svc)
+			}
 		}
 	}
 
@@ -36,19 +59,33 @@ func scanServices(s Settings) []Service {
 	return services
 }
 
-func getServiceInfo(workspaceURL, name, gitPath string) *Service {
+func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 	var targetCfg *ServiceConfig
-	for _, cfg := range settings.Services {
-		if cfg.Name == name {
-			targetCfg = &cfg
+	
+	// 1. Search by service name in the configured services first
+	for i := range settings.Services {
+		if settings.Services[i].Name == serviceName {
+			targetCfg = &settings.Services[i]
 			break
 		}
 	}
 
+	// 2. Search by folder if no config name matches
+	if targetCfg == nil {
+		for i := range settings.Services {
+			if settings.Services[i].Folder == serviceName {
+				targetCfg = &settings.Services[i]
+				break
+			}
+		}
+	}
+
+	// 3. Create a default config if still not found
 	if targetCfg == nil {
 		targetCfg = &ServiceConfig{
-			Folder: name,
-			Name:   name,
+			Enabled: true,
+			Folder:  serviceName,
+			Name:    serviceName,
 		}
 	}
 
@@ -95,19 +132,22 @@ func getServiceInfo(workspaceURL, name, gitPath string) *Service {
 	}
 
 	return &Service{
-		Name:         targetCfg.Name,
-		Dir:          folderPath,
-		Branch:       branch,
-		Tag:          tag,
-		LastCommit:   lastCommit,
-		HasDev:       targetCfg.DevCmd != "",
-		HasStg:       targetCfg.StgCmd != "",
-		DevScript:    targetCfg.DevCmd,
-		StgScript:    targetCfg.StgCmd,
-		PreDeployCmd: targetCfg.PreDeployCmd,
-		HasStash:     hasStash,
-		Ahead:        ahead,
-		Behind:       behind,
+		Name:           targetCfg.Name,
+		Dir:            folderPath,
+		Branch:         branch,
+		Tag:            tag,
+		LastCommit:     lastCommit,
+		HasDev:         targetCfg.DevCmd != "",
+		HasStg:         targetCfg.StgCmd != "",
+		HasProd:        targetCfg.ProdCmd != "",
+		DevScript:      targetCfg.DevCmd,
+		StgScript:      targetCfg.StgCmd,
+		ProdScript:     targetCfg.ProdCmd,
+		PreDeployCmd:   targetCfg.PreDeployCmd,
+		HasStash:       hasStash,
+		Ahead:          ahead,
+		Behind:         behind,
+		ShowProduction: targetCfg.ShowProduction,
 	}
 }
 
@@ -125,13 +165,15 @@ func startMetricsCollector() {
 	ticker := time.NewTicker(5 * time.Second)
 	go func() {
 		for range ticker.C {
-			envs := []string{"Development", "Staging"}
+			envs := []string{"Development", "Staging", "Production"}
 			for _, env := range envs {
 				url := ""
-				if env == "Development" && os.Getenv("DEV_AGENT_URL") != "" {
-					url = os.Getenv("DEV_AGENT_URL") + "/health"
-				} else if env == "Staging" && os.Getenv("STG_AGENT_URL") != "" {
-					url = os.Getenv("STG_AGENT_URL") + "/health"
+				if env == "Development" && settings.DevAgentURL != "" {
+					url = settings.DevAgentURL + "/health"
+				} else if env == "Staging" && settings.StgAgentURL != "" {
+					url = settings.StgAgentURL + "/health"
+				} else if env == "Production" && settings.ProdAgentURL != "" {
+					url = settings.ProdAgentURL + "/health"
 				}
 
 				if url == "" {

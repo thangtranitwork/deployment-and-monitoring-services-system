@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.4.1
+# 🚀 Internal Deploy System (IDS) - v1.7.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -6,14 +6,15 @@ A high-performance, aesthetic deployment automation and monitoring dashboard bui
 
 ```text
 deploy-tool/
-├── main.go             # Main Management Backend (Standard Library)
-├── main-health.go      # Health Agent (Deploy on target servers)
-├── scripts/            # Automation & Runner scripts
-├── templates/          # Web UI templates (HTML + Vanilla JS)
-├── static/             # Static assets (favicon, etc.)
-├── settings.json       # Tool configuration (workspace, user, aliases, etc.)
-├── .env                # Environment variables (DB, Agents)
-└── README.md           # Documentation
+├── cmd/
+│   ├── ids-commander/      # Main Management Backend (Standard Library + SSE + DB logs)
+│   └── ids-health/         # Health Agent (Deploy on target servers)
+├── scripts/                # Automation & Runner scripts
+├── templates/              # Web UI templates (HTML + Vanilla JS)
+├── static/                 # Static assets (css, js, favicon, etc.)
+├── settings.json           # Tool configuration (workspace, user, services, etc.)
+├── .env                    # Environment variables (DB, Agents)
+└── README.md               # Documentation
 ```
 
 ## 🛠 Features
@@ -24,7 +25,7 @@ deploy-tool/
 - **Excel-like Sorting**: Sort service tables by any metric with a single click.
 - **Post-Deploy Verification**: Automatically verifies if a service restarted correctly by comparing binary `Mtime`.
 
-### 🌳 Git Management
+### 🌳 Git Management & Stashes
 
 - **Full Control**: Branch switching, merging, and creation directly from the UI.
 - **Commit History**: Browse the last 15 commits with "Use Message" shortcut for deployments.
@@ -32,19 +33,38 @@ deploy-tool/
 - **Unpushed Highlights**: Commits not yet pushed to the remote are marked with an "UNPUSHED" badge and blue border.
 - **Status at a Glance**: Ahead/Behind counts (↑/↓) for **every local branch** are displayed in the branch list.
 - **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal feedback.
-- **Safe Stash**: Automatic stashing during checkouts to prevent data loss, with a dedicated Stash management tab.
+- **Safe Stash**: Automatic stashing during checkouts to prevent data loss.
+- **Git Stash Manager**: A dedicated tab in the Git management card to view stashed files, create new stashes, pop, apply, or drop stashes directly.
 
 ### 🚀 Deployment Workflow
 
-- **Multi-Environment**: Seamlessly switch between Development and Staging targets.
+- **Multi-Environment**: Seamlessly switch between Development, Staging, and Production targets.
+- **Per-Service Production**: Toggle the Production environment visibility individually for each service.
 - **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
 - **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
 
-### 🎨 User Experience
+### ⚡ Parallel Service Deployment (Multi-Deploy)
 
-- **Premium UI**: Modern dark/light modes with glassmorphism and smooth transitions.
+- **Concurrent Execution**: Deploy multiple services at the same time without blocking or waiting for each deployment sequence.
+- **Premium Selection Modal**: Click "Multi Deploy" in the header to open a selection dashboard. Select the target environment, search/filter services, and enter a unified deployment message.
+- **Card-Style Selection**: Modern, checkbox-free UI cards that toggle selection and highlight with an active border, background glow, and shadow.
+- **Smart Eligibility Filter**: Automatically disables selection for services that lack deployment scripts for the selected environment.
+- **"Select All" Toggle**: A single button that toggles select/deselect of all currently filtered eligible services.
+- **Choice Persistence**: Automatically saves and reloads your last multi-deployment selections and target environment from `localStorage`.
+- **Tabbed Terminal Log Streams**: Real-time log streams for each active deployment are shown in dynamic tabs. Tabs feature status badges (loading spinner for running, checkmark for success, cross for errors) and allow close control.
+
+### 🔒 VPN Management
+
+- **OpenVPN Integration**: Toggle VPN connection state on the host directly from the Web interface.
+- **Real-time Status**: Displays active tunnel status (connected, disconnected, or error state) using real-time polling.
+- **Passwordless Integration**: Seamlessly integrates with system OpenVPN using passwordless sudoers configuration.
+
+### 🎨 User Experience & Theme Customization
+
+- **Premium UI**: Modern dark/light modes with glassmorphism, harmony color palettes, and smooth transitions.
+- **Theme Factory**: Deep customization of accent colors, terminal text, background theme variables, and text dimensions.
 - **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
-- **Theme Factory**: Deep customization of accent colors, terminal text, and background themes.
+- **Shortcuts Modal**: Quick-reference guide for all system keyboard shortcuts.
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -131,7 +151,7 @@ During execution, the deployment message is injected into the environment as `$D
 
 ## 🚀 Getting Started
 
-1. **Configure Agent**: Deploy `main-health.go` to your target servers and set `DEV_AGENT_URL` / `STG_AGENT_URL` in `.env`.
+1. **Configure Agent**: Deploy `ids-health` to your target servers and set `DEV_AGENT_URL` / `STG_AGENT_URL` in `.env`.
 2. **Configure OpenVPN Permissions (Required)**:
    Since OpenVPN requires root privileges to manipulate routing tables and create TUN/TAP interfaces, the system service (running as the unprivileged user `thang`) needs a passwordless sudoers exception. Run the following command on the host:
    ```bash
@@ -139,10 +159,11 @@ During execution, the deployment message is injected into the environment as `$D
    ```
 3. **Build & Run**:
    ```bash
-   go build -o ids-commander main.go
+   # Build ids-commander
+   go build -o ids-commander ./cmd/ids-commander
    ./ids-commander
    ```
-4. **Set Aliases**: If local folder names differ from server service names, add them in **Settings > Folder Aliases** (e.g., `user-service-go:auth-service`).
+4. **Configure Services**: Open **Settings > Deployment** to configure folder mappings, service names, custom deployment commands, and production environment flags for each service.
 
 ## 📄 License
 

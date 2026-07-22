@@ -12,19 +12,21 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.6.4">
 </head>
 
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.4.1</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.0</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
                 Health Monitor</button>
             <button onclick="openShortcutsModal()" title="Shortcut: Alt+Shift+H">⌨️ Shortcuts</button>
             <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊 Statistics</button>
+            <button onclick="openMultiDeployModal()"
+                title="Deploy multiple services concurrently">⚡ Multi Deploy</button>
             <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️ Settings</button>
             <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
             <button id="vpn-toggle" onclick="toggleVPNManagement()" title="Shortcut: Alt+Shift+U">🔒 VPN</button>
@@ -55,15 +57,20 @@
                         <div class="label">Environment</div>
                         <div class="env-selector">
                             <button class="env-btn active" onclick="setEnv('Development')">Development</button>
-                            <button class="env-btn" onclick="setEnv('Staging')">Staging</button>
+                            <button id="env-stg-btn" class="env-btn" onclick="setEnv('Staging')">Staging</button>
+                            <button id="env-prod-btn" class="env-btn" onclick="setEnv('Production')"
+                                style="display: none;">Production</button>
                         </div>
                     </div>
                     <div style="flex: 3">
                         <div class="label">Deploy Message</div>
                         <div style="display: flex; gap: 4px; align-items: center;">
-                            <button onclick="nextCommitMsg()" style="padding: 0 8px; height: 42px;" title="Newer Commit Message">←</button>
-                            <input type="text" id="deploy-msg" placeholder="Deployment description..." style="flex: 1; width: auto;">
-                            <button onclick="prevCommitMsg()" style="padding: 0 8px; height: 42px;" title="Older Commit Message">→</button>
+                            <button onclick="nextCommitMsg()" style="padding: 0 8px; height: 42px;"
+                                title="Newer Commit Message">←</button>
+                            <input type="text" id="deploy-msg" placeholder="Deployment description..."
+                                style="flex: 1; width: auto;">
+                            <button onclick="prevCommitMsg()" style="padding: 0 8px; height: 42px;"
+                                title="Older Commit Message">→</button>
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px;">
@@ -109,9 +116,27 @@
                     disabled>View More</button>
             </div>
 
-            <div class="terminal-container">
-                <div class="label">Logs</div>
-                <div id="terminal">Select a service to start...</div>
+            <div class="terminal-container"
+                style="flex: 1; display: flex; flex-direction: column; min-height: 100px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
+                <div
+                    style="background: #111; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+                    <div style="display: flex; align-items: center;">
+                        <div style="display: flex; gap: 6px; margin-right: 16px;">
+                            <span
+                                style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56; display: inline-block;"></span>
+                            <span
+                                style="width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e; display: inline-block;"></span>
+                            <span
+                                style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f; display: inline-block;"></span>
+                        </div>
+                        <div class="label" style="margin-bottom: 0; font-size: 10px;">Logs Terminal</div>
+                    </div>
+                    <span id="terminal-status"
+                        style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">idle</span>
+                </div>
+                <div id="terminal-tabs" class="terminal-tabs" style="display: none;"></div>
+                <div id="terminal" style="border: none; border-radius: 0; box-shadow: none;">Select a service to
+                    start...</div>
             </div>
 
             <div id="resizer" title="Drag to resize"></div>
@@ -121,12 +146,20 @@
             <!-- Git Management Card (New) -->
             <div id="git-card" class="card" style="display: none; min-height: 400px;">
                 <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Git Management <span id="git-status-badge" style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
+                    <span>Git Management <span id="git-status-badge"
+                            style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button id="btn-git-fetch" onclick="gitFetch()" style="padding: 4px 12px; font-size: 11px;" title="Fetch from all remotes">↻ Fetch</button>
-                        <button id="btn-git-pull" onclick="gitPull()" style="padding: 4px 12px; font-size: 11px; background: #2ecc71; border: none; color: white;" title="Pull from remote">↓ Pull</button>
-                        <button id="btn-git-push" onclick="gitPush()" style="padding: 4px 12px; font-size: 11px; background: #3498db; border: none; color: white;" title="Push to remote">↑ Push</button>
-                        <button onclick="toggleGitManagement()" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: 8px;" title="Hide Git Management">✕</button>
+                        <button id="btn-git-fetch" onclick="gitFetch()" style="padding: 4px 12px; font-size: 11px;"
+                            title="Fetch from all remotes">↻ Fetch</button>
+                        <button id="btn-git-pull" onclick="gitPull()"
+                            style="padding: 4px 12px; font-size: 11px; background: #2ecc71; border: none; color: white;"
+                            title="Pull from remote">↓ Pull</button>
+                        <button id="btn-git-push" onclick="gitPush()"
+                            style="padding: 4px 12px; font-size: 11px; background: #3498db; border: none; color: white;"
+                            title="Push to remote">↑ Push</button>
+                        <button onclick="toggleGitManagement()"
+                            style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: 8px;"
+                            title="Hide Git Management">✕</button>
                     </div>
                 </div>
                 <div class="env-selector"
@@ -176,11 +209,16 @@
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000;">
         <div class="modal"
             style="width: 1000px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: var(--accent);">
-                <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">🔒 VPN Connection Control</div>
-                <span onclick="closeVPNModal()" style="cursor: pointer; color: var(--text-dim); font-size: 24px; font-weight: bold; transition: color 0.2s; line-height: 1;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-dim)'" title="Close Modal">×</span>
+            <div class="modal-header"
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: var(--accent);">
+                <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">🔒 VPN
+                    Connection Control</div>
+                <span onclick="closeVPNModal()"
+                    style="cursor: pointer; color: var(--text-dim); font-size: 24px; font-weight: bold; transition: color 0.2s; line-height: 1;"
+                    onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-dim)'"
+                    title="Close Modal">×</span>
             </div>
-            
+
             <div style="flex: 1; overflow-y: auto; padding: 16px 0;">
                 <div class="vpn-grid">
                     <!-- Left Column: Settings -->
@@ -198,7 +236,8 @@
                                 <select id="vpn-config-select" style="flex: 1;">
                                     <option value="" disabled selected>Select a configuration file...</option>
                                 </select>
-                                <button type="button" id="vpn-refresh-configs" style="padding: 0 12px; height: 38px;" title="Refresh list">↻</button>
+                                <button type="button" id="vpn-refresh-configs" style="padding: 0 12px; height: 38px;"
+                                    title="Refresh list">↻</button>
                             </div>
                         </div>
 
@@ -209,8 +248,11 @@
                                 <select id="vpn-account-select" style="flex: 1;">
                                     <option value="" selected>-- Enter custom credentials --</option>
                                 </select>
-                                <button type="button" id="vpn-save-account" style="padding: 0 12px; height: 38px;" title="Save current credentials">💾</button>
-                                <button type="button" id="vpn-delete-account" style="padding: 0 12px; height: 38px; display: none; color: var(--error);" title="Delete selected account">🗑️</button>
+                                <button type="button" id="vpn-save-account" style="padding: 0 12px; height: 38px;"
+                                    title="Save current credentials">💾</button>
+                                <button type="button" id="vpn-delete-account"
+                                    style="padding: 0 12px; height: 38px; display: none; color: var(--error);"
+                                    title="Delete selected account">🗑️</button>
                             </div>
                         </div>
 
@@ -224,21 +266,29 @@
                         <div style="margin-bottom: 12px;">
                             <label class="label-field" for="vpn-password">Password</label>
                             <div style="position: relative; display: flex; align-items: center;">
-                                <input type="password" id="vpn-password" placeholder="VPN Password" autocomplete="current-password" style="padding-right: 40px; width: 100%;">
-                                <button type="button" id="vpn-toggle-password" style="position: absolute; right: 4px; background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; height: 32px;" title="Toggle Password">👁️</button>
+                                <input type="password" id="vpn-password" placeholder="VPN Password"
+                                    autocomplete="current-password" style="padding-right: 40px; width: 100%;">
+                                <button type="button" id="vpn-toggle-password"
+                                    style="position: absolute; right: 4px; background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; height: 32px;"
+                                    title="Toggle Password">👁️</button>
                             </div>
                         </div>
 
                         <!-- Save Credentials Checkbox -->
-                        <div style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim);">
+                        <div
+                            style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim);">
                             <input type="checkbox" id="vpn-save-credentials" checked style="width: auto;">
-                            <label for="vpn-save-credentials" style="cursor: pointer;">Save credentials securely on server</label>
+                            <label for="vpn-save-credentials" style="cursor: pointer;">Save credentials securely on
+                                server</label>
                         </div>
 
                         <!-- Action Buttons -->
                         <div style="display: flex; gap: 12px;">
-                            <button type="button" class="primary" id="vpn-btn-connect" style="flex: 1; height: 42px; justify-content: center;">⚡ Connect</button>
-                            <button type="button" id="vpn-btn-disconnect" disabled style="flex: 1; height: 42px; justify-content: center; color: var(--error); border-color: var(--error);">🔌 Disconnect</button>
+                            <button type="button" class="primary" id="vpn-btn-connect"
+                                style="flex: 1; height: 42px; justify-content: center;">⚡ Connect</button>
+                            <button type="button" id="vpn-btn-disconnect" disabled
+                                style="flex: 1; height: 42px; justify-content: center; color: var(--error); border-color: var(--error);">🔌
+                                Disconnect</button>
                         </div>
                     </div>
 
@@ -253,22 +303,27 @@
                                         <div class="state-dot disconnected" id="vpn-state-dot"></div>
                                     </div>
                                     <div style="display: flex; flex-direction: column;">
-                                        <span id="vpn-state-name" style="font-weight: bold; font-size: 15px;">DISCONNECTED</span>
-                                        <span id="vpn-state-sub" style="font-size: 11px; color: var(--text-dim);">Select profile and connect</span>
+                                        <span id="vpn-state-name"
+                                            style="font-weight: bold; font-size: 15px;">DISCONNECTED</span>
+                                        <span id="vpn-state-sub" style="font-size: 11px; color: var(--text-dim);">Select
+                                            profile and connect</span>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="vpn-status-card">
                                 <div class="label-field">Connection Info</div>
-                                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-top: 6px;">
+                                <div
+                                    style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-top: 6px;">
                                     <div style="display: flex; justify-content: space-between;">
                                         <span style="color: var(--text-dim);">Uptime:</span>
                                         <span id="vpn-stat-uptime" style="font-weight: 600;">00:00:00</span>
                                     </div>
                                     <div style="display: flex; justify-content: space-between;">
                                         <span style="color: var(--text-dim);">IP Address:</span>
-                                        <span id="vpn-stat-ip" style="font-weight: 600; cursor: pointer; text-decoration: underline dotted;" title="Click to copy">---.---.---.---</span>
+                                        <span id="vpn-stat-ip"
+                                            style="font-weight: 600; cursor: pointer; text-decoration: underline dotted;"
+                                            title="Click to copy">---.---.---.---</span>
                                     </div>
                                     <div style="display: flex; justify-content: space-between;">
                                         <span style="color: var(--text-dim);">Interface:</span>
@@ -279,23 +334,43 @@
                         </div>
 
                         <!-- Live Logs Monitor -->
-                        <div class="vpn-logs-monitor">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <div class="vpn-logs-monitor" style="display: flex; flex-direction: column;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                 <span class="label-field">Live Logs</span>
                                 <div style="display: flex; gap: 8px; align-items: center; font-size: 11px;">
-                                    <button type="button" id="vpn-btn-clear-logs" style="padding: 2px 8px; font-size: 10px; height: 22px;">Clear</button>
+                                    <button type="button" id="vpn-btn-clear-logs"
+                                        style="padding: 2px 8px; font-size: 10px; height: 22px;">Clear</button>
                                     <input type="checkbox" id="vpn-auto-scroll" checked style="width: auto; margin: 0;">
                                     <label for="vpn-auto-scroll">Auto-scroll</label>
                                 </div>
                             </div>
-                            <div style="background: #000; border: 1px solid var(--border); border-radius: 6px; padding: 10px; height: 240px; overflow: hidden; display: flex;">
-                                <pre id="vpn-log-console" style="flex: 1; font-family: var(--font-mono); font-size: 11px; color: #a7f3d0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Waiting for connection logs...</pre>
+                            <div
+                                style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
+                                <div
+                                    style="background: #111; padding: 6px 12px; display: flex; align-items: center; border-bottom: 1px solid var(--border);">
+                                    <div style="display: flex; gap: 5px; margin-right: 12px;">
+                                        <span
+                                            style="width: 8px; height: 8px; border-radius: 50%; background: #ff5f56; display: inline-block;"></span>
+                                        <span
+                                            style="width: 8px; height: 8px; border-radius: 50%; background: #ffbd2e; display: inline-block;"></span>
+                                        <span
+                                            style="width: 8px; height: 8px; border-radius: 50%; background: #27c93f; display: inline-block;"></span>
+                                    </div>
+                                    <span
+                                        style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">openvpn.log</span>
+                                </div>
+                                <div
+                                    style="background: #000; padding: 12px; height: 206px; overflow: hidden; display: flex;">
+                                    <pre id="vpn-log-console"
+                                        style="flex: 1; font-family: var(--font-mono); font-size: 11px; color: #a7f3d0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Waiting for connection logs...</pre>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px;">
                 <button onclick="closeVPNModal()">Close</button>
             </div>
@@ -308,24 +383,31 @@
         <div class="modal"
             style="width: 1000px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
             <div class="modal-header">📜 Deployment History - <span id="history-svc-name"></span></div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; overflow: hidden; padding: 16px 0;">
+            <div
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; overflow: hidden; padding: 16px 0;">
                 <!-- Development Column -->
                 <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="label" style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="label"
+                        style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <span>🛠️ DEVELOPMENT</span>
-                        <span id="count-dev" style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
+                        <span id="count-dev"
+                            style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
                     </div>
-                    <div id="history-list-dev" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                    <div id="history-list-dev"
+                        style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
                         <!-- rows injected here -->
                     </div>
                 </div>
                 <!-- Staging Column -->
                 <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <div class="label" style="color: #3498db; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="label"
+                        style="color: #3498db; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <span>🚀 STAGING</span>
-                        <span id="count-stg" style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
+                        <span id="count-stg"
+                            style="font-size: 10px; background: var(--bg-body); padding: 2px 8px; border-radius: 10px; opacity: 0.7;">0</span>
                     </div>
-                    <div id="history-list-stg" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                    <div id="history-list-stg"
+                        style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
                         <!-- rows injected here -->
                     </div>
                 </div>
@@ -395,8 +477,9 @@
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + ↑ / ↓</div>
                 <div style="color: var(--text-main);">Run Deploy</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Ctrl + Enter</div>
-                <div style="color: var(--text-main);">Switch Env (Dev/Stg)</div>
+                <div style="color: var(--text-main);">Switch Env (Dev/Stg/Prod)</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + 1 / 2
+                    / 3
                 </div>
                 <div style="color: var(--text-main);">Git Tabs (B / C / S)</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + Q / W
@@ -411,7 +494,8 @@
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + L / M
                 </div>
                 <div style="color: var(--text-main);">Toggle VPN Card</div>
-                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + U</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + U
+                </div>
                 <div style="color: var(--text-main);">Close Modal</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Esc</div>
             </div>
@@ -509,56 +593,51 @@
     </div>
 
     <div id="modal-overlay">
-        <div class="modal" style="width: 1100px; max-width: 95vw;">
+        <div class="modal" style="width: 1300px; max-width: 98vw;">
             <div class="modal-header">⚙️ Global Settings</div>
-            
+
             <div class="settings-tabs" style="margin-top: 12px;">
-                <button id="tab-btn-core" class="settings-tab-btn active" onclick="switchSettingsTab('core')">Core</button>
+                <button id="tab-btn-core" class="settings-tab-btn active"
+                    onclick="switchSettingsTab('core')">Core</button>
                 <button id="tab-btn-theme" class="settings-tab-btn" onclick="switchSettingsTab('theme')">Theme</button>
-                <button id="tab-btn-deployment" class="settings-tab-btn" onclick="switchSettingsTab('deployment')">Deployment</button>
+                <button id="tab-btn-deployment" class="settings-tab-btn"
+                    onclick="switchSettingsTab('deployment')">Deployment</button>
             </div>
 
             <!-- Core Tab Content -->
             <div id="settings-tab-core" class="settings-tab-content active">
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; margin-top: 10px;">
-                    <!-- Column 1: Core Configuration -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div
+                    style="max-width: 680px; margin: 10px auto; display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
+                    <div>
+                        <div class="label">Workspace Directory</div>
+                        <input type="text" id="set-ws" placeholder="Path to your projects...">
+                    </div>
+                    <div>
+                        <div class="label">Git Bash Path (Windows)</div>
+                        <input type="text" id="set-git" placeholder="C:\Program Files\Git\bin\bash.exe">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
-                            <div class="label">Workspace Directory</div>
-                            <input type="text" id="set-ws" placeholder="Path to your projects...">
+                            <div class="label">Your Name</div>
+                            <input type="text" id="set-name" placeholder="John Doe">
                         </div>
                         <div>
-                            <div class="label">Git Bash Path (Windows)</div>
-                            <input type="text" id="set-git" placeholder="C:\Program Files\Git\bin\bash.exe">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div>
-                                <div class="label">Your Name</div>
-                                <input type="text" id="set-name" placeholder="John Doe">
-                            </div>
-                            <div>
-                                <div class="label">Pre-deploy Command</div>
-                                <input type="text" id="set-pre" placeholder="e.g. go mod tidy">
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div>
-                                <div class="label">Dev Agent URL</div>
-                                <input type="text" id="set-dev-url" placeholder="http://ip:port">
-                            </div>
-                            <div>
-                                <div class="label">Staging Agent URL</div>
-                                <input type="text" id="set-stg-url" placeholder="http://ip:port">
-                            </div>
+                            <div class="label">Pre-deploy Command</div>
+                            <input type="text" id="set-pre" placeholder="e.g. go mod tidy">
                         </div>
                     </div>
-
-                    <!-- Column 2: Aliases -->
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                         <div>
-                            <div class="label">Folder Aliases (local:server)</div>
-                            <textarea id="set-aliases" placeholder="folder-name:server-service-name"
-                                style="width: 100%; height: 236px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-family: var(--font-mono); font-size: 11px; padding: 10px; resize: vertical;"></textarea>
+                            <div class="label">Dev Agent URL</div>
+                            <input type="text" id="set-dev-url" placeholder="http://ip:port">
+                        </div>
+                        <div>
+                            <div class="label">Staging Agent URL</div>
+                            <input type="text" id="set-stg-url" placeholder="http://ip:port">
+                        </div>
+                        <div>
+                            <div class="label">Production Agent URL</div>
+                            <input type="text" id="set-prod-url" placeholder="http://ip:port">
                         </div>
                     </div>
                 </div>
@@ -567,11 +646,15 @@
             <!-- Theme Tab Content -->
             <div id="settings-tab-theme" class="settings-tab-content">
                 <div style="max-width: 500px; margin: 10px auto; display: flex; flex-direction: column; gap: 16px;">
-                    <div style="background: var(--bg-body); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div
+                        style="background: var(--bg-body); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <div class="env-selector" style="transform: scale(0.9); transform-origin: left;">
-                                <button id="config-dark-btn" class="env-btn active" onclick="switchConfigTheme('dark')">Dark</button>
-                                <button id="config-light-btn" class="env-btn" onclick="switchConfigTheme('light')">Light</button>
+                                <button id="config-dark-btn" class="env-btn active"
+                                    onclick="switchConfigTheme('dark')">Dark</button>
+                                <button id="config-light-btn" class="env-btn"
+                                    onclick="switchConfigTheme('light')">Light</button>
                             </div>
                             <button id="copy-theme-btn" onclick="copyOtherThemeColors()"
                                 style="font-size: 11px; padding: 6px 12px;">📋 Copy From Other Theme</button>
@@ -581,15 +664,19 @@
                             <div>
                                 <div class="label" style="font-size: 11px;">Accent Color</div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="color" id="set-accent" oninput="updateColorHex('accent')" style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
-                                    <span id="accent-hex" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">#0000</span>
+                                    <input type="color" id="set-accent" oninput="updateColorHex('accent')"
+                                        style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
+                                    <span id="accent-hex"
+                                        style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">#0000</span>
                                 </div>
                             </div>
                             <div>
                                 <div class="label" style="font-size: 11px;">Terminal Color</div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="color" id="set-terminal-color" oninput="updateColorHex('terminal')" style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
-                                    <span id="terminal-hex" style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">#0000</span>
+                                    <input type="color" id="set-terminal-color" oninput="updateColorHex('terminal')"
+                                        style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
+                                    <span id="terminal-hex"
+                                        style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">#0000</span>
                                 </div>
                             </div>
                         </div>
@@ -597,15 +684,19 @@
                             <div>
                                 <div class="label" style="font-size: 11px;">Main Text</div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="color" id="set-text-color" oninput="updateColorHex('text')" style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
-                                    <span id="text-hex" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">#0000</span>
+                                    <input type="color" id="set-text-color" oninput="updateColorHex('text')"
+                                        style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
+                                    <span id="text-hex"
+                                        style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">#0000</span>
                                 </div>
                             </div>
                             <div>
                                 <div class="label" style="font-size: 11px;">Dim Text</div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="color" id="set-text-dim" oninput="updateColorHex('dim')" style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
-                                    <span id="text-dim-hex" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">#0000</span>
+                                    <input type="color" id="set-text-dim" oninput="updateColorHex('dim')"
+                                        style="width: 32px; height: 32px; padding: 0; cursor: pointer; border: 1px solid var(--border); border-radius: 4px;">
+                                    <span id="text-dim-hex"
+                                        style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);">#0000</span>
                                 </div>
                             </div>
                         </div>
@@ -615,20 +706,30 @@
 
             <!-- Deployment Tab Content -->
             <div id="settings-tab-deployment" class="settings-tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 10px;">
-                    <div style="font-size: 12px; color: var(--text-dim); max-width: 75%;">Configure deployment commands for workspace folders manually. Only folders with commands will appear in the service list.</div>
-                    <button type="button" class="primary" onclick="addCustomServiceRow()" style="font-size: 11px; padding: 6px 12px;">➕ Add Custom Row</button>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 10px;">
+                    <div style="font-size: 12px; color: var(--text-dim); max-width: 75%;">Configure deployment commands
+                        for workspace folders manually. Only folders with commands will appear in the service list.
+                    </div>
+                    <button type="button" class="primary" onclick="addCustomServiceRow()"
+                        style="font-size: 11px; padding: 6px 12px;">➕ Add Custom Row</button>
                 </div>
-                <div style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-body);">
+                <div
+                    style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-body);">
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                         <thead>
-                            <tr style="background: var(--bg-hover); border-bottom: 1px solid var(--border); text-align: left; position: sticky; top: 0; z-index: 10;">
-                                <th style="padding: 10px; width: 20%;">Folder Name</th>
-                                <th style="padding: 10px; width: 20%;">Service Display Name</th>
-                                <th style="padding: 10px; width: 18%;">Dev Command</th>
-                                <th style="padding: 10px; width: 18%;">Stg Command</th>
-                                <th style="padding: 10px; width: 18%;">Pre-deploy Cmd</th>
-                                <th style="padding: 10px; width: 6%; text-align: center;">Act</th>
+                            <tr
+                                style="background: var(--bg-hover); border-bottom: 1px solid var(--border); text-align: left; position: sticky; top: 0; z-index: 10;">
+                                <th style="padding: 10px; width: 4%; text-align: center;">Show</th>
+                                <th style="padding: 10px; width: 13%;">Folder Name</th>
+                                <th style="padding: 10px; width: 13%;">Service Name</th>
+                                <th style="padding: 10px; width: 14%;">Dev Cmd</th>
+                                <th style="padding: 10px; width: 14%;">Stg Cmd</th>
+                                <th style="padding: 10px; width: 4%; text-align: center;">Prod</th>
+                                <th style="padding: 10px; width: 12%;">Prod Cmd</th>
+                                <th style="padding: 10px; width: 10%;">Prod Pwd</th>
+                                <th style="padding: 10px; width: 11%;">Pre-deploy</th>
+                                <th style="padding: 10px; width: 5%; text-align: center;">Act</th>
                             </tr>
                         </thead>
                         <tbody id="deployment-config-tbody">
@@ -648,7 +749,74 @@
         </div>
     </div>
 
-    <script src="/static/js/app.js"></script>
+    <!-- Multi Deploy Modal Overlay -->
+    <div id="multi-deploy-modal-overlay" class="modal-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal"
+            style="width: 1000px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; padding: 24px;">
+            <div class="modal-header"
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: var(--accent);">
+                <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px;">⚡ Multi
+                    Service Deployment</div>
+                <span onclick="closeMultiDeployModal()"
+                    style="cursor: pointer; color: var(--text-dim); font-size: 24px; font-weight: bold; line-height: 1;"
+                    title="Close Modal">×</span>
+            </div>
+
+            <!-- Modal Content (Flex column) -->
+            <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 16px 0;">
+                <!-- Config Options: Env & Message & Search -->
+                <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+                    <div style="flex: none; min-width: fit-content;">
+                        <div class="label" style="font-size: 11px;">Environment</div>
+                        <div class="env-selector" id="modal-env-selector">
+                            <button class="env-btn active" data-env="Development"
+                                onclick="setModalEnv('Development')">Development</button>
+                            <button class="env-btn" data-env="Staging" onclick="setModalEnv('Staging')">Staging</button>
+                            <button class="env-btn" data-env="Production"
+                                onclick="setModalEnv('Production')">Production</button>
+                        </div>
+                    </div>
+                    <div style="flex: 2; min-width: 300px;">
+                        <div class="label" style="font-size: 11px;">Deploy Message</div>
+                        <input type="text" id="modal-deploy-msg" placeholder="Deployment description..."
+                            style="height: 38px;">
+                    </div>
+                    <div style="flex: 1.5; min-width: 200px;">
+                        <div class="label" style="font-size: 11px;">Search Services</div>
+                        <input type="text" id="modal-svc-search" placeholder="🔍 Filter services..."
+                            oninput="filterModalServices()" style="height: 38px;">
+                    </div>
+                </div>
+
+                <!-- Select All Bar -->
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                    <button type="button" id="modal-btn-select-all" onclick="toggleModalSelectAllBtn()"
+                        style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border); font-size: 11px; padding: 4px 12px; height: 28px; border-radius: 6px; cursor: pointer;">
+                        ☑ Select All Eligible
+                    </button>
+                    <span id="modal-selected-count">0 selected</span>
+                </div>
+
+                <!-- Grid of Services -->
+                <div id="modal-services-grid"
+                    style="flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; overflow-y: auto; padding: 4px; min-height: 150px;">
+                    <!-- services dynamically rendered here -->
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+                <button onclick="closeMultiDeployModal()"
+                    style="background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--border);">Cancel</button>
+                <button id="modal-btn-deploy" class="primary" onclick="runModalDeploy()" disabled
+                    style="padding: 0 24px; height: 38px;">🚀 Deploy Selected (0)</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js?v=1.6.4"></script>
 </body>
 
 </html>

@@ -13,43 +13,51 @@ type ThemeColors struct {
 }
 
 type ServiceConfig struct {
-	Folder       string `json:"folder"`
-	Name         string `json:"name"`
-	DevCmd       string `json:"dev_cmd"`
-	StgCmd       string `json:"stg_cmd"`
-	PreDeployCmd string `json:"pre_deploy_cmd"`
+	Enabled          bool   `json:"enabled"`
+	Folder           string `json:"folder"`
+	Name             string `json:"name"`
+	DevCmd           string `json:"dev_cmd"`
+	StgCmd           string `json:"stg_cmd"`
+	ProdCmd          string `json:"prod_cmd"`
+	ProdPasswordHash string `json:"prod_password_hash"`
+	PreDeployCmd     string `json:"pre_deploy_cmd"`
+	ShowProduction   bool   `json:"show_production"`
 }
 
 type Settings struct {
-	UserName      string            `json:"user_name"`
-	GitBashPath   string            `json:"git_bash_path"`
-	WorkspaceURL  string            `json:"workspace_url"`
-	PreDeployCmd  string            `json:"pre_deploy_cmd"`
-	GoPrivate     string            `json:"go_private"`
-	DevAgentURL   string            `json:"dev_agent_url"`
-	StgAgentURL   string            `json:"stg_agent_url"`
-	FolderAliases map[string]string `json:"folder_aliases"`
-	DarkTheme     ThemeColors       `json:"dark_theme"`
-	LightTheme    ThemeColors       `json:"light_theme"`
-	CustomCmds    map[string]string `json:"custom_cmds"`
-	Services      []ServiceConfig   `json:"services"`
+	UserName       string            `json:"user_name"`
+	GitBashPath    string            `json:"git_bash_path"`
+	WorkspaceURL   string            `json:"workspace_url"`
+	PreDeployCmd   string            `json:"pre_deploy_cmd"`
+	GoPrivate      string            `json:"go_private"`
+	DevAgentURL    string            `json:"dev_agent_url"`
+	StgAgentURL    string            `json:"stg_agent_url"`
+	ProdAgentURL   string            `json:"prod_agent_url"`
+	ShowProduction bool              `json:"show_production"`
+	DarkTheme      ThemeColors       `json:"dark_theme"`
+	LightTheme     ThemeColors       `json:"light_theme"`
+	CustomCmds     map[string]string `json:"custom_cmds"`
+	Services       []ServiceConfig   `json:"services"`
 }
 
 type Service struct {
-	Name         string                    `json:"name"`
-	Dir          string                    `json:"dir"`
-	Branch       string                    `json:"branch"`
-	Tag          string                    `json:"tag"`
-	LastCommit   string                    `json:"last_commit"`
-	HasDev       bool                      `json:"has_dev"`
-	HasStg       bool                      `json:"has_stg"`
-	DevScript    string                    `json:"dev_script"`
-	StgScript    string                    `json:"stg_script"`
-	PreDeployCmd string                    `json:"pre_deploy_cmd"`
-	HasStash     bool                      `json:"has_stash"`
-	Ahead        int                       `json:"ahead"`
-	Behind       int                       `json:"behind"`
-	Metrics      map[string]ServiceMetrics `json:"metrics,omitempty"` // env -> metrics
+	Name           string                    `json:"name"`
+	Dir            string                    `json:"dir"`
+	Branch         string                    `json:"branch"`
+	Tag            string                    `json:"tag"`
+	LastCommit     string                    `json:"last_commit"`
+	HasDev         bool                      `json:"has_dev"`
+	HasStg         bool                      `json:"has_stg"`
+	HasProd        bool                      `json:"has_prod"`
+	DevScript      string                    `json:"dev_script"`
+	StgScript      string                    `json:"stg_script"`
+	ProdScript     string                    `json:"prod_script"`
+	PreDeployCmd   string                    `json:"pre_deploy_cmd"`
+	HasStash       bool                      `json:"has_stash"`
+	Ahead          int                       `json:"ahead"`
+	Behind         int                       `json:"behind"`
+	ShowProduction bool                      `json:"show_production"`
+	Metrics        map[string]ServiceMetrics `json:"metrics,omitempty"` // env -> metrics
 }
 
 type ServiceMetrics struct {

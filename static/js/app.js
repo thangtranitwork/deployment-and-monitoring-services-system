@@ -17,6 +17,519 @@ let currentGitTab = 'branches';
 let commitMessages = [];
 let currentCommitMsgIndex = -1;
 
+// Global state for parallel deployments
+let activeDeployments = {};
+let activeTerminalTab = null;
+
+// Modal multi-deploy state
+let modalSelectedServices = new Set();
+let modalCurrentEnv = 'Development';
+
+function updateSidebarItemStatus(svcName, status) {
+    const items = document.querySelectorAll('.service-item');
+    items.forEach(item => {
+        const nameEl = item.querySelector('.service-name');
+        if (nameEl && nameEl.innerText.includes(svcName)) {
+            let statusTag = item.querySelector('.deploy-status-tag');
+            if (!statusTag) {
+                statusTag = document.createElement('span');
+                statusTag.className = 'deploy-status-tag';
+                nameEl.appendChild(statusTag);
+            }
+            if (status) {
+                statusTag.className = `deploy-status-tag ${status}`;
+                statusTag.innerText = status;
+                statusTag.style.display = 'inline-block';
+            } else {
+                statusTag.style.display = 'none';
+            }
+        }
+    });
+}
+
+function updateTerminalTabs() {
+    const tabsContainer = document.getElementById('terminal-tabs');
+    if (!tabsContainer) return;
+    
+    const deploymentNames = Object.keys(activeDeployments);
+    
+    if (deploymentNames.length === 0) {
+        tabsContainer.style.display = 'none';
+        activeTerminalTab = null;
+        const terminal = document.getElementById('terminal');
+        const statusSpan = document.getElementById('terminal-status');
+        if (terminal) terminal.innerText = selectedService ? `Ready to deploy ${selectedService.name}...` : 'Select a service to start...';
+        if (statusSpan) {
+            statusSpan.innerText = 'idle';
+            statusSpan.style.color = 'var(--text-dim)';
+        }
+        return;
+    }
+    
+    tabsContainer.style.display = 'flex';
+    tabsContainer.innerHTML = '';
+    
+    deploymentNames.forEach(name => {
+        const dep = activeDeployments[name];
+        const tab = document.createElement('div');
+        tab.className = `terminal-tab ${activeTerminalTab === name ? 'active' : ''}`;
+        tab.onclick = () => switchTerminalTab(name);
+        
+        let statusIcon = '';
+        if (dep.status === 'running') {
+            statusIcon = '<span class="tab-spinner"></span>';
+        } else if (dep.status === 'success') {
+            statusIcon = '<span style="color: var(--success)">✅</span>';
+        } else if (dep.status === 'failed') {
+            statusIcon = '<span style="color: var(--error)">❌</span>';
+        }
+        
+        tab.innerHTML = `
+            <span>📦 ${name}</span>
+            ${statusIcon}
+            <span class="terminal-tab-close" onclick="event.stopPropagation(); closeTerminalTab('${name}')">×</span>
+        `;
+        tabsContainer.appendChild(tab);
+    });
+}
+
+function switchTerminalTab(serviceName) {
+    activeTerminalTab = serviceName;
+    updateTerminalTabs();
+    
+    const terminal = document.getElementById('terminal');
+    const statusSpan = document.getElementById('terminal-status');
+    const dep = activeDeployments[serviceName];
+    
+    if (dep && terminal) {
+        terminal.innerText = dep.logs;
+        if (statusSpan) {
+            statusSpan.innerText = dep.status;
+            if (dep.status === 'running') {
+                statusSpan.style.color = '#f1c40f';
+            } else if (dep.status === 'success') {
+                statusSpan.style.color = 'var(--success)';
+            } else if (dep.status === 'failed') {
+                statusSpan.style.color = 'var(--error)';
+            } else {
+                statusSpan.style.color = 'var(--text-dim)';
+            }
+        }
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+}
+
+function closeTerminalTab(serviceName) {
+    const dep = activeDeployments[serviceName];
+    if (dep && dep.status === 'running') {
+        if (!confirm(`Deployment for ${serviceName} is still running. Are you sure you want to close this tab?`)) {
+            return;
+        }
+        if (dep.reader) {
+            try {
+                dep.reader.cancel();
+            } catch(e) {}
+        }
+    }
+    
+    delete activeDeployments[serviceName];
+    
+    if (activeTerminalTab === serviceName) {
+        const remaining = Object.keys(activeDeployments);
+        if (remaining.length > 0) {
+            activeTerminalTab = remaining[remaining.length - 1];
+        } else {
+            activeTerminalTab = null;
+        }
+    }
+    
+    updateTerminalTabs();
+    if (activeTerminalTab) {
+        switchTerminalTab(activeTerminalTab);
+    } else {
+        const terminal = document.getElementById('terminal');
+        const statusSpan = document.getElementById('terminal-status');
+        if (terminal) terminal.innerText = selectedService ? `Ready to deploy ${selectedService.name}...` : 'Select a service to start...';
+        if (statusSpan) {
+            statusSpan.innerText = 'idle';
+            statusSpan.style.color = 'var(--text-dim)';
+        }
+    }
+    
+    updateSidebarItemStatus(serviceName, '');
+}
+
+// Multi Deploy Modal Functions
+function openMultiDeployModal() {
+    modalSelectedServices.clear();
+    
+    // Load last environment from localStorage, fallback to currentEnv
+    const savedEnv = localStorage.getItem('lastMultiDeployEnv');
+    modalCurrentEnv = savedEnv ? savedEnv : currentEnv;
+    
+    // Load last selected services from localStorage
+    const savedServices = localStorage.getItem('lastMultiDeployServices');
+    if (savedServices) {
+        try {
+            const list = JSON.parse(savedServices);
+            list.forEach(name => modalSelectedServices.add(name));
+        } catch (e) {
+            console.error('Failed to parse last multi-deploy services:', e);
+        }
+    }
+    
+    const mainMsg = document.getElementById('deploy-msg');
+    document.getElementById('modal-deploy-msg').value = mainMsg ? mainMsg.value : '';
+    document.getElementById('modal-svc-search').value = '';
+    
+    updateModalEnvSelector();
+    renderModalServicesGrid();
+    
+    const overlay = document.getElementById('multi-deploy-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function closeMultiDeployModal() {
+    const overlay = document.getElementById('multi-deploy-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function setModalEnv(env) {
+    modalCurrentEnv = env;
+    updateModalEnvSelector();
+    modalSelectedServices.clear();
+    renderModalServicesGrid();
+}
+
+function updateModalEnvSelector() {
+    const selector = document.getElementById('modal-env-selector');
+    if (!selector) return;
+    selector.querySelectorAll('.env-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-env') === modalCurrentEnv);
+    });
+}
+
+function renderModalServicesGrid() {
+    const grid = document.getElementById('modal-services-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    const searchVal = document.getElementById('modal-svc-search');
+    const query = searchVal ? searchVal.value.toLowerCase().trim() : '';
+    
+    services.forEach(svc => {
+        if (query && !svc.name.toLowerCase().includes(query)) return;
+        
+        let hasScript = false;
+        if (modalCurrentEnv === 'Development') hasScript = svc.has_dev;
+        else if (modalCurrentEnv === 'Staging') hasScript = svc.has_stg;
+        else if (modalCurrentEnv === 'Production') hasScript = svc.has_prod;
+        
+        const isDeploying = activeDeployments[svc.name] && activeDeployments[svc.name].status === 'running';
+        const eligible = hasScript && !isDeploying;
+        
+        const isChecked = modalSelectedServices.has(svc.name) && eligible;
+        
+        const card = document.createElement('div');
+        card.className = `modal-service-card ${eligible ? '' : 'disabled'} ${isChecked ? 'selected' : ''}`;
+        card.setAttribute('data-service', svc.name);
+        card.setAttribute('data-eligible', eligible ? 'true' : 'false');
+        
+        card.onclick = () => {
+            if (!eligible) return;
+            const newChecked = !modalSelectedServices.has(svc.name);
+            toggleModalSvcSelection(svc.name, newChecked);
+        };
+        
+        const stashTag = svc.has_stash ? '<span style="color: #f1c40f; margin-left: 6px;" title="Has Git Stash">📥</span>' : '';
+        
+        let statusBadge = '';
+        if (isDeploying) {
+            statusBadge = '<span class="deploy-status-tag running" style="margin-left: 6px;">Deploying</span>';
+        } else if (activeDeployments[svc.name]) {
+            const dep = activeDeployments[svc.name];
+            statusBadge = `<span class="deploy-status-tag ${dep.status}" style="margin-left: 6px;">${dep.status}</span>`;
+        } else if (!hasScript) {
+            statusBadge = `<span class="deploy-status-tag failed" style="margin-left: 6px; background: rgba(231, 76, 60, 0.08); font-size: 8px;">No ${modalCurrentEnv} script</span>`;
+        }
+        
+        card.innerHTML = `
+            <div class="modal-service-card-content">
+                <div class="service-name" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                    <span style="font-weight: 700;">${svc.name}</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        ${stashTag}
+                        ${statusBadge}
+                    </div>
+                </div>
+                <div class="service-meta" style="margin-top: 6px;">
+                    <div>branch: <span class="branch-tag" style="font-size: 10px;">${svc.branch}</span></div>
+                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; opacity: 0.8; margin-top: 2px;">${svc.last_commit}</div>
+                </div>
+            </div>
+        `;
+        
+        grid.appendChild(card);
+    });
+    
+    updateModalSelectionUI();
+}
+
+function toggleModalSvcSelection(svcName, checked) {
+    if (checked) {
+        modalSelectedServices.add(svcName);
+    } else {
+        modalSelectedServices.delete(svcName);
+    }
+    
+    const card = document.querySelector(`.modal-service-card[data-service="${svcName}"]`);
+    if (card) {
+        card.classList.toggle('selected', checked);
+    }
+    
+    updateModalSelectionUI();
+}
+
+function filterModalServices() {
+    renderModalServicesGrid();
+}
+
+function updateModalSelectionUI() {
+    const selected = Array.from(modalSelectedServices);
+    const count = selected.length;
+    
+    const countSpan = document.getElementById('modal-selected-count');
+    if (countSpan) countSpan.innerText = `${count} selected`;
+    
+    const deployBtn = document.getElementById('modal-btn-deploy');
+    if (deployBtn) {
+        deployBtn.disabled = count === 0;
+        deployBtn.innerText = `🚀 Deploy Selected (${count})`;
+    }
+    
+    const selectAllBtn = document.getElementById('modal-btn-select-all');
+    if (selectAllBtn) {
+        const visibleCards = Array.from(document.querySelectorAll('.modal-service-card[data-eligible="true"]'));
+        const visibleChecked = visibleCards.filter(c => modalSelectedServices.has(c.getAttribute('data-service')));
+        if (visibleCards.length > 0 && visibleChecked.length === visibleCards.length) {
+            selectAllBtn.innerText = '☒ Deselect All';
+        } else {
+            selectAllBtn.innerText = '☑ Select All Eligible';
+        }
+    }
+}
+
+function toggleModalSelectAllBtn() {
+    const visibleCards = Array.from(document.querySelectorAll('.modal-service-card[data-eligible="true"]'));
+    const visibleChecked = visibleCards.filter(c => modalSelectedServices.has(c.getAttribute('data-service')));
+    
+    const shouldSelectAll = visibleChecked.length < visibleCards.length;
+    
+    visibleCards.forEach(card => {
+        const name = card.getAttribute('data-service');
+        if (shouldSelectAll) {
+            modalSelectedServices.add(name);
+            card.classList.add('selected');
+        } else {
+            modalSelectedServices.delete(name);
+            card.classList.remove('selected');
+        }
+    });
+    
+    updateModalSelectionUI();
+}
+
+function runModalDeploy() {
+    const selected = Array.from(modalSelectedServices);
+    let targets = [];
+    
+    selected.forEach(name => {
+        const svc = services.find(s => s.name === name);
+        if (svc) {
+            // Verify eligibility in selected environment
+            let hasScript = false;
+            if (modalCurrentEnv === 'Development') hasScript = svc.has_dev;
+            else if (modalCurrentEnv === 'Staging') hasScript = svc.has_stg;
+            else if (modalCurrentEnv === 'Production') hasScript = svc.has_prod;
+            
+            const isDeploying = activeDeployments[svc.name] && activeDeployments[svc.name].status === 'running';
+            if (hasScript && !isDeploying) {
+                targets.push(svc);
+            }
+        }
+    });
+    
+    if (targets.length === 0) return;
+    
+    // Save choices to localStorage
+    localStorage.setItem('lastMultiDeployEnv', modalCurrentEnv);
+    localStorage.setItem('lastMultiDeployServices', JSON.stringify(selected));
+    
+    const deployMsg = document.getElementById('modal-deploy-msg').value || '';
+    
+    const startDeployments = (pwd = '') => {
+        closeMultiDeployModal();
+        targets.forEach(t => {
+            executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd);
+        });
+    };
+    
+    if (modalCurrentEnv === 'Production') {
+        const targetNames = targets.map(t => `<b>${t.name}</b>`).join(', ');
+        showPasswordPrompt("Production Deployment", 
+            `Confirm deployment of ${targetNames} to <b>PRODUCTION</b>. Please enter the production password:`, 
+            (pwd) => {
+                startDeployments(pwd);
+            });
+        return;
+    }
+    
+    if (modalCurrentEnv === 'Staging') {
+        const nonStgTargets = targets.filter(t => t.branch !== 'staging');
+        if (nonStgTargets.length > 0) {
+            const warningList = nonStgTargets.map(t => `<b>${t.name}</b> (branch: "${t.branch}")`).join(', ');
+            showConfirm("Staging Deployment Warning",
+                `You are attempting to deploy non-staging branches to STAGING for: ${warningList}. Proceed anyway?`,
+                () => {
+                    startDeployments();
+                });
+            return;
+        }
+    }
+    
+    startDeployments();
+}
+
+function executeDeployFromModal(svc, env, message, password = '') {
+    const svcName = svc.name;
+    const terminal = document.getElementById('terminal');
+    
+    activeDeployments[svcName] = {
+        env: env,
+        status: 'running',
+        logs: `Starting deployment for ${svcName} to ${env}...\n`,
+        reader: null,
+        message: message
+    };
+    
+    activeTerminalTab = svcName;
+    updateTerminalTabs();
+    switchTerminalTab(svcName);
+    updateSidebarItemStatus(svcName, 'running');
+    validateForm();
+    
+    fetch('/api/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            service: svcName, 
+            env: env, 
+            message: message,
+            password: password
+        })
+    }).then(response => {
+        if (response.status === 401) {
+            const errMsg = "Access Denied: Invalid production password.";
+            activeDeployments[svcName].status = 'failed';
+            activeDeployments[svcName].logs += `\n❌ ${errMsg}\n`;
+            updateSidebarItemStatus(svcName, 'failed');
+            if (activeTerminalTab === svcName) {
+                switchTerminalTab(svcName);
+            } else {
+                updateTerminalTabs();
+            }
+            showAlert("Access Denied", `Invalid production password for ${svcName}.`);
+            validateForm();
+            return;
+        }
+        
+        const reader = response.body.getReader();
+        if (activeDeployments[svcName]) {
+            activeDeployments[svcName].reader = reader;
+        }
+        const decoder = new TextDecoder();
+        
+        function read() {
+            reader.read().then(({ done, value }) => {
+                if (done) {
+                    if (activeDeployments[svcName] && activeDeployments[svcName].status === 'running') {
+                        activeDeployments[svcName].status = 'success';
+                        updateSidebarItemStatus(svcName, 'success');
+                    }
+                    if (activeTerminalTab === svcName) {
+                        switchTerminalTab(svcName);
+                    } else {
+                        updateTerminalTabs();
+                    }
+                    validateForm();
+                    return;
+                }
+                
+                const chunk = decoder.decode(value, { stream: true });
+                chunk.split('\n\n').forEach(event => {
+                    const trimmed = event.trimStart();
+                    if (trimmed.startsWith('data: ')) {
+                        const content = trimmed.slice(6);
+                        if (content.trim() === '[EOF]') {
+                            if (activeDeployments[svcName] && activeDeployments[svcName].status === 'running') {
+                                activeDeployments[svcName].status = 'success';
+                                updateSidebarItemStatus(svcName, 'success');
+                            }
+                            
+                            if (selectedService && selectedService.name === svcName) {
+                                refreshHistoryBar();
+                                refreshSelectedService();
+                            }
+                            
+                            if (activeTerminalTab === svcName) {
+                                switchTerminalTab(svcName);
+                            } else {
+                                updateTerminalTabs();
+                            }
+                        } else if (content.startsWith('[STATUS] ')) {
+                            const status = content.slice(9).trim();
+                            if (activeDeployments[svcName]) {
+                                if (status === 'Failed') {
+                                    activeDeployments[svcName].status = 'failed';
+                                    updateSidebarItemStatus(svcName, 'failed');
+                                    showAlert("Deployment Error", `Verification failed for ${svcName}. The service might not be running correctly or binary wasn't updated.`);
+                                } else {
+                                    activeDeployments[svcName].status = 'success';
+                                    updateSidebarItemStatus(svcName, 'success');
+                                }
+                            }
+                        } else {
+                            if (activeDeployments[svcName]) {
+                                activeDeployments[svcName].logs += content.endsWith('\n') ? content : content + '\n';
+                                if (activeTerminalTab === svcName) {
+                                    if (terminal) {
+                                        terminal.innerText = activeDeployments[svcName].logs;
+                                        terminal.scrollTop = terminal.scrollHeight;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                read();
+            });
+        }
+        read();
+    }).catch(err => {
+        if (activeDeployments[svcName]) {
+            activeDeployments[svcName].status = 'failed';
+            activeDeployments[svcName].logs += `\n❌ Network Error: ${err.message}\n`;
+            updateSidebarItemStatus(svcName, 'failed');
+            if (activeTerminalTab === svcName) {
+                switchTerminalTab(svcName);
+            } else {
+                updateTerminalTabs();
+            }
+            validateForm();
+        }
+    });
+}
+
 
 async function init() {
     initTheme();
@@ -33,6 +546,7 @@ async function init() {
             closeShortcutsModal();
             closeAlertModal();
             closeVPNModal();
+            closeMultiDeployModal();
         }
 
         if (e.altKey && e.shiftKey) {
@@ -453,6 +967,22 @@ async function mergeBranch(branch) {
     });
 }
 
+function showPasswordPrompt(title, message, onConfirm) {
+    document.getElementById('alert-title').innerText = title;
+    document.getElementById('alert-message').innerHTML = `
+        <div style="margin-bottom: 16px;">${message}</div>
+        <input type="password" id="alert-input" style="width: 100%; background: var(--bg-body); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 10px; margin-top: 8px;" placeholder="Password...">
+    `;
+    document.getElementById('alert-confirm-btn').onclick = () => {
+        const val = document.getElementById('alert-input').value;
+        closeAlertModal();
+        onConfirm(val);
+    };
+    document.getElementById('alert-cancel-btn').style.display = 'inline-block';
+    document.getElementById('alert-modal-overlay').style.display = 'flex';
+    setTimeout(() => document.getElementById('alert-input').focus(), 100);
+}
+
 function showPrompt(title, message, onConfirm) {
     document.getElementById('alert-title').innerText = title;
     document.getElementById('alert-message').innerHTML = `
@@ -623,6 +1153,9 @@ async function loadSettings() {
     document.getElementById('set-git').value = settings.git_bash_path || '';
     document.getElementById('set-name').value = settings.user_name || '';
     document.getElementById('set-pre').value = settings.pre_deploy_cmd || '';
+    document.getElementById('set-dev-url').value = settings.dev_agent_url || '';
+    document.getElementById('set-stg-url').value = settings.stg_agent_url || '';
+    document.getElementById('set-prod-url').value = settings.prod_agent_url || '';
 
     // Map settings to state
     colorState.dark = {
@@ -647,6 +1180,13 @@ function applyThemeSettings(s) {
     const isLight = document.body.classList.contains('light-theme');
     const themeData = isLight ? s.light_theme : s.dark_theme;
     const target = document.body;
+
+    if (selectedService && selectedService.show_production === true) {
+        document.getElementById('env-prod-btn').style.display = 'inline-block';
+    } else {
+        document.getElementById('env-prod-btn').style.display = 'none';
+        if (currentEnv === 'Production') setEnv('Development');
+    }
 
     if (themeData.accent) {
         target.style.setProperty('--accent', themeData.accent);
@@ -692,14 +1232,24 @@ async function refreshServices() {
             `;
         }
 
+        let statusTagHtml = '';
+        const dep = activeDeployments[svc.name];
+        if (dep) {
+            statusTagHtml = `<span class="deploy-status-tag ${dep.status}" style="margin-left: 8px;">${dep.status}</span>`;
+        }
+
         item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div class="service-name">📦 ${svc.name} ${stashTag}</div>
+                <div class="service-name" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                    <span>${svc.name}</span>
+                    ${stashTag}
+                    ${statusTagHtml}
+                </div>
                 ${healthHtml}
             </div>
             <div class="service-meta">
-                <div class="branch-tag">👀 Branch: ${svc.branch}</div>
-                <div class="commit-msg">💬 Last commit: ${svc.last_commit}</div>
+                <div class="branch-tag">branch: ${svc.branch}</div>
+                <div class="commit-msg">${svc.last_commit}</div>
             </div>
         `;
         list.appendChild(item);
@@ -737,9 +1287,19 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
                     `;
                 }
 
+                let statusTagHtml = '';
+                const dep = activeDeployments[svc.name];
+                if (dep) {
+                    statusTagHtml = `<span class="deploy-status-tag ${dep.status}" style="margin-left: 8px;">${dep.status}</span>`;
+                }
+
                 element.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div class="service-name">📦 ${svc.name} ${stashTag}</div>
+                        <div class="service-name" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                            <span>${svc.name}</span>
+                            ${stashTag}
+                            ${statusTagHtml}
+                        </div>
                         ${healthHtml}
                     </div>
                     <div class="service-meta">
@@ -751,7 +1311,7 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
         }
     } catch (err) { }
     document.getElementById('deploy-msg').value = svc.last_commit;
-    if (!skipTerminalReset) document.getElementById('terminal').innerText = `Ready to deploy ${svc.name}...`;
+    if (!skipTerminalReset && !activeTerminalTab) document.getElementById('terminal').innerText = `Ready to deploy ${svc.name}...`;
     if (!gitHiddenManually) {
         document.getElementById('git-card').style.display = 'block';
         document.getElementById('resizer').style.display = 'block';
@@ -770,6 +1330,13 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
         jumpBtn.innerText = '↺ Jump to Main';
         jumpBtn.onclick = () => checkoutBranch('main');
         headerActions.appendChild(jumpBtn);
+    }
+
+    if (svc.show_production === true) {
+        document.getElementById('env-prod-btn').style.display = 'inline-block';
+    } else {
+        document.getElementById('env-prod-btn').style.display = 'none';
+        if (currentEnv === 'Production') setEnv('Development');
     }
 
     loadGitTabContent(currentGitTab);
@@ -943,12 +1510,19 @@ function updateHealthWidget() {
     }
 
     // Render badges in header area
-    ['Development', 'Staging'].forEach(env => {
+    ['Development', 'Staging', 'Production'].forEach(env => {
+        if (env === 'Production' && selectedService.show_production !== true) return;
+        
         const met = selectedService.metrics[env];
         const up = met && met.status === 'RUNNING';
         const badge = document.createElement('div');
         badge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${up ? '#2ecc7122' : '#e74c3c22'}; color: ${up ? '#2ecc71' : '#e74c3c'}; border: 1px solid ${up ? '#2ecc7144' : '#e74c3c44'}; font-weight: bold;`;
-        badge.innerText = `${env === 'Development' ? 'DEV' : 'STG'}: ${up ? 'UP' : 'DOWN'}`;
+        
+        let label = 'DEV';
+        if (env === 'Staging') label = 'STG';
+        if (env === 'Production') label = 'PROD';
+        
+        badge.innerText = `${label}: ${up ? 'UP' : 'DOWN'}`;
         badges.appendChild(badge);
     });
 }
@@ -1058,12 +1632,31 @@ function setEnv(env) {
 function validateForm() {
     const btn = document.getElementById('btn-run');
     if (!selectedService) { btn.disabled = true; btn.innerText = 'Select a service'; return; }
-    const hasScript = currentEnv === 'Development' ? selectedService.has_dev : selectedService.has_stg;
-    btn.disabled = !hasScript; btn.innerText = hasScript ? '🚀 Run Deploy' : `No ${currentEnv} script`;
+    
+    let hasScript = false;
+    if (currentEnv === 'Development') hasScript = selectedService.has_dev;
+    else if (currentEnv === 'Staging') hasScript = selectedService.has_stg;
+    else if (currentEnv === 'Production') hasScript = selectedService.has_prod;
+
+    const isDeploying = activeDeployments[selectedService.name] && activeDeployments[selectedService.name].status === 'running';
+    btn.disabled = !hasScript || isDeploying; 
+    btn.innerText = isDeploying ? 'Deploying...' : '🚀 Run Deploy';
 }
 
 function runDeploy() {
     if (!selectedService) return;
+    
+    const isDeploying = activeDeployments[selectedService.name] && activeDeployments[selectedService.name].status === 'running';
+    if (isDeploying) return;
+
+    if (currentEnv === 'Production') {
+        showPasswordPrompt("Production Deployment", 
+            `Confirm deployment of <b>${selectedService.name}</b> to <b>PRODUCTION</b>. Please enter the production password:`, 
+            (pwd) => {
+                executeDeploy(pwd);
+            });
+        return;
+    }
 
     if (currentEnv === 'Staging' && selectedService.branch !== 'staging') {
         showConfirm("Staging Deployment Warning",
@@ -1074,46 +1667,9 @@ function runDeploy() {
     executeDeploy();
 }
 
-function executeDeploy() {
-    const terminal = document.getElementById('terminal');
-    const btn = document.getElementById('btn-run');
-    terminal.innerText = ''; btn.disabled = true; btn.innerText = 'Deploying...';
-    fetch('/api/deploy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: selectedService.name, env: currentEnv, message: document.getElementById('deploy-msg').value })
-    }).then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        function read() {
-            reader.read().then(({ done, value }) => {
-                if (done) { btn.disabled = false; btn.innerText = '🚀 Run Deploy'; return; }
-                const chunk = decoder.decode(value, { stream: true });
-                chunk.split('\n\n').forEach(event => {
-                    const trimmed = event.trimStart();
-                    if (trimmed.startsWith('data: ')) {
-                        const content = trimmed.slice(6);
-                        if (content.trim() === '[EOF]') {
-                            btn.disabled = false;
-                            btn.innerText = '🚀 Run Deploy';
-                            refreshHistoryBar();
-                            refreshSelectedService();
-                        } else if (content.startsWith('[STATUS] ')) {
-                            const status = content.slice(9).trim();
-                            if (status === 'Failed') {
-                                showAlert("Deployment Error", "Verification failed. The service might not be running correctly or binary wasn't updated.");
-                            }
-                        } else {
-                            terminal.innerText += content.endsWith('\n') ? content : content + '\n';
-                            terminal.scrollTop = terminal.scrollHeight;
-                        }
-                    }
-                });
-                read();
-            });
-        }
-        read();
-    });
+function executeDeploy(password = '') {
+    if (!selectedService) return;
+    executeDeployFromModal(selectedService, currentEnv, document.getElementById('deploy-msg').value, password);
 }
 
 function switchSettingsTab(tabId) {
@@ -1130,7 +1686,7 @@ function switchSettingsTab(tabId) {
 
 async function loadDeploymentTab() {
     const tbody = document.getElementById('deployment-config-tbody');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-dim);">Loading folders...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-dim);">Loading folders...</td></tr>';
     
     try {
         const foldersRes = await fetch('/api/workspace-folders');
@@ -1139,10 +1695,11 @@ async function loadDeploymentTab() {
         tbody.innerHTML = '';
         
         const renderedIndices = new Set();
+        const configuredServices = settings.services || [];
         
         // 1. Group/render configs that match workspace folders
         workspaceFolders.forEach(folder => {
-            const matchedConfigs = (settings.services || []).filter((cfg, idx) => {
+            const matchedConfigs = configuredServices.filter((cfg, idx) => {
                 if (cfg.folder === folder) {
                     renderedIndices.add(idx);
                     return true;
@@ -1152,34 +1709,38 @@ async function loadDeploymentTab() {
             
             if (matchedConfigs.length > 0) {
                 matchedConfigs.forEach(cfg => {
-                    createDeploymentRow(tbody, folder, cfg.name, cfg.dev_cmd, cfg.stg_cmd, cfg.pre_deploy_cmd);
+                    createDeploymentRow(tbody, folder, cfg.name, cfg.dev_cmd, cfg.stg_cmd, cfg.prod_cmd, cfg.prod_password_hash, cfg.pre_deploy_cmd, cfg.enabled !== false, cfg.show_production === true);
                 });
             } else {
                 let suggestedName = folder;
                 if (settings.folder_aliases && settings.folder_aliases[folder]) {
                     suggestedName = settings.folder_aliases[folder];
                 }
-                createDeploymentRow(tbody, folder, suggestedName, '', '', '');
+                // New folders are enabled by default
+                createDeploymentRow(tbody, folder, suggestedName, '', '', '', '', '', true, false);
             }
         });
         
         // 2. Render any remaining custom service configs that did not match a folder
-        (settings.services || []).forEach((cfg, idx) => {
+        configuredServices.forEach((cfg, idx) => {
             if (!renderedIndices.has(idx)) {
-                createDeploymentRow(tbody, cfg.folder, cfg.name, cfg.dev_cmd, cfg.stg_cmd, cfg.pre_deploy_cmd);
+                createDeploymentRow(tbody, cfg.folder, cfg.name, cfg.dev_cmd, cfg.stg_cmd, cfg.prod_cmd, cfg.prod_password_hash, cfg.pre_deploy_cmd, cfg.enabled !== false, cfg.show_production === true);
             }
         });
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--error);">Error loading workspace folders.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--error);">Error loading workspace folders.</td></tr>';
     }
 }
 
-function createDeploymentRow(tbody, folder, name, devCmd, stgCmd, preDeployCmd) {
+function createDeploymentRow(tbody, folder, name, devCmd, stgCmd, prodCmd, prodPwd, preDeployCmd, enabled, showProduction) {
     const tr = document.createElement('tr');
     tr.className = 'deployment-config-row';
     tr.style.borderBottom = '1px solid var(--border)';
     
     tr.innerHTML = `
+        <td style="padding: 6px 10px; text-align: center;">
+            <input type="checkbox" class="row-enabled" ${enabled ? 'checked' : ''} style="width: 16px; height: 16px;">
+        </td>
         <td style="padding: 6px 10px;">
             <input type="text" class="row-folder" value="${folder}" placeholder="Folder Name" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
         </td>
@@ -1187,13 +1748,22 @@ function createDeploymentRow(tbody, folder, name, devCmd, stgCmd, preDeployCmd) 
             <input type="text" class="row-name" value="${name}" placeholder="Service Name" style="width: 100%; font-size: 11px; padding: 6px 8px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
         </td>
         <td style="padding: 6px 10px;">
-            <input type="text" class="row-dev-cmd" value="${devCmd}" placeholder="e.g. ./deploy-dev.sh" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
+            <input type="text" class="row-dev-cmd" value="${devCmd || ''}" placeholder="Dev Script" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
         </td>
         <td style="padding: 6px 10px;">
-            <input type="text" class="row-stg-cmd" value="${stgCmd}" placeholder="e.g. ./deploy-stg.sh" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
+            <input type="text" class="row-stg-cmd" value="${stgCmd || ''}" placeholder="Stg Script" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
+        </td>
+        <td style="padding: 6px 10px; text-align: center;">
+            <input type="checkbox" class="row-show-prod" ${showProduction ? 'checked' : ''} style="width: 16px; height: 16px;" onchange="toggleRowProd(this)">
         </td>
         <td style="padding: 6px 10px;">
-            <input type="text" class="row-pre-deploy-cmd" value="${preDeployCmd || ''}" placeholder="e.g. go mod tidy" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
+            <input type="text" class="row-prod-cmd" value="${prodCmd || ''}" placeholder="Prod Script" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main); ${showProduction ? '' : 'opacity: 0.5;'}" ${showProduction ? '' : 'disabled'}>
+        </td>
+        <td style="padding: 6px 10px;">
+            <input type="password" class="row-prod-pwd" value="${prodPwd || ''}" placeholder="Password" style="width: 100%; font-size: 11px; padding: 6px 8px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main); ${showProduction ? '' : 'opacity: 0.5;'}" ${showProduction ? '' : 'disabled'}>
+        </td>
+        <td style="padding: 6px 10px;">
+            <input type="text" class="row-pre-deploy-cmd" value="${preDeployCmd || ''}" placeholder="Pre-deploy" style="width: 100%; font-size: 11px; padding: 6px 8px; font-family: var(--font-mono); background: var(--bg-body); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);">
         </td>
         <td style="padding: 6px 10px; text-align: center;">
             <button type="button" onclick="this.closest('tr').remove()" style="color: var(--error); border: none; background: transparent; padding: 2px 6px; font-size: 14px; cursor: pointer;" title="Remove row">🗑️</button>
@@ -1202,9 +1772,26 @@ function createDeploymentRow(tbody, folder, name, devCmd, stgCmd, preDeployCmd) 
     tbody.appendChild(tr);
 }
 
+function toggleRowProd(chk) {
+    const row = chk.closest('tr');
+    const prodCmdInput = row.querySelector('.row-prod-cmd');
+    const prodPwdInput = row.querySelector('.row-prod-pwd');
+    if (chk.checked) {
+        prodCmdInput.removeAttribute('disabled');
+        prodCmdInput.style.opacity = '1';
+        prodPwdInput.removeAttribute('disabled');
+        prodPwdInput.style.opacity = '1';
+    } else {
+        prodCmdInput.setAttribute('disabled', 'true');
+        prodCmdInput.style.opacity = '0.5';
+        prodPwdInput.setAttribute('disabled', 'true');
+        prodPwdInput.style.opacity = '0.5';
+    }
+}
+
 function addCustomServiceRow() {
     const tbody = document.getElementById('deployment-config-tbody');
-    createDeploymentRow(tbody, '', '', '', '', '');
+    createDeploymentRow(tbody, '', '', '', '', '', '', '', true, false);
 }
 
 async function openSettings() {
@@ -1216,15 +1803,7 @@ async function openSettings() {
     document.getElementById('set-pre').value = settings.pre_deploy_cmd;
     document.getElementById('set-dev-url').value = settings.dev_agent_url || '';
     document.getElementById('set-stg-url').value = settings.stg_agent_url || '';
-
-    // Format aliases map to textarea
-    let aliasText = "";
-    if (settings.folder_aliases) {
-        for (const [folder, alias] of Object.entries(settings.folder_aliases)) {
-            aliasText += `${folder}:${alias}\n`;
-        }
-    }
-    document.getElementById('set-aliases').value = aliasText.trim();
+    document.getElementById('set-prod-url').value = settings.prod_agent_url || '';
 
     switchConfigTheme(document.body.classList.contains('light-theme') ? 'light' : 'dark');
     switchSettingsTab('core');
@@ -1234,32 +1813,31 @@ async function openSettings() {
 function closeSettings() { document.getElementById('modal-overlay').style.display = 'none'; }
 
 async function saveSettings() {
-    const aliasLines = document.getElementById('set-aliases').value.trim().split('\n');
-    const aliases = {};
-    aliasLines.forEach(line => {
-        const parts = line.split(':');
-        if (parts.length === 2) {
-            aliases[parts[0].trim()] = parts[1].trim();
-        }
-    });
-
     let services = settings.services || [];
     const tbody = document.getElementById('deployment-config-tbody');
     if (tbody && tbody.children.length > 0 && tbody.querySelector('.row-folder')) {
         services = [];
         document.querySelectorAll('.deployment-config-row').forEach(row => {
+            const enabled = row.querySelector('.row-enabled').checked;
             const folder = row.querySelector('.row-folder').value.trim();
             const name = row.querySelector('.row-name').value.trim();
             const dev_cmd = row.querySelector('.row-dev-cmd').value.trim();
             const stg_cmd = row.querySelector('.row-stg-cmd').value.trim();
+            const show_production = row.querySelector('.row-show-prod').checked;
+            const prod_cmd = row.querySelector('.row-prod-cmd').value.trim();
+            const prod_password_hash = row.querySelector('.row-prod-pwd').value;
             const pre_deploy_cmd = row.querySelector('.row-pre-deploy-cmd').value.trim();
             
             if (folder && name) {
                 services.push({
+                    enabled: enabled,
                     folder: folder,
                     name: name,
                     dev_cmd: dev_cmd,
                     stg_cmd: stg_cmd,
+                    show_production: show_production,
+                    prod_cmd: prod_cmd,
+                    prod_password_hash: prod_password_hash,
                     pre_deploy_cmd: pre_deploy_cmd
                 });
             }
@@ -1273,7 +1851,7 @@ async function saveSettings() {
         pre_deploy_cmd: document.getElementById('set-pre').value,
         dev_agent_url: document.getElementById('set-dev-url').value,
         stg_agent_url: document.getElementById('set-stg-url').value,
-        folder_aliases: aliases,
+        prod_agent_url: document.getElementById('set-prod-url').value,
         services: services,
         custom_cmds: {},
         dark_theme: {
@@ -1358,6 +1936,7 @@ document.addEventListener('keydown', (e) => {
         closeSettings();
         closeShortcutsModal();
         closeVPNModal();
+        closeMultiDeployModal();
         return;
     }
 
@@ -1381,6 +1960,7 @@ document.addEventListener('keydown', (e) => {
             case 'KeyU': toggleVPNManagement(); break;
             case 'Digit1': setEnv('Development'); break;
             case 'Digit2': setEnv('Staging'); break;
+            case 'Digit3': setEnv('Production'); break;
         }
     }
 
@@ -1425,7 +2005,8 @@ function viewSelectedSvcLogs() {
 
     const envUrls = { 
         'Development': settings.dev_agent_url, 
-        'Staging': settings.stg_agent_url 
+        'Staging': settings.stg_agent_url,
+        'Production': settings.prod_agent_url
     };
     const baseUrl = envUrls[currentEnv];
     if (!baseUrl) return;
