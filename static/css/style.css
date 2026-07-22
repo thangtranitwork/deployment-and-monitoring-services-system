@@ -753,64 +753,7 @@ select option {
     color: var(--text-dim);
 }
 
-/* Terminal Tab Bar */
-.terminal-tabs {
-    display: flex;
-    background: #111;
-    border-bottom: 1px solid var(--border);
-    padding: 4px 8px 0;
-    gap: 4px;
-    overflow-x: auto;
-    flex-shrink: 0;
-}
 
-.terminal-tab {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border);
-    border-bottom: none;
-    border-radius: 6px 6px 0 0;
-    color: var(--text-dim);
-    font-size: 12px;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.25s;
-    white-space: nowrap;
-    height: 30px;
-}
-
-.terminal-tab:hover {
-    background: var(--bg-hover);
-    color: var(--text-main);
-}
-
-.terminal-tab.active {
-    background: var(--terminal-bg);
-    color: var(--accent);
-    border-top: 2px solid var(--accent);
-    font-weight: 600;
-}
-
-.terminal-tab-close {
-    font-size: 14px;
-    color: var(--text-dim);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    transition: all 0.2s;
-}
-
-.terminal-tab-close:hover {
-    background: var(--error);
-    color: #fff;
-}
 
 .tab-spinner {
     width: 10px;
@@ -845,3 +788,62 @@ select option {
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
 }
+
+/* Multi Deploy Auto Layout Grid & Live Logs Console */
+.multi-logs-grid-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+}
+
+.multi-log-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 280px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.multi-log-box:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 30px var(--accent-glow);
+}
+
+.multi-log-box.success {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.45) !important;
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.08) 0%, var(--bg-card) 100%) !important;
+}
+
+.multi-log-box.failed {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.45) !important;
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, var(--bg-card) 100%) !important;
+}
+
+.multi-log-box-header {
+    background: #0f131d;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.multi-log-box-body {
+    flex: 1;
+    background: var(--terminal-bg);
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--terminal-text);
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+

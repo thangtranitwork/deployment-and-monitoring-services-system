@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.0
+# 🚀 Internal Deploy System (IDS) - v1.6.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -40,18 +40,20 @@ deploy-tool/
 
 - **Multi-Environment**: Seamlessly switch between Development, Staging, and Production targets.
 - **Per-Service Production**: Toggle the Production environment visibility individually for each service.
+- **Production Protection**: Secure modal password verification before triggering any single or multi-service deployment to Production.
 - **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
 - **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
 
 ### ⚡ Parallel Service Deployment (Multi-Deploy)
 
 - **Concurrent Execution**: Deploy multiple services at the same time without blocking or waiting for each deployment sequence.
-- **Premium Selection Modal**: Click "Multi Deploy" in the header to open a selection dashboard. Select the target environment, search/filter services, and enter a unified deployment message.
-- **Card-Style Selection**: Modern, checkbox-free UI cards that toggle selection and highlight with an active border, background glow, and shadow.
+- **Premium Selection Modal**: Open selection dashboard via `Alt + Shift + M`. Select target environment, filter services, and enter a unified deployment message.
+- **Card-Style Selection & Clear**: Modern UI cards with active border glow. Includes a dedicated `🗑️ Clear Selection` button to reset choices in one click.
 - **Smart Eligibility Filter**: Automatically disables selection for services that lack deployment scripts for the selected environment.
 - **"Select All" Toggle**: A single button that toggles select/deselect of all currently filtered eligible services.
 - **Choice Persistence**: Automatically saves and reloads your last multi-deployment selections and target environment from `localStorage`.
-- **Tabbed Terminal Log Streams**: Real-time log streams for each active deployment are shown in dynamic tabs. Tabs feature status badges (loading spinner for running, checkmark for success, cross for errors) and allow close control.
+- **Fast Multi Deploy**: Instantly trigger deployment for saved services via `Ctrl + Alt + Shift + M`.
+- **Live Multi-Deploy Console Modal (Auto Grid)**: Displays live terminal logs for all deploying services in an auto-layout matrix grid. Completed services light up with vibrant Emerald/Red glow indicators.
 
 ### 🔒 VPN Management
 
@@ -75,12 +77,13 @@ deploy-tool/
 | **Search Service**             | `/`                                             |
 | **Navigate Services**          | `Alt + ↑ / ↓`                                   |
 | **Run Deploy**                 | `Ctrl + Enter`                                  |
+| **Multi Deploy Modal**         | `Alt + Shift + M`                               |
+| **Fast Multi Deploy (Last)**   | `Ctrl + Alt + Shift + M`                        |
 | **Cycle Deploy Msg**           | `Alt + Shift + ← / →` (Left=Newer, Right=Older) |
 | **Toggle Git Card**            | `Alt + Shift + G`                               |
 | **Switch Env (Dev/Stg)**       | `Alt + Shift + 1 / 2`                           |
 | **Git Tabs (B/C/S)**           | `Alt + Shift + Q / W / E`                       |
 | **View Logs**                  | `Alt + Shift + L`                               |
-| **Go to Monitor**              | `Alt + Shift + M`                               |
 | **Refresh / Stats / Settings** | `Alt + Shift + R / S / I`                       |
 | **Toggle Theme / Help**        | `Alt + Shift + T / H`                           |
 | **Toggle VPN Card**            | `Alt + Shift + U`                               |

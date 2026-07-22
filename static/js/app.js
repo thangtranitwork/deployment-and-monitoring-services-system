@@ -48,49 +48,7 @@ function updateSidebarItemStatus(svcName, status) {
 }
 
 function updateTerminalTabs() {
-    const tabsContainer = document.getElementById('terminal-tabs');
-    if (!tabsContainer) return;
-    
-    const deploymentNames = Object.keys(activeDeployments);
-    
-    if (deploymentNames.length === 0) {
-        tabsContainer.style.display = 'none';
-        activeTerminalTab = null;
-        const terminal = document.getElementById('terminal');
-        const statusSpan = document.getElementById('terminal-status');
-        if (terminal) terminal.innerText = selectedService ? `Ready to deploy ${selectedService.name}...` : 'Select a service to start...';
-        if (statusSpan) {
-            statusSpan.innerText = 'idle';
-            statusSpan.style.color = 'var(--text-dim)';
-        }
-        return;
-    }
-    
-    tabsContainer.style.display = 'flex';
-    tabsContainer.innerHTML = '';
-    
-    deploymentNames.forEach(name => {
-        const dep = activeDeployments[name];
-        const tab = document.createElement('div');
-        tab.className = `terminal-tab ${activeTerminalTab === name ? 'active' : ''}`;
-        tab.onclick = () => switchTerminalTab(name);
-        
-        let statusIcon = '';
-        if (dep.status === 'running') {
-            statusIcon = '<span class="tab-spinner"></span>';
-        } else if (dep.status === 'success') {
-            statusIcon = '<span style="color: var(--success)">✅</span>';
-        } else if (dep.status === 'failed') {
-            statusIcon = '<span style="color: var(--error)">❌</span>';
-        }
-        
-        tab.innerHTML = `
-            <span>📦 ${name}</span>
-            ${statusIcon}
-            <span class="terminal-tab-close" onclick="event.stopPropagation(); closeTerminalTab('${name}')">×</span>
-        `;
-        tabsContainer.appendChild(tab);
-    });
+    // Terminal tabs in main page removed in favor of Live Multi-Deploy Console Modal
 }
 
 function switchTerminalTab(serviceName) {
@@ -294,6 +252,13 @@ function filterModalServices() {
     renderModalServicesGrid();
 }
 
+function clearModalSelection() {
+    modalSelectedServices.clear();
+    const cards = document.querySelectorAll('.modal-service-card');
+    cards.forEach(card => card.classList.remove('selected'));
+    updateModalSelectionUI();
+}
+
 function updateModalSelectionUI() {
     const selected = Array.from(modalSelectedServices);
     const count = selected.length;
@@ -316,6 +281,11 @@ function updateModalSelectionUI() {
         } else {
             selectAllBtn.innerText = '☑ Select All Eligible';
         }
+    }
+
+    const clearAllBtn = document.getElementById('modal-btn-clear-all');
+    if (clearAllBtn) {
+        clearAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
     }
 }
 
@@ -369,6 +339,7 @@ function runModalDeploy() {
     
     const startDeployments = (pwd = '') => {
         closeMultiDeployModal();
+        openMultiDeployLogsModal(targets.map(t => t.name));
         targets.forEach(t => {
             executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd);
         });
@@ -400,6 +371,174 @@ function runModalDeploy() {
     startDeployments();
 }
 
+function runFastMultiDeploy() {
+    const savedEnv = localStorage.getItem('lastMultiDeployEnv') || currentEnv;
+    const savedServicesJson = localStorage.getItem('lastMultiDeployServices');
+    
+    if (!savedServicesJson) {
+        openMultiDeployModal();
+        showAlert("Multi Deploy", "No previous deployment configuration found. Please select services.");
+        return;
+    }
+    
+    let savedNames = [];
+    try {
+        savedNames = JSON.parse(savedServicesJson);
+    } catch(e) {}
+    
+    if (!savedNames || savedNames.length === 0) {
+        openMultiDeployModal();
+        showAlert("Multi Deploy", "No previous deployment configuration found. Please select services.");
+        return;
+    }
+    
+    let targets = [];
+    savedNames.forEach(name => {
+        const svc = services.find(s => s.name === name);
+        if (svc) {
+            let hasScript = false;
+            if (savedEnv === 'Development') hasScript = svc.has_dev;
+            else if (savedEnv === 'Staging') hasScript = svc.has_stg;
+            else if (savedEnv === 'Production') hasScript = svc.has_prod;
+            
+            const isDeploying = activeDeployments[svc.name] && activeDeployments[svc.name].status === 'running';
+            if (hasScript && !isDeploying) {
+                targets.push(svc);
+            }
+        }
+    });
+    
+    if (targets.length === 0) {
+        showAlert("Fast Multi Deploy", `No eligible services to deploy for ${savedEnv}.`);
+        return;
+    }
+    
+    const mainMsg = document.getElementById('deploy-msg');
+    const deployMsg = mainMsg ? mainMsg.value || '' : '';
+    
+    const startDeployments = (pwd = '') => {
+        closeMultiDeployModal();
+        openMultiDeployLogsModal(targets.map(t => t.name));
+        targets.forEach(t => {
+            executeDeployFromModal(t, savedEnv, deployMsg, pwd);
+        });
+    };
+    
+    if (savedEnv === 'Production') {
+        const targetNames = targets.map(t => `<b>${t.name}</b>`).join(', ');
+        showPasswordPrompt("Production Deployment", 
+            `Confirm Fast Multi Deploy of ${targetNames} to <b>PRODUCTION</b>. Please enter the production password:`, 
+            (pwd) => {
+                startDeployments(pwd);
+            });
+        return;
+    }
+    
+    if (savedEnv === 'Staging') {
+        const nonStgTargets = targets.filter(t => t.branch !== 'staging');
+        if (nonStgTargets.length > 0) {
+            const warningList = nonStgTargets.map(t => `<b>${t.name}</b> (branch: "${t.branch}")`).join(', ');
+            showConfirm("Staging Deployment Warning",
+                `Fast Multi Deploy non-staging branches to STAGING for: ${warningList}. Proceed anyway?`,
+                () => {
+                    startDeployments();
+                });
+            return;
+        }
+    }
+    
+    startDeployments();
+}
+
+// Live Multi Deploy Grid Modal Functions
+function openMultiDeployLogsModal(svcNamesList = null) {
+    const grid = document.getElementById('multi-logs-grid');
+    if (!grid) return;
+    
+    let displayServices = svcNamesList || Object.keys(activeDeployments);
+    if (displayServices.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-dim);">No active or recent deployments to display.</div>';
+    } else {
+        grid.innerHTML = '';
+        displayServices.forEach(name => {
+            const dep = activeDeployments[name] || { status: 'idle', logs: 'Waiting...', env: currentEnv };
+            
+            let statusBadge = '';
+            if (dep.status === 'running') {
+                statusBadge = '<span class="deploy-status-tag running">Deploying <span class="tab-spinner"></span></span>';
+            } else if (dep.status === 'success') {
+                statusBadge = '<span class="deploy-status-tag success">SUCCESS</span>';
+            } else if (dep.status === 'failed') {
+                statusBadge = '<span class="deploy-status-tag failed">FAILED</span>';
+            } else {
+                statusBadge = '<span class="deploy-status-tag" style="color: var(--text-dim);">IDLE</span>';
+            }
+            
+            const box = document.createElement('div');
+            box.className = `multi-log-box ${dep.status || ''}`;
+            box.id = `multi-log-box-${name}`;
+            box.innerHTML = `
+                <div class="multi-log-box-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 700; font-size: 14px; color: var(--text-main);">📦 ${name}</span>
+                        <span style="font-size: 10px; opacity: 0.7; padding: 1px 6px; background: var(--bg-body); border-radius: 4px; border: 1px solid var(--border);">${dep.env}</span>
+                    </div>
+                    <div id="multi-log-status-${name}">
+                        ${statusBadge}
+                    </div>
+                </div>
+                <pre class="multi-log-box-body" id="multi-log-pre-${name}">${dep.logs || ''}</pre>
+            `;
+            grid.appendChild(box);
+            
+            const pre = box.querySelector('.multi-log-box-body');
+            if (pre) pre.scrollTop = pre.scrollHeight;
+        });
+    }
+    
+    const summaryBadge = document.getElementById('multi-logs-summary-badge');
+    if (summaryBadge) summaryBadge.innerText = `${displayServices.length} Active Services`;
+    
+    const overlay = document.getElementById('multi-deploy-logs-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function closeMultiDeployLogsModal() {
+    const overlay = document.getElementById('multi-deploy-logs-modal-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function updateMultiLogBox(serviceName) {
+    const dep = activeDeployments[serviceName];
+    if (!dep) return;
+    
+    const pre = document.getElementById(`multi-log-pre-${serviceName}`);
+    if (pre) {
+        pre.innerText = dep.logs;
+        pre.scrollTop = pre.scrollHeight;
+    }
+
+    const box = document.getElementById(`multi-log-box-${serviceName}`);
+    if (box) {
+        box.className = `multi-log-box ${dep.status || ''}`;
+    }
+    
+    const statusContainer = document.getElementById(`multi-log-status-${serviceName}`);
+    if (statusContainer) {
+        let statusBadge = '';
+        if (dep.status === 'running') {
+            statusBadge = '<span class="deploy-status-tag running">Deploying <span class="tab-spinner"></span></span>';
+        } else if (dep.status === 'success') {
+            statusBadge = '<span class="deploy-status-tag success">SUCCESS</span>';
+        } else if (dep.status === 'failed') {
+            statusBadge = '<span class="deploy-status-tag failed">FAILED</span>';
+        } else {
+            statusBadge = '<span class="deploy-status-tag" style="color: var(--text-dim);">IDLE</span>';
+        }
+        statusContainer.innerHTML = statusBadge;
+    }
+}
+
 function executeDeployFromModal(svc, env, message, password = '') {
     const svcName = svc.name;
     const terminal = document.getElementById('terminal');
@@ -416,6 +555,7 @@ function executeDeployFromModal(svc, env, message, password = '') {
     updateTerminalTabs();
     switchTerminalTab(svcName);
     updateSidebarItemStatus(svcName, 'running');
+    updateMultiLogBox(svcName);
     validateForm();
     
     fetch('/api/deploy', {
@@ -433,6 +573,7 @@ function executeDeployFromModal(svc, env, message, password = '') {
             activeDeployments[svcName].status = 'failed';
             activeDeployments[svcName].logs += `\n❌ ${errMsg}\n`;
             updateSidebarItemStatus(svcName, 'failed');
+            updateMultiLogBox(svcName);
             if (activeTerminalTab === svcName) {
                 switchTerminalTab(svcName);
             } else {
@@ -456,6 +597,7 @@ function executeDeployFromModal(svc, env, message, password = '') {
                         activeDeployments[svcName].status = 'success';
                         updateSidebarItemStatus(svcName, 'success');
                     }
+                    updateMultiLogBox(svcName);
                     if (activeTerminalTab === svcName) {
                         switchTerminalTab(svcName);
                     } else {
@@ -481,6 +623,7 @@ function executeDeployFromModal(svc, env, message, password = '') {
                                 refreshSelectedService();
                             }
                             
+                            updateMultiLogBox(svcName);
                             if (activeTerminalTab === svcName) {
                                 switchTerminalTab(svcName);
                             } else {
@@ -497,10 +640,12 @@ function executeDeployFromModal(svc, env, message, password = '') {
                                     activeDeployments[svcName].status = 'success';
                                     updateSidebarItemStatus(svcName, 'success');
                                 }
+                                updateMultiLogBox(svcName);
                             }
                         } else {
                             if (activeDeployments[svcName]) {
                                 activeDeployments[svcName].logs += content.endsWith('\n') ? content : content + '\n';
+                                updateMultiLogBox(svcName);
                                 if (activeTerminalTab === svcName) {
                                     if (terminal) {
                                         terminal.innerText = activeDeployments[svcName].logs;
@@ -520,6 +665,7 @@ function executeDeployFromModal(svc, env, message, password = '') {
             activeDeployments[svcName].status = 'failed';
             activeDeployments[svcName].logs += `\n❌ Network Error: ${err.message}\n`;
             updateSidebarItemStatus(svcName, 'failed');
+            updateMultiLogBox(svcName);
             if (activeTerminalTab === svcName) {
                 switchTerminalTab(svcName);
             } else {
@@ -1347,7 +1493,7 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
     currentCommitMsgIndex = -1; // Reset message navigation
 }
 
-let gitHiddenManually = false;
+let gitHiddenManually = true;
 function toggleGitManagement() {
     const card = document.getElementById('git-card');
     const resizer = document.getElementById('resizer');
@@ -1937,12 +2083,22 @@ document.addEventListener('keydown', (e) => {
         closeShortcutsModal();
         closeVPNModal();
         closeMultiDeployModal();
+        closeMultiDeployLogsModal();
+        return;
+    }
+
+    // Ctrl + Alt + Shift + M -> Fast Multi Deploy
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.code === 'KeyM') {
+        e.preventDefault();
+        e.stopPropagation();
+        runFastMultiDeploy();
         return;
     }
 
     // Shortcuts with Alt + Shift (to avoid browser conflicts)
-    if (e.altKey && e.shiftKey) {
+    if (e.altKey && e.shiftKey && !e.ctrlKey) {
         switch (e.code) {
+            case 'KeyM': openMultiDeployModal(); break;
             case 'KeyR': refreshServices(); break;
             case 'KeyS': openStatsModal(); break;
             case 'KeyI': openSettings(); break;
@@ -1953,7 +2109,6 @@ document.addEventListener('keydown', (e) => {
                 e.stopPropagation();
                 viewSelectedSvcLogs();
                 break;
-            case 'KeyM': location.href = '/health-monitor'; break;
             case 'KeyQ': switchGitTab('branches'); break;
             case 'KeyW': switchGitTab('commits'); break;
             case 'KeyE': switchGitTab('stash'); break;
