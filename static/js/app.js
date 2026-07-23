@@ -140,6 +140,10 @@ function openMultiDeployModal() {
     document.getElementById('modal-deploy-msg').value = mainMsg ? mainMsg.value : '';
     document.getElementById('modal-svc-search').value = '';
     
+    const savedResetStaging = localStorage.getItem('lastResetStaging') === 'true';
+    const resetStgBtn = document.getElementById('reset-staging-btn');
+    if (resetStgBtn) resetStgBtn.classList.toggle('active', savedResetStaging);
+    
     updateModalEnvSelector();
     renderModalServicesGrid();
     
@@ -200,6 +204,7 @@ function renderModalServicesGrid() {
         };
         
         const stashTag = svc.has_stash ? '<span style="color: #f1c40f; margin-left: 6px;" title="Has Git Stash">📥</span>' : '';
+        const stagedTag = svc.staged_changes > 0 ? `<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; margin-left: 6px;" title="${svc.staged_changes} Staged Changes">Staged: ${svc.staged_changes}</span>` : '';
         
         let statusBadge = '';
         if (isDeploying) {
@@ -221,7 +226,10 @@ function renderModalServicesGrid() {
                     </div>
                 </div>
                 <div class="service-meta" style="margin-top: 6px;">
-                    <div>branch: <span class="branch-tag" style="font-size: 10px;">${svc.branch}</span></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>branch: <span class="branch-tag" style="font-size: 10px;">${svc.branch}</span></div>
+                        ${stagedTag}
+                    </div>
                     <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; opacity: 0.8; margin-top: 2px;">${svc.last_commit}</div>
                 </div>
             </div>
@@ -309,6 +317,13 @@ function toggleModalSelectAllBtn() {
     updateModalSelectionUI();
 }
 
+function toggleResetStagingCheckbox() {
+    const btn = document.getElementById('reset-staging-btn');
+    if (!btn) return;
+    const active = btn.classList.toggle('active');
+    localStorage.setItem('lastResetStaging', active ? 'true' : 'false');
+}
+
 function runModalDeploy() {
     const selected = Array.from(modalSelectedServices);
     let targets = [];
@@ -331,6 +346,9 @@ function runModalDeploy() {
     
     if (targets.length === 0) return;
     
+    const resetStaging = document.getElementById('reset-staging-btn')?.classList.contains('active') || false;
+    localStorage.setItem('lastResetStaging', resetStaging);
+    
     // Save choices to localStorage
     localStorage.setItem('lastMultiDeployEnv', modalCurrentEnv);
     localStorage.setItem('lastMultiDeployServices', JSON.stringify(selected));
@@ -341,7 +359,7 @@ function runModalDeploy() {
         closeMultiDeployModal();
         openMultiDeployLogsModal(targets.map(t => t.name));
         targets.forEach(t => {
-            executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd);
+            executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd, resetStaging);
         });
     };
     
@@ -413,6 +431,8 @@ function runFastMultiDeploy() {
         return;
     }
     
+    const resetStaging = localStorage.getItem('lastResetStaging') === 'true';
+    
     const mainMsg = document.getElementById('deploy-msg');
     const deployMsg = mainMsg ? mainMsg.value || '' : '';
     
@@ -420,7 +440,7 @@ function runFastMultiDeploy() {
         closeMultiDeployModal();
         openMultiDeployLogsModal(targets.map(t => t.name));
         targets.forEach(t => {
-            executeDeployFromModal(t, savedEnv, deployMsg, pwd);
+            executeDeployFromModal(t, savedEnv, deployMsg, pwd, resetStaging);
         });
     };
     
@@ -539,7 +559,7 @@ function updateMultiLogBox(serviceName) {
     }
 }
 
-function executeDeployFromModal(svc, env, message, password = '') {
+function executeDeployFromModal(svc, env, message, password = '', resetStaging = false) {
     const svcName = svc.name;
     const terminal = document.getElementById('terminal');
     
@@ -565,7 +585,8 @@ function executeDeployFromModal(svc, env, message, password = '') {
             service: svcName, 
             env: env, 
             message: message,
-            password: password
+            password: password,
+            reset_staging: resetStaging
         })
     }).then(response => {
         if (response.status === 401) {
@@ -1365,6 +1386,7 @@ async function refreshServices() {
         }
         item.onclick = () => selectSvc(svc, item);
         const stashTag = svc.has_stash ? '<span style="color: #f1c40f; margin-left: 8px;" title="Has Git Stash">📥</span>' : '';
+        const stagedTag = svc.staged_changes > 0 ? `<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; margin-left: 6px;" title="${svc.staged_changes} Staged Changes">Staged: ${svc.staged_changes}</span>` : '';
 
         let healthHtml = '';
         if (svc.metrics) {
@@ -1394,7 +1416,10 @@ async function refreshServices() {
                 ${healthHtml}
             </div>
             <div class="service-meta">
-                <div class="branch-tag">branch: ${svc.branch}</div>
+                <div class="branch-tag" style="display: flex; align-items: center; justify-content: space-between;">
+                    <span>branch: ${svc.branch}</span>
+                    ${stagedTag}
+                </div>
                 <div class="commit-msg">${svc.last_commit}</div>
             </div>
         `;

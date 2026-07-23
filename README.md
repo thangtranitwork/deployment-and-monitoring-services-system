@@ -35,6 +35,8 @@ deploy-tool/
 - **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal feedback.
 - **Safe Stash**: Automatic stashing during checkouts to prevent data loss.
 - **Git Stash Manager**: A dedicated tab in the Git management card to view stashed files, create new stashes, pop, apply, or drop stashes directly.
+- **Git Staging Reset (Reset Staging)**: Automatically stashes local changes, detaches HEAD, deletes local `staging`, pulls a fresh `origin/staging` to deploy, and automatically restores the original workspace state (checkout branch/pop stash) afterwards.
+- **Conflicts & Rollback Manager**: When checkouts or branches conflict with local changes, an interactive modal displays conflicting files, letting users selectively revert/delete untracked files or perform an auto-stash with custom messages.
 
 ### 🚀 Deployment Workflow
 
@@ -58,7 +60,11 @@ deploy-tool/
 ### 🔒 VPN Management
 
 - **OpenVPN Integration**: Toggle VPN connection state on the host directly from the Web interface.
-- **Real-time Status**: Displays active tunnel status (connected, disconnected, or error state) using real-time polling.
+- **Real-time Status**: Displays active tunnel status (connected, disconnected, connecting, disconnecting, or error state) with real-time logs via Server-Sent Events (SSE). Shows active WAN IP address, geo-location, active network interface, and uptime.
+- **Config & Account Management**: 
+  - Scan for `.ovpn` profiles in custom directories or user folders.
+  - Save, edit, and delete multiple VPN credentials/accounts with custom labels.
+  - Automatically loads last saved credentials or persistent profiles.
 - **Passwordless Integration**: Seamlessly integrates with system OpenVPN using passwordless sudoers configuration.
 
 ### 🎨 User Experience & Theme Customization
@@ -152,9 +158,39 @@ During execution, the deployment message is injected into the environment as `$D
 
 - `user-service:dev:echo "Deploying with message: $DEPLOY_MESSAGE" && go build && ...`
 
+## ⚙️ Environment Variables (`.env`)
+
+Configure the application by creating a `.env` file in the project root:
+
+```ini
+# Application environment: 'local' (uses SSH tunneling if enabled) or 'server' (direct connect)
+APP_ENV=local
+
+# MySQL Database Configuration
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DB=deploy_logs
+
+# SSH Tunnel Configuration (Used if APP_ENV=local)
+USE_SSH=true
+SSH_HOST=your_ssh_ip
+SSH_PORT=22
+SSH_USER=ubuntu
+SSH_KEY_PATH=/path/to/your/private_key  # Must be an absolute path
+# SSH_PASSWORD=your_ssh_password       # Alternative if no key is used
+
+# Agent Connections
+DEV_AGENT_URL=http://your-dev-agent-ip:8080
+STG_AGENT_URL=http://your-stg-agent-ip:8080
+PROD_AGENT_URL=http://your-prod-agent-ip:8080
+```
+
 ## 🚀 Getting Started
 
-1. **Configure Agent**: Deploy `ids-health` to your target servers and set `DEV_AGENT_URL` / `STG_AGENT_URL` in `.env`.
+1. **Configure Environment**: Copy `.env.example` to `.env` and fill in your database, SSH, and agent URLs.
+2. **Configure Agent**: Deploy `ids-health` to your target servers and set agent URLs in `.env`.
 2. **Configure OpenVPN Permissions (Required)**:
    Since OpenVPN requires root privileges to manipulate routing tables and create TUN/TAP interfaces, the system service (running as the unprivileged user `thang`) needs a passwordless sudoers exception. Run the following command on the host:
    ```bash

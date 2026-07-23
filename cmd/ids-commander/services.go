@@ -131,6 +131,21 @@ func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 		}
 	}
 
+	stagedChanges := 0
+	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "status", "--porcelain")
+	cmd.Dir = folderPath
+	if out, err := cmd.CombinedOutput(); err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			if len(line) >= 2 {
+				indexStatus := line[0]
+				if indexStatus != ' ' && indexStatus != '?' {
+					stagedChanges++
+				}
+			}
+		}
+	}
+
 	return &Service{
 		Name:           targetCfg.Name,
 		Dir:            folderPath,
@@ -147,6 +162,7 @@ func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 		HasStash:       hasStash,
 		Ahead:          ahead,
 		Behind:         behind,
+		StagedChanges:  stagedChanges,
 		ShowProduction: targetCfg.ShowProduction,
 	}
 }

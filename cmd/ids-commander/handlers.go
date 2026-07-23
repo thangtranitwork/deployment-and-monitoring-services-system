@@ -316,10 +316,11 @@ func historyHandler(w http.ResponseWriter, r *http.Request) {
 
 func deployHandler(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		Service  string `json:"service"`
-		Env      string `json:"env"`
-		Message  string `json:"message"`
-		Password string `json:"password"`
+		Service      string `json:"service"`
+		Env          string `json:"env"`
+		Message      string `json:"message"`
+		Password     string `json:"password"`
+		ResetStaging bool   `json:"reset_staging"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -400,10 +401,157 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
+	var prevBranch string
+	var prevCommit string
+	var hasStashed bool
+	gitPath := getGitPath(s)
+
+	restoreGitState := func() {
+		if !data.ResetStaging {
+			return
+		}
+		send("[Git Reset Staging] Restoring previous Git state...")
+		if prevBranch == "HEAD" && prevCommit != "" {
+			send(fmt.Sprintf("[Git Reset Staging] Checking out previous commit %s...", prevCommit))
+			cmdRestore := exec.Command(gitPath, "-c", "safe.directory=*", "checkout", prevCommit)
+			cmdRestore.Dir = svc.Dir
+			cmdRestore.Run()
+		} else if prevBranch != "" && prevBranch != "HEAD" {
+			send(fmt.Sprintf("[Git Reset Staging] Checking out previous branch '%s'...", prevBranch))
+			cmdRestore := exec.Command(gitPath, "-c", "safe.directory=*", "checkout", prevBranch)
+			cmdRestore.Dir = svc.Dir
+			cmdRestore.Run()
+		}
+
+		if hasStashed {
+			send("[Git Reset Staging] Popping stashed changes...")
+			cmdPop := exec.Command(gitPath, "-c", "safe.directory=*", "stash", "pop")
+			cmdPop.Dir = svc.Dir
+			popOut, err := cmdPop.CombinedOutput()
+			if err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ⚠️ Git stash pop returned warning/error: %v\n%s", err, string(popOut)))
+			} else {
+				send("[Git Reset Staging] Stash popped successfully.")
+			}
+		}
+	}
+
+	if data.ResetStaging {
+		send("[Git Reset Staging] Starting Git staging reset process...")
+
+		// 1. Get current branch
+		cmdRef := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--abbrev-ref", "HEAD")
+		cmdRef.Dir = svc.Dir
+		refOut, err := cmdRef.CombinedOutput()
+		if err != nil {
+			send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to get current branch: %v\n%s", err, string(refOut)))
+			send("[EOF]")
+			return
+		}
+		prevBranch = strings.TrimSpace(string(refOut))
+		send(fmt.Sprintf("[Git Reset Staging] Current branch: %s", prevBranch))
+
+		if prevBranch == "HEAD" {
+			cmdHash := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "HEAD")
+			cmdHash.Dir = svc.Dir
+			hashOut, _ := cmdHash.CombinedOutput()
+			prevCommit = strings.TrimSpace(string(hashOut))
+			send(fmt.Sprintf("[Git Reset Staging] Detached HEAD at commit: %s", prevCommit))
+		}
+
+		// 2. Check for local changes & stash
+		cmdStatus := exec.Command(gitPath, "-c", "safe.directory=*", "status", "--porcelain")
+		cmdStatus.Dir = svc.Dir
+		statusOut, err := cmdStatus.CombinedOutput()
+		if err != nil {
+			send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to get git status: %v\n%s", err, string(statusOut)))
+			send("[EOF]")
+			return
+		}
+		hasChanges := len(strings.TrimSpace(string(statusOut))) > 0
+
+		if hasChanges {
+			send("[Git Reset Staging] Local changes detected. Stashing changes...")
+			cmdStash := exec.Command(gitPath, "-c", "safe.directory=*", "stash", "push", "-u", "-m", "Auto stash before reset staging")
+			cmdStash.Dir = svc.Dir
+			stashOut, err := cmdStash.CombinedOutput()
+			if err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ❌ Git stash failed: %v\n%s", err, string(stashOut)))
+				send("[EOF]")
+				return
+			}
+			send(fmt.Sprintf("[Git Reset Staging] Stashed successfully:\n%s", strings.TrimSpace(string(stashOut))))
+			hasStashed = true
+		} else {
+			send("[Git Reset Staging] No local changes to stash.")
+		}
+
+		// 3. Detach HEAD if currently on staging branch
+		if prevBranch == "staging" {
+			send("[Git Reset Staging] Currently on 'staging' branch. Detaching HEAD to allow deletion...")
+			cmdDetach := exec.Command(gitPath, "-c", "safe.directory=*", "checkout", "--detach")
+			cmdDetach.Dir = svc.Dir
+			detachOut, err := cmdDetach.CombinedOutput()
+			if err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to detach HEAD: %v\n%s", err, string(detachOut)))
+				restoreGitState()
+				send("[EOF]")
+				return
+			}
+		}
+
+		// 4. Delete local staging branch if it exists
+		cmdCheckStg := exec.Command(gitPath, "-c", "safe.directory=*", "show-ref", "--verify", "refs/heads/staging")
+		cmdCheckStg.Dir = svc.Dir
+		if err := cmdCheckStg.Run(); err == nil {
+			send("[Git Reset Staging] Deleting local 'staging' branch...")
+			cmdDelStg := exec.Command(gitPath, "-c", "safe.directory=*", "branch", "-D", "staging")
+			cmdDelStg.Dir = svc.Dir
+			delStgOut, err := cmdDelStg.CombinedOutput()
+			if err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to delete local 'staging' branch: %v\n%s", err, string(delStgOut)))
+				restoreGitState()
+				send("[EOF]")
+				return
+			}
+			send("[Git Reset Staging] Local 'staging' branch deleted successfully.")
+		} else {
+			send("[Git Reset Staging] Local 'staging' branch does not exist.")
+		}
+
+		// 5. Fetch new staging branch from remote
+		send("[Git Reset Staging] Fetching 'staging' from origin...")
+		cmdFetch := exec.Command(gitPath, "-c", "safe.directory=*", "fetch", "origin", "staging")
+		cmdFetch.Dir = svc.Dir
+		fetchOut, err := cmdFetch.CombinedOutput()
+		if err != nil {
+			send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to fetch 'staging' from origin: %v\n%s", err, string(fetchOut)))
+			restoreGitState()
+			send("[EOF]")
+			return
+		}
+
+		// 6. Checkout new staging branch tracking origin/staging
+		send("[Git Reset Staging] Checking out new 'staging' branch tracking 'origin/staging'...")
+		cmdCheckout := exec.Command(gitPath, "-c", "safe.directory=*", "checkout", "-b", "staging", "origin/staging")
+		cmdCheckout.Dir = svc.Dir
+		checkoutOut, err := cmdCheckout.CombinedOutput()
+		if err != nil {
+			send(fmt.Sprintf("[Git Reset Staging] ❌ Failed to checkout 'staging' branch: %v\n%s", err, string(checkoutOut)))
+			restoreGitState()
+			send("[EOF]")
+			return
+		}
+		send("[Git Reset Staging] Checked out 'staging' branch successfully.")
+	}
+
 	bash := getBashPath(s)
 	userName := s.UserName
 	if userName == "" {
 		userName = "WebUser"
+	}
+	if data.ResetStaging {
+		svc.Branch = "staging"
 	}
 	nowStr := time.Now().Format("2006-01-02 15:04:05")
 	finalMsg := fmt.Sprintf("[%s] [%s] [%s] %s", userName, svc.Branch, nowStr, data.Message)
@@ -442,6 +590,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			if err := cmd.Wait(); err != nil {
 				send(fmt.Sprintf("\n[Pre-deploy failed — exit %v. Aborting.]", err))
+				restoreGitState()
 				duration := time.Since(startTime)
 				send(fmt.Sprintf("\n[Time] Total deployment time: %.2f seconds", duration.Seconds()))
 				send("[EOF]")
@@ -543,6 +692,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	restoreGitState()
 	duration := time.Since(startTime)
 	send(fmt.Sprintf("\n[Time] Total deployment time: %.2f seconds", duration.Seconds()))
 
