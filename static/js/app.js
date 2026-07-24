@@ -24,6 +24,7 @@ let activeTerminalTab = null;
 // Modal multi-deploy state
 let modalSelectedServices = new Set();
 let modalCurrentEnv = 'Development';
+let compareFocusedService = null;
 
 function updateSidebarItemStatus(svcName, status) {
     const items = document.querySelectorAll('.service-item');
@@ -119,6 +120,8 @@ function closeTerminalTab(serviceName) {
 
 // Multi Deploy Modal Functions
 function openMultiDeployModal() {
+    if (overlay) overlay.style.display = 'flex';
+
     modalSelectedServices.clear();
     
     // Load last environment from localStorage, fallback to currentEnv
@@ -146,9 +149,6 @@ function openMultiDeployModal() {
     
     updateModalEnvSelector();
     renderModalServicesGrid();
-    
-    const overlay = document.getElementById('multi-deploy-modal-overlay');
-    if (overlay) overlay.style.display = 'flex';
 }
 
 function closeMultiDeployModal() {
@@ -714,6 +714,7 @@ async function init() {
             closeAlertModal();
             closeVPNModal();
             closeMultiDeployModal();
+            closeCompareModal();
         }
 
         if (e.altKey && e.shiftKey) {
@@ -1409,7 +1410,6 @@ async function refreshServices() {
     const currentSelectedName = selectedService ? selectedService.name : null;
     list.innerHTML = '';
     services.forEach(svc => {
-        console.log("Service:", svc.name, "has_staging:", svc.has_staging, "ahead_staging:", svc.ahead_staging, "behind_staging:", svc.behind_staging);
         const item = document.createElement('div');
         item.className = 'service-item';
         if (currentSelectedName === svc.name) {
@@ -1875,6 +1875,202 @@ function closeHistoryModal() { document.getElementById('history-modal-overlay').
 function openShortcutsModal() { document.getElementById('shortcuts-modal-overlay').style.display = 'flex'; }
 function closeShortcutsModal() { document.getElementById('shortcuts-modal-overlay').style.display = 'none'; }
 
+function openCompareModal(focusedServiceName = null) {
+    console.log("openCompareModal called", focusedServiceName);
+    const overlay = document.getElementById('compare-modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    compareFocusedService = focusedServiceName;
+    
+    // Select sensible default target based on active environment
+    const selectEl = document.getElementById('compare-target-select');
+    if (selectEl) {
+        if (currentEnv === 'Staging') {
+            selectEl.value = 'origin/staging';
+        } else if (currentEnv === 'Production') {
+            selectEl.value = 'origin/master';
+        } else {
+            selectEl.value = 'origin/staging';
+        }
+    }
+
+    loadCompareData();
+}
+
+function closeCompareModal() {
+    document.getElementById('compare-modal-overlay').style.display = 'none';
+}
+
+function toggleCompareCard(name) {
+    const body = document.getElementById(`compare-body-${name}`);
+    const caret = document.getElementById(`compare-caret-${name}`);
+    if (!body || !caret) return;
+    if (body.style.display === 'none') {
+        body.style.display = 'flex';
+        caret.innerText = '▼';
+    } else {
+        body.style.display = 'none';
+        caret.innerText = '▶';
+    }
+}
+
+function openMultiDeployModalFromCompare() {
+    closeCompareModal();
+    openMultiDeployModal();
+}
+
+async function loadCompareData() {
+    const target = document.getElementById('compare-target-select').value;
+    const container = document.getElementById('compare-services-container');
+    if (!container) return;
+
+    container.innerHTML = '<div class="shimmer" style="height: 60px"></div>'.repeat(3);
+
+    try {
+        const res = await fetch(`/api/git/compare-all?target=${encodeURIComponent(target)}`);
+        if (!res.ok) {
+            throw new Error(await res.text());
+        }
+        const data = await res.json();
+        
+        container.innerHTML = '';
+        
+        if (data.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-dim);">No services found in workspace.</div>';
+            return;
+        }
+
+        data.forEach(result => {
+            const hasDiff = result.commits.length > 0 || result.files.length > 0;
+            const hasError = !!result.error;
+            
+            // Determine default expand state
+            let isExpanded = false;
+            if (compareFocusedService) {
+                isExpanded = (result.name === compareFocusedService);
+            } else {
+                isExpanded = hasDiff && !hasError;
+            }
+
+            const card = document.createElement('div');
+            card.style.cssText = 'border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); overflow: hidden; display: flex; flex-direction: column; transition: all 0.2s; flex-shrink: 0;';
+            if (compareFocusedService && result.name === compareFocusedService) {
+                card.style.borderColor = 'var(--accent)';
+                card.style.boxShadow = '0 0 12px var(--accent-glow)';
+            }
+
+            const headerBg = hasDiff ? 'rgba(241, 196, 15, 0.02)' : 'transparent';
+            const nameColor = hasDiff ? 'var(--accent)' : 'var(--text-dim)';
+
+            let badgeHtml = '';
+            if (hasError) {
+                // error tag
+            } else if (hasDiff) {
+                badgeHtml = `
+                    <span style="font-size: 10px; font-weight: bold; background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
+                        ${result.commits.length} ahead
+                    </span>
+                    <span style="font-size: 10px; font-weight: bold; background: rgba(52, 152, 219, 0.1); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.2); padding: 2px 8px; border-radius: 12px; font-family: var(--font-mono);">
+                        ${result.files.length} files
+                    </span>
+                `;
+            } else {
+                badgeHtml = `<span style="font-size: 11px; color: var(--success); font-weight: bold; display: flex; align-items: center; gap: 4px;">✓ Up-to-date</span>`;
+            }
+
+            card.innerHTML = `
+                <div class="compare-card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: ${headerBg}; cursor: pointer;" onclick="toggleCompareCard('${result.name}')">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span style="font-weight: 700; font-size: 15px; color: ${nameColor};">📦 ${result.name}</span>
+                        <span class="branch-tag" style="font-size: 10px; opacity: 0.8; font-family: var(--font-mono);">branch: ${result.local_branch}</span>
+                        ${hasError ? `<span style="font-size: 10px; color: var(--error); background: rgba(231, 76, 60, 0.08); border: 1px solid rgba(231, 76, 60, 0.2); padding: 1px 6px; border-radius: 4px;">⚠️ ${result.error}</span>` : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${badgeHtml}
+                        <span id="compare-caret-${result.name}" style="font-size: 11px; color: var(--text-dim); transition: transform 0.2s;">${isExpanded ? '▼' : '▶'}</span>
+                    </div>
+                </div>
+                <div id="compare-body-${result.name}" style="display: ${isExpanded ? 'flex' : 'none'}; border-top: 1px solid var(--border); padding: 16px; gap: 20px; background: var(--bg-body); flex-direction: row; flex-wrap: wrap;">
+                    <!-- Commits & Files columns will be appended here -->
+                </div>
+            `;
+
+            const body = card.querySelector(`#compare-body-${result.name}`);
+            if (hasError) {
+                body.innerHTML = `<div style="color: var(--error); font-size: 12px; width: 100%; text-align: center; padding: 12px;">Unable to compare: ${result.error}</div>`;
+            } else if (hasDiff) {
+                body.innerHTML = `
+                    <!-- Commits Column -->
+                    <div style="flex: 1.2; display: flex; flex-direction: column; gap: 8px; min-width: 280px;">
+                        <div class="label" style="color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 4px; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <span>🆕 COMMITS TO BE DEPLOYED</span>
+                            <span style="font-size: 10px; background: var(--bg-card); border: 1px solid var(--border); padding: 1px 6px; border-radius: 10px;">${result.commits.length}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+                            ${result.commits.map(commit => `
+                                <div style="padding: 8px 12px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 8px; font-size: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-family: var(--font-mono); font-size: 11px; font-weight: bold;">
+                                        <span style="color: var(--accent);">${commit.hash}</span>
+                                        <span style="font-size: 10px; opacity: 0.6; font-weight: normal;">${commit.date}</span>
+                                    </div>
+                                    <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px; word-break: break-word;">${commit.subject}</div>
+                                    <div style="font-size: 10px; opacity: 0.5;">by ${commit.author}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <!-- Files Column -->
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 220px;">
+                        <div class="label" style="color: #3498db; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 4px; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; text-transform: uppercase; letter-spacing: 0.5px;">
+                            <span>📂 CHANGED FILES</span>
+                            <span style="font-size: 10px; background: var(--bg-card); border: 1px solid var(--border); padding: 1px 6px; border-radius: 10px;">${result.files.length}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+                            ${result.files.map(file => {
+                                let bCol = '#f1c40f';
+                                if (file.status === 'Added') bCol = '#2ecc71';
+                                else if (file.status === 'Deleted') bCol = '#e74c3c';
+                                else if (file.status === 'Renamed') bCol = '#3498db';
+
+                                return `
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-mono); font-size: 11px;">
+                                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; color: var(--text-main);" title="${file.path}">${file.path}</span>
+                                        <span style="font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; background: ${bCol}15; color: ${bCol}; border: 1px solid ${bCol}30; letter-spacing: 0.5px;">${file.status}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                body.style.display = 'none';
+            }
+
+            container.appendChild(card);
+        });
+
+        if (compareFocusedService) {
+            setTimeout(() => {
+                const cardEl = Array.from(container.children).find(child => child.querySelector('.compare-card-header').innerText.includes(compareFocusedService));
+                if (cardEl) {
+                    cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 120);
+        }
+    } catch (err) {
+        container.innerHTML = `<div style="color: var(--error); padding: 20px; text-align: center;">Error: ${err.message}</div>`;
+    }
+}
+
+function onCompareTargetChange() {
+    loadCompareData();
+}
+
+function proceedToDeployFromCompare() {
+    closeCompareModal();
+    runDeploy();
+}
+
 function setEnv(env) {
     currentEnv = env;
     document.querySelectorAll('.env-btn').forEach(btn => {
@@ -1885,7 +2081,13 @@ function setEnv(env) {
 }
 function validateForm() {
     const btn = document.getElementById('btn-run');
-    if (!selectedService) { btn.disabled = true; btn.innerText = 'Select a service'; return; }
+    if (!selectedService) { 
+        btn.disabled = true; 
+        btn.innerText = 'Select a service'; 
+        const btnCompare = document.getElementById('btn-compare');
+        if (btnCompare) btnCompare.style.display = 'none';
+        return; 
+    }
     
     let hasScript = false;
     if (currentEnv === 'Development') hasScript = selectedService.has_dev;
@@ -1895,6 +2097,15 @@ function validateForm() {
     const isDeploying = activeDeployments[selectedService.name] && activeDeployments[selectedService.name].status === 'running';
     btn.disabled = !hasScript || isDeploying; 
     btn.innerText = isDeploying ? 'Deploying...' : '🚀 Run Deploy';
+
+    const btnCompare = document.getElementById('btn-compare');
+    if (btnCompare) {
+        if (!hasScript || isDeploying) {
+            btnCompare.style.display = 'none';
+        } else {
+            btnCompare.style.display = (currentEnv === 'Staging' || currentEnv === 'Production') ? 'inline-block' : 'none';
+        }
+    }
 }
 
 function runDeploy() {
@@ -2049,19 +2260,34 @@ function addCustomServiceRow() {
 }
 
 async function openSettings() {
-    const res = await fetch('/api/settings');
-    settings = await res.json();
-    document.getElementById('set-ws').value = settings.workspace_url;
-    document.getElementById('set-git').value = settings.git_bash_path;
-    document.getElementById('set-name').value = settings.user_name;
-    document.getElementById('set-pre').value = settings.pre_deploy_cmd;
-    document.getElementById('set-dev-url').value = settings.dev_agent_url || '';
-    document.getElementById('set-stg-url').value = settings.stg_agent_url || '';
-    document.getElementById('set-prod-url').value = settings.prod_agent_url || '';
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.style.display = 'flex';
 
-    switchConfigTheme(document.body.classList.contains('light-theme') ? 'light' : 'dark');
-    switchSettingsTab('core');
-    document.getElementById('modal-overlay').style.display = 'flex';
+    try {
+        const res = await fetch('/api/settings');
+        settings = await res.json();
+        
+        const setWs = document.getElementById('set-ws');
+        const setGit = document.getElementById('set-git');
+        const setName = document.getElementById('set-name');
+        const setPre = document.getElementById('set-pre');
+        const setDevUrl = document.getElementById('set-dev-url');
+        const setStgUrl = document.getElementById('set-stg-url');
+        const setProdUrl = document.getElementById('set-prod-url');
+
+        if (setWs) setWs.value = settings.workspace_url;
+        if (setGit) setGit.value = settings.git_bash_path;
+        if (setName) setName.value = settings.user_name;
+        if (setPre) setPre.value = settings.pre_deploy_cmd;
+        if (setDevUrl) setDevUrl.value = settings.dev_agent_url || '';
+        if (setStgUrl) setStgUrl.value = settings.stg_agent_url || '';
+        if (setProdUrl) setProdUrl.value = settings.prod_agent_url || '';
+
+        switchConfigTheme(document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        switchSettingsTab('core');
+    } catch (err) {
+        console.error("Failed to load settings:", err);
+    }
 }
 
 function closeSettings() { document.getElementById('modal-overlay').style.display = 'none'; }

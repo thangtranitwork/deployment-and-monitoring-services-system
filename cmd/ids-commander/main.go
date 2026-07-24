@@ -92,6 +92,8 @@ func main() {
 	mux.HandleFunc("/api/git/merge/{service_name}", gitMergeHandler)
 	mux.HandleFunc("/api/git/status/{service_name}", gitStatusHandler)
 	mux.HandleFunc("/api/git/rollback/{service_name}", gitRollbackHandler)
+	mux.HandleFunc("/api/git/compare/{service_name}", gitCompareHandler)
+	mux.HandleFunc("/api/git/compare-all", gitCompareAllHandler)
 	mux.HandleFunc("/api/git/fetch/{service_name}", gitFetchHandler)
 	mux.HandleFunc("/api/git/push/{service_name}", gitPushHandler)
 	mux.HandleFunc("/api/git/pull/{service_name}", gitPullHandler)

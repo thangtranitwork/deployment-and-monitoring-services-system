@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 )
 
 func gitStashHandler(w http.ResponseWriter, r *http.Request) {
@@ -506,4 +508,261 @@ func gitPullHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": string(out)})
+}
+
+func gitCompareHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		target = "staging"
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	// Verify target reference
+	cmdCheck := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--verify", target)
+	cmdCheck.Dir = svc.Dir
+	if err := cmdCheck.Run(); err != nil {
+		// Fallback to origin/target if local doesn't exist
+		if !strings.HasPrefix(target, "origin/") {
+			altTarget := "origin/" + target
+			cmdCheckAlt := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--verify", altTarget)
+			cmdCheckAlt.Dir = svc.Dir
+			if errAlt := cmdCheckAlt.Run(); errAlt == nil {
+				target = altTarget
+			}
+		}
+	}
+
+	// 1. Get ahead commits: git log target..HEAD
+	cmdCommits := exec.Command(gitPath, "-c", "safe.directory=*", "log", target+"..HEAD", "--pretty=format:%h|%an|%ar|%s")
+	cmdCommits.Dir = svc.Dir
+	outCommits, err := cmdCommits.CombinedOutput()
+
+	type Commit struct {
+		Hash    string `json:"hash"`
+		Author  string `json:"author"`
+		Date    string `json:"date"`
+		Subject string `json:"subject"`
+	}
+	commits := []Commit{}
+
+	if err == nil {
+		lines := strings.Split(strings.TrimSpace(string(outCommits)), "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "|", 4)
+			if len(parts) == 4 {
+				commits = append(commits, Commit{
+					Hash:    parts[0],
+					Author:  parts[1],
+					Date:    parts[2],
+					Subject: parts[3],
+				})
+			}
+		}
+	}
+
+	// 2. Get changed files: git diff --name-status target..HEAD
+	cmdDiff := exec.Command(gitPath, "-c", "safe.directory=*", "diff", "--name-status", target+"..HEAD")
+	cmdDiff.Dir = svc.Dir
+	outDiff, err := cmdDiff.CombinedOutput()
+
+	type ChangedFile struct {
+		Path   string `json:"path"`
+		Status string `json:"status"`
+	}
+	files := []ChangedFile{}
+
+	if err == nil {
+		lines := strings.Split(strings.TrimSpace(string(outDiff)), "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				statusChar := parts[0]
+				filePath := parts[1]
+
+				statusText := "Modified"
+				if strings.HasPrefix(statusChar, "A") {
+					statusText = "Added"
+				} else if strings.HasPrefix(statusChar, "D") {
+					statusText = "Deleted"
+				} else if strings.HasPrefix(statusChar, "R") {
+					statusText = "Renamed"
+				} else if strings.HasPrefix(statusChar, "C") {
+					statusText = "Copied"
+				}
+
+				files = append(files, ChangedFile{
+					Path:   filePath,
+					Status: statusText,
+				})
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"target":  target,
+		"commits": commits,
+		"files":   files,
+	})
+}
+
+func gitCompareAllHandler(w http.ResponseWriter, r *http.Request) {
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		target = "staging"
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	services := scanServices(s)
+
+	type Commit struct {
+		Hash    string `json:"hash"`
+		Author  string `json:"author"`
+		Date    string `json:"date"`
+		Subject string `json:"subject"`
+	}
+
+	type ChangedFile struct {
+		Path   string `json:"path"`
+		Status string `json:"status"`
+	}
+
+	type ServiceCompareResult struct {
+		Name         string        `json:"name"`
+		LocalBranch  string        `json:"local_branch"`
+		TargetBranch string        `json:"target_branch"`
+		Commits      []Commit      `json:"commits"`
+		Files        []ChangedFile `json:"files"`
+		Error        string        `json:"error,omitempty"`
+	}
+
+	var results []ServiceCompareResult
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	for _, svc := range services {
+		wg.Add(1)
+		go func(svc Service) {
+			defer wg.Done()
+
+			res := ServiceCompareResult{
+				Name:         svc.Name,
+				LocalBranch:  svc.Branch,
+				TargetBranch: target,
+				Commits:      []Commit{},
+				Files:        []ChangedFile{},
+			}
+
+			targetRef := target
+			cmdCheck := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--verify", targetRef)
+			cmdCheck.Dir = svc.Dir
+			if err := cmdCheck.Run(); err != nil {
+				if !strings.HasPrefix(targetRef, "origin/") {
+					altTarget := "origin/" + targetRef
+					cmdCheckAlt := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--verify", altTarget)
+					cmdCheckAlt.Dir = svc.Dir
+					if errAlt := cmdCheckAlt.Run(); errAlt == nil {
+						targetRef = altTarget
+					} else {
+						res.Error = fmt.Sprintf("Target branch %s or %s not found", target, altTarget)
+						mu.Lock()
+						results = append(results, res)
+						mu.Unlock()
+						return
+					}
+				} else {
+					res.Error = fmt.Sprintf("Target branch %s not found", target)
+					mu.Lock()
+					results = append(results, res)
+					mu.Unlock()
+					return
+				}
+			}
+			res.TargetBranch = targetRef
+
+			// Get ahead commits: git log target..HEAD
+			cmdCommits := exec.Command(gitPath, "-c", "safe.directory=*", "log", targetRef+"..HEAD", "--pretty=format:%h|%an|%ar|%s")
+			cmdCommits.Dir = svc.Dir
+			outCommits, err := cmdCommits.CombinedOutput()
+			if err == nil {
+				lines := strings.Split(strings.TrimSpace(string(outCommits)), "\n")
+				for _, line := range lines {
+					if line == "" {
+						continue
+					}
+					parts := strings.SplitN(line, "|", 4)
+					if len(parts) == 4 {
+						res.Commits = append(res.Commits, Commit{
+							Hash:    parts[0],
+							Author:  parts[1],
+							Date:    parts[2],
+							Subject: parts[3],
+						})
+					}
+				}
+			}
+
+			// Get changed files: git diff --name-status target..HEAD
+			cmdDiff := exec.Command(gitPath, "-c", "safe.directory=*", "diff", "--name-status", targetRef+"..HEAD")
+			cmdDiff.Dir = svc.Dir
+			outDiff, err := cmdDiff.CombinedOutput()
+			if err == nil {
+				lines := strings.Split(strings.TrimSpace(string(outDiff)), "\n")
+				for _, line := range lines {
+					if line == "" {
+						continue
+					}
+					parts := strings.Fields(line)
+					if len(parts) >= 2 {
+						statusChar := parts[0]
+						filePath := parts[1]
+
+						statusText := "Modified"
+						if strings.HasPrefix(statusChar, "A") {
+							statusText = "Added"
+						} else if strings.HasPrefix(statusChar, "D") {
+							statusText = "Deleted"
+						} else if strings.HasPrefix(statusChar, "R") {
+							statusText = "Renamed"
+						} else if strings.HasPrefix(statusChar, "C") {
+							statusText = "Copied"
+						}
+
+						res.Files = append(res.Files, ChangedFile{
+							Path:   filePath,
+							Status: statusText,
+						})
+					}
+				}
+			}
+
+			mu.Lock()
+			results = append(results, res)
+			mu.Unlock()
+		}(svc)
+	}
+
+	wg.Wait()
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Name < results[j].Name
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(results)
 }
