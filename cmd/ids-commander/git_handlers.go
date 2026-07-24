@@ -104,6 +104,22 @@ func gitBranchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hasStaging := false
+	stagingRef := ""
+	cmdStg := exec.Command(gitPath, "-c", "safe.directory=*", "show-ref", "--verify", "refs/heads/staging")
+	cmdStg.Dir = svc.Dir
+	if err := cmdStg.Run(); err == nil {
+		stagingRef = "staging"
+		hasStaging = true
+	} else {
+		cmdStgRemote := exec.Command(gitPath, "-c", "safe.directory=*", "show-ref", "--verify", "refs/remotes/origin/staging")
+		cmdStgRemote.Dir = svc.Dir
+		if err := cmdStgRemote.Run(); err == nil {
+			stagingRef = "origin/staging"
+			hasStaging = true
+		}
+	}
+
 	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "for-each-ref", "--format=%(refname:short)|%(upstream:track)", "refs/heads")
 	cmd.Dir = svc.Dir
 	out, err := cmd.CombinedOutput()
@@ -114,9 +130,12 @@ func gitBranchesHandler(w http.ResponseWriter, r *http.Request) {
 
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	type BranchInfo struct {
-		Name   string `json:"name"`
-		Ahead  int    `json:"ahead"`
-		Behind int    `json:"behind"`
+		Name          string `json:"name"`
+		Ahead         int    `json:"ahead"`
+		Behind        int    `json:"behind"`
+		AheadStaging  int    `json:"ahead_staging"`
+		BehindStaging int    `json:"behind_staging"`
+		HasStaging    bool   `json:"has_staging"`
 	}
 	var branches []BranchInfo
 	for _, line := range lines {
@@ -136,7 +155,33 @@ func gitBranchesHandler(w http.ResponseWriter, r *http.Request) {
 				fmt.Sscanf(track[strings.Index(track, "behind")+7:], "%d", &behind)
 			}
 		}
-		branches = append(branches, BranchInfo{Name: name, Ahead: ahead, Behind: behind})
+
+		aheadStaging := 0
+		behindStaging := 0
+		if hasStaging {
+			if name == stagingRef || (stagingRef == "staging" && name == "staging") {
+				// 0, 0
+			} else {
+				cmdComp := exec.Command(gitPath, "-c", "safe.directory=*", "rev-list", "--left-right", "--count", name+"..."+stagingRef)
+				cmdComp.Dir = svc.Dir
+				if outComp, err := cmdComp.CombinedOutput(); err == nil {
+					parts := strings.Fields(strings.TrimSpace(string(outComp)))
+					if len(parts) == 2 {
+						fmt.Sscanf(parts[0], "%d", &aheadStaging)
+						fmt.Sscanf(parts[1], "%d", &behindStaging)
+					}
+				}
+			}
+		}
+
+		branches = append(branches, BranchInfo{
+			Name:          name,
+			Ahead:         ahead,
+			Behind:        behind,
+			AheadStaging:  aheadStaging,
+			BehindStaging: behindStaging,
+			HasStaging:    hasStaging,
+		})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(branches)

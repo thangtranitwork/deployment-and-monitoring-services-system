@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.6.0
+# 🚀 Internal Deploy System (IDS) - v1.6.2
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -71,6 +71,8 @@ deploy-tool/
 
 - **Premium UI**: Modern dark/light modes with glassmorphism, harmony color palettes, and smooth transitions.
 - **Theme Factory**: Deep customization of accent colors, terminal text, background theme variables, and text dimensions.
+- **Advanced Search**: Filter services and branches with smart query parsing (comma-separated list for **OR** matches, space-separated words for **AND** matches).
+- **Formatted Dialogs**: System alerts, confirms, and prompts support HTML formatting natively (e.g., highlighting key names in bold) for a cleaner UX.
 - **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
 - **Shortcuts Modal**: Quick-reference guide for all system keyboard shortcuts.
 

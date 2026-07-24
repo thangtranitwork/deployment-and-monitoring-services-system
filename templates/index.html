@@ -18,15 +18,15 @@
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.0</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.2</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
                 Health Monitor</button>
             <button onclick="openShortcutsModal()" title="Shortcut: Alt+Shift+H">⌨️ Shortcuts</button>
             <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊 Statistics</button>
-            <button onclick="openMultiDeployModal()"
-                title="Deploy multiple services concurrently">⚡ Multi Deploy</button>
+            <button onclick="openMultiDeployModal()" title="Deploy multiple services concurrently">⚡ Multi
+                Deploy</button>
             <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️ Settings</button>
             <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
             <button id="vpn-toggle" onclick="toggleVPNManagement()" title="Shortcut: Alt+Shift+U">🔒 VPN</button>
@@ -490,11 +490,14 @@
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + T / H
                 </div>
                 <div style="color: var(--text-main);">Multi Deploy Modal</div>
-                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + M</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + M
+                </div>
                 <div style="color: var(--text-main);">Fast Multi Deploy (Last)</div>
-                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Ctrl + Alt + Shift + M</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Ctrl + Alt + Shift +
+                    M</div>
                 <div style="color: var(--text-main);">View Logs / Health Monitor</div>
-                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + L</div>
+                <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + L
+                </div>
                 <div style="color: var(--text-main);">Toggle VPN Card</div>
                 <div style="color: var(--accent); font-family: var(--font-mono); font-weight: 700;">Alt + Shift + U
                 </div>
@@ -791,7 +794,9 @@
                     </div>
                     <div style="flex: none; min-width: fit-content;">
                         <div class="label" style="font-size: 11px;">Staging Mode</div>
-                        <button type="button" id="reset-staging-btn" onclick="toggleResetStagingCheckbox()" style="height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Reset Staging branch (stash, delete local staging, pull origin/staging, deploy, checkout back, stash pop)">
+                        <button type="button" id="reset-staging-btn" onclick="toggleResetStagingCheckbox()"
+                            style="height: 38px; display: flex; align-items: center; justify-content: center; gap: 6px;"
+                            title="Reset Staging branch (stash, delete local staging, pull origin/staging, deploy, checkout back, stash pop)">
                             🔄 Reset Staging
                         </button>
                     </div>
@@ -839,10 +844,13 @@
                 style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; color: var(--accent);">
                 <div style="font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                     ⚡ Live Multi-Deploy Console
-                    <span id="multi-logs-summary-badge" style="font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: var(--bg-hover); color: var(--text-main);">0 Services</span>
+                    <span id="multi-logs-summary-badge"
+                        style="font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: var(--bg-hover); color: var(--text-main);">0
+                        Services</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <button type="button" onclick="toggleMultiLogsGridCols()" style="font-size: 11px; padding: 4px 10px; height: 28px;">🔲 Auto Grid</button>
+                    <button type="button" onclick="toggleMultiLogsGridCols()"
+                        style="font-size: 11px; padding: 4px 10px; height: 28px;">🔲 Auto Grid</button>
                     <span onclick="closeMultiDeployLogsModal()"
                         style="cursor: pointer; color: var(--text-dim); font-size: 24px; font-weight: bold; line-height: 1;"
                         title="Close Modal">×</span>
@@ -855,11 +863,15 @@
                 <!-- Terminals injected dynamically here -->
             </div>
 
-            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="modal-footer"
+                style="border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <div style="font-size: 12px; color: var(--text-dim);">
-                    Press <kbd style="background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono);">Esc</kbd> to close matrix view. Active deploys continue in background.
+                    Press <kbd
+                        style="background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono);">Esc</kbd>
+                    to close matrix view. Active deploys continue in background.
                 </div>
-                <button onclick="closeMultiDeployLogsModal()" class="primary" style="padding: 0 20px; height: 34px;">Close Console View</button>
+                <button onclick="closeMultiDeployLogsModal()" class="primary"
+                    style="padding: 0 20px; height: 34px;">Close Console View</button>
             </div>
         </div>
     </div>

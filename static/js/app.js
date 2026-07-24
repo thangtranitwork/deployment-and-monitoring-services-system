@@ -177,10 +177,10 @@ function renderModalServicesGrid() {
     grid.innerHTML = '';
     
     const searchVal = document.getElementById('modal-svc-search');
-    const query = searchVal ? searchVal.value.toLowerCase().trim() : '';
+    const query = searchVal ? searchVal.value.trim() : '';
     
     services.forEach(svc => {
-        if (query && !svc.name.toLowerCase().includes(query)) return;
+        if (!matchSearchQuery(svc.name, query)) return;
         
         let hasScript = false;
         if (modalCurrentEnv === 'Development') hasScript = svc.has_dev;
@@ -726,12 +726,23 @@ async function init() {
     await initVPN();
 }
 
+function matchSearchQuery(text, query) {
+    if (!query) return true;
+    const targetText = text.toLowerCase();
+    const terms = query.toLowerCase().split(',').map(t => t.trim()).filter(t => t);
+    if (terms.length === 0) return true;
+    return terms.some(term => {
+        const words = term.split(/\s+/).filter(w => w);
+        return words.every(word => targetText.includes(word));
+    });
+}
+
 function filterServices() {
-    const query = document.getElementById('svc-search').value.toLowerCase().trim();
+    const query = document.getElementById('svc-search').value.trim();
     const items = document.querySelectorAll('.service-item');
     items.forEach(item => {
-        const name = item.querySelector('.service-name').innerText.toLowerCase();
-        item.style.display = name.includes(query) ? 'flex' : 'none';
+        const name = item.querySelector('.service-name').innerText;
+        item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
     });
 }
 
@@ -746,11 +757,11 @@ function handleSearchKey(e) {
 }
 
 function filterBranches() {
-    const query = document.getElementById('branch-search').value.toLowerCase().trim();
+    const query = document.getElementById('branch-search').value.trim();
     const items = document.querySelectorAll('#branches-list > div');
     items.forEach(item => {
-        const name = item.querySelector('span').innerText.toLowerCase();
-        item.style.display = name.includes(query) ? 'flex' : 'none';
+        const name = item.querySelector('span').innerText;
+        item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
     });
 }
 
@@ -806,6 +817,26 @@ async function loadGitTabContent(tab) {
                         ${branchInfo.behind > 0 ? `<span style="color: #e74c3c;">↓${branchInfo.behind}</span>` : ''}
                     `;
                     nameSpan.appendChild(statusSpan);
+                }
+
+                if (branchInfo.has_staging && branch !== 'staging' && branch !== 'origin/staging') {
+                    const stagingSpan = document.createElement('span');
+                    stagingSpan.style.cssText = 'background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); font-size: 10px; padding: 2px 8px; border-radius: 20px; font-family: var(--font-mono); display: inline-flex; align-items: center; justify-content: center; margin-left: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);';
+                    stagingSpan.title = 'Staging comparison: +ahead -behind';
+                    
+                    let inner = '<span style="color: var(--text-dim); font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; margin-right: 4px; text-transform: uppercase;">stg</span>';
+                    if (branchInfo.ahead_staging === 0 && branchInfo.behind_staging === 0) {
+                        inner += '<span style="color: var(--success); font-weight: bold;">✓</span>';
+                    } else {
+                        if (branchInfo.ahead_staging > 0) {
+                            inner += `<span style="color: var(--success); font-weight: 600;">+${branchInfo.ahead_staging}</span>`;
+                        }
+                        if (branchInfo.behind_staging > 0) {
+                            inner += `<span style="color: var(--error); font-weight: 600; margin-left: 3px;">-${branchInfo.behind_staging}</span>`;
+                        }
+                    }
+                    stagingSpan.innerHTML = inner;
+                    nameSpan.appendChild(stagingSpan);
                 }
 
                 if (isCurrent) nameSpan.style.color = 'var(--text-main)';
@@ -1170,7 +1201,7 @@ function showPrompt(title, message, onConfirm) {
 
 function showConfirm(title, message, onConfirm) {
     document.getElementById('alert-title').innerText = title;
-    document.getElementById('alert-message').innerText = message;
+    document.getElementById('alert-message').innerHTML = message;
     document.getElementById('alert-confirm-btn').onclick = () => {
         closeAlertModal();
         onConfirm();
@@ -1181,7 +1212,7 @@ function showConfirm(title, message, onConfirm) {
 
 function showAlert(title, message) {
     document.getElementById('alert-title').innerText = title;
-    document.getElementById('alert-message').innerText = message;
+    document.getElementById('alert-message').innerHTML = message;
     document.getElementById('alert-confirm-btn').onclick = closeAlertModal;
     document.getElementById('alert-cancel-btn').style.display = 'none';
     document.getElementById('alert-modal-overlay').style.display = 'flex';
@@ -1378,6 +1409,7 @@ async function refreshServices() {
     const currentSelectedName = selectedService ? selectedService.name : null;
     list.innerHTML = '';
     services.forEach(svc => {
+        console.log("Service:", svc.name, "has_staging:", svc.has_staging, "ahead_staging:", svc.ahead_staging, "behind_staging:", svc.behind_staging);
         const item = document.createElement('div');
         item.className = 'service-item';
         if (currentSelectedName === svc.name) {
@@ -1406,6 +1438,18 @@ async function refreshServices() {
             statusTagHtml = `<span class="deploy-status-tag ${dep.status}" style="margin-left: 8px;">${dep.status}</span>`;
         }
 
+        let stagingTag = '';
+        if (svc.has_staging && svc.branch !== 'staging' && svc.branch !== 'origin/staging') {
+            let stgInner = '<span style="color: var(--text-dim); font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; margin-right: 4px; text-transform: uppercase;">stg</span>';
+            if (svc.ahead_staging === 0 && svc.behind_staging === 0) {
+                stgInner += '<span style="color: var(--success); font-weight: bold;">✓</span>';
+            } else {
+                if (svc.ahead_staging > 0) stgInner += `<span style="color: var(--success); font-weight: 600;">+${svc.ahead_staging}</span>`;
+                if (svc.behind_staging > 0) stgInner += `<span style="color: var(--error); font-weight: 600; margin-left: 3px;">-${svc.behind_staging}</span>`;
+            }
+            stagingTag = `<span style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); font-size: 10px; padding: 2px 8px; border-radius: 20px; font-family: var(--font-mono); display: inline-flex; align-items: center; justify-content: center; margin-left: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);" title="Staging comparison: +ahead -behind">${stgInner}</span>`;
+        }
+
         item.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div class="service-name" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
@@ -1415,11 +1459,12 @@ async function refreshServices() {
                 </div>
                 ${healthHtml}
             </div>
-            <div class="service-meta">
+            <div class="service-meta" style="display: flex; flex-direction: column; gap: 4px;">
                 <div class="branch-tag" style="display: flex; align-items: center; justify-content: space-between;">
                     <span>branch: ${svc.branch}</span>
                     ${stagedTag}
                 </div>
+                ${stagingTag ? `<div style="display: flex; align-items: center;">${stagingTag}</div>` : ''}
                 <div class="commit-msg">${svc.last_commit}</div>
             </div>
         `;
@@ -1464,6 +1509,18 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
                     statusTagHtml = `<span class="deploy-status-tag ${dep.status}" style="margin-left: 8px;">${dep.status}</span>`;
                 }
 
+                let stagingTag = '';
+                if (svc.has_staging && svc.branch !== 'staging' && svc.branch !== 'origin/staging') {
+                    let stgInner = '<span style="color: var(--text-dim); font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; margin-right: 4px; text-transform: uppercase;">stg</span>';
+                    if (svc.ahead_staging === 0 && svc.behind_staging === 0) {
+                        stgInner += '<span style="color: var(--success); font-weight: bold;">✓</span>';
+                    } else {
+                        if (svc.ahead_staging > 0) stgInner += `<span style="color: var(--success); font-weight: 600;">+${svc.ahead_staging}</span>`;
+                        if (svc.behind_staging > 0) stgInner += `<span style="color: var(--error); font-weight: 600; margin-left: 3px;">-${svc.behind_staging}</span>`;
+                    }
+                    stagingTag = `<span style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); font-size: 10px; padding: 2px 8px; border-radius: 20px; font-family: var(--font-mono); display: inline-flex; align-items: center; justify-content: center; margin-left: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);" title="Staging comparison: +ahead -behind">${stgInner}</span>`;
+                }
+
                 element.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div class="service-name" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
@@ -1473,8 +1530,9 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
                         </div>
                         ${healthHtml}
                     </div>
-                    <div class="service-meta">
+                    <div class="service-meta" style="display: flex; flex-direction: column; gap: 4px;">
                         <div class="branch-tag">👀 Branch: ${svc.branch}</div>
+                        ${stagingTag ? `<div style="display: flex; align-items: center;">${stagingTag}</div>` : ''}
                         <div class="commit-msg">💬 Last commit: ${svc.last_commit}</div>
                     </div>
                 `;
@@ -1542,14 +1600,39 @@ function toggleGitManagement() {
 
 function updateGitStatusBadge(svc) {
     const badge = document.getElementById('git-status-badge');
+    let html = '';
+    
+    // Upstream status
     if (svc.ahead > 0 || svc.behind > 0) {
-        badge.innerHTML = `
-            <span style="color: var(--success); margin-right: 4px;">↑${svc.ahead}</span>
-            <span style="color: var(--error);">↓${svc.behind}</span>
+        html += `
+            <span title="Ahead/Behind Upstream" style="margin-right: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                <span style="color: var(--text-dim); font-size: 9px; text-transform: uppercase;">Upstream:</span>
+                <span style="color: var(--success);">↑${svc.ahead}</span>
+                <span style="color: var(--error);">↓${svc.behind}</span>
+            </span>
         `;
     } else {
-        badge.innerText = '(Up to date)';
+        html += `<span title="Ahead/Behind Upstream" style="margin-right: 12px; color: var(--text-dim); font-size: 10px;">Upstream: ✓</span>`;
     }
+
+    // Staging status
+    if (svc.has_staging && svc.branch !== 'staging' && svc.branch !== 'origin/staging') {
+        let stgText = '';
+        if (svc.ahead_staging === 0 && svc.behind_staging === 0) {
+            stgText = '<span style="color: var(--success); font-weight: bold;">✓</span>';
+        } else {
+            if (svc.ahead_staging > 0) stgText += `<span style="color: var(--success); font-weight: 600;">+${svc.ahead_staging}</span>`;
+            if (svc.behind_staging > 0) stgText += `<span style="color: var(--error); font-weight: 600; margin-left: 3px;">-${svc.behind_staging}</span>`;
+        }
+        html += `
+            <span title="Ahead/Behind Staging" style="display: inline-flex; align-items: center; gap: 4px; padding-left: 12px; border-left: 1px solid var(--border); font-family: var(--font-mono);">
+                <span style="color: var(--text-dim); font-size: 9px; font-weight: 700; text-transform: uppercase; margin-right: 2px;">STG:</span>
+                ${stgText}
+            </span>
+        `;
+    }
+    
+    badge.innerHTML = html;
 
     // Hide push button if branch is main or master
     const pushBtn = document.getElementById('btn-git-push');

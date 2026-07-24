@@ -56,6 +56,9 @@ type Service struct {
 	HasStash       bool                      `json:"has_stash"`
 	Ahead          int                       `json:"ahead"`
 	Behind         int                       `json:"behind"`
+	AheadStaging   int                       `json:"ahead_staging"`
+	BehindStaging  int                       `json:"behind_staging"`
+	HasStaging     bool                      `json:"has_staging"`
 	StagedChanges  int                       `json:"staged_changes"`
 	ShowProduction bool                      `json:"show_production"`
 	Metrics        map[string]ServiceMetrics `json:"metrics,omitempty"` // env -> metrics

@@ -131,6 +131,43 @@ func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 		}
 	}
 
+	aheadStaging := 0
+	behindStaging := 0
+	hasStaging := false
+	stagingRef := ""
+	cmdStg := exec.Command(gitPath, "-c", "safe.directory=*", "show-ref", "--verify", "refs/heads/staging")
+	cmdStg.Dir = folderPath
+	errStgLocal := cmdStg.Run()
+	if errStgLocal == nil {
+		stagingRef = "staging"
+		hasStaging = true
+	} else {
+		cmdStgRemote := exec.Command(gitPath, "-c", "safe.directory=*", "show-ref", "--verify", "refs/remotes/origin/staging")
+		cmdStgRemote.Dir = folderPath
+		errStgRemote := cmdStgRemote.Run()
+		if errStgRemote == nil {
+			stagingRef = "origin/staging"
+			hasStaging = true
+		} else {
+			log.Printf("[Git Debug] Service %s local err: %v, remote err: %v", targetCfg.Name, errStgLocal, errStgRemote)
+		}
+	}
+
+	if hasStaging {
+		cmdStgComp := exec.Command(gitPath, "-c", "safe.directory=*", "rev-list", "--left-right", "--count", "HEAD..."+stagingRef)
+		cmdStgComp.Dir = folderPath
+		out, err := cmdStgComp.CombinedOutput()
+		if err == nil {
+			parts := strings.Fields(strings.TrimSpace(string(out)))
+			if len(parts) == 2 {
+				fmt.Sscanf(parts[0], "%d", &aheadStaging)
+				fmt.Sscanf(parts[1], "%d", &behindStaging)
+			}
+		} else {
+			log.Printf("[Git Debug] Service %s rev-list err: %v, out: %s", targetCfg.Name, err, string(out))
+		}
+	}
+
 	stagedChanges := 0
 	cmd = exec.Command(gitPath, "-c", "safe.directory=*", "status", "--porcelain")
 	cmd.Dir = folderPath
@@ -162,6 +199,9 @@ func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 		HasStash:       hasStash,
 		Ahead:          ahead,
 		Behind:         behind,
+		AheadStaging:   aheadStaging,
+		BehindStaging:  behindStaging,
+		HasStaging:     hasStaging,
 		StagedChanges:  stagedChanges,
 		ShowProduction: targetCfg.ShowProduction,
 	}
