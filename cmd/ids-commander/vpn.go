@@ -42,6 +42,7 @@ type VPNState struct {
 	IPAddress    string    `json:"ip_address,omitempty"`
 	Interface    string    `json:"interface,omitempty"`
 	ErrorMsg     string    `json:"error_msg,omitempty"`
+	Latency      string    `json:"latency,omitempty"`
 
 	cmd          *exec.Cmd
 	tempAuthFile string
@@ -755,3 +756,90 @@ func handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updated)
 }
+
+func startVPNMonitor() {
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		pingFailCount := 0
+
+		for range ticker.C {
+			vpnState.Lock()
+			status := vpnState.Status
+			activeCfg := vpnState.ActiveConfig
+			vpnState.Unlock()
+
+			if status != "connected" {
+				if status == "error" && activeCfg != "" {
+					log.Printf("[VPN Monitor] VPN status is error. Attempting auto-reconnect...")
+					creds, err := loadCredentials()
+					if err == nil {
+						if cred, ok := creds[activeCfg]; ok {
+							vpnBroadcaster.Broadcast("SYSTEM: Auto-reconnecting VPN due to unexpected crash...")
+							_ = startVPN(activeCfg, cred.Username, cred.Password, true)
+						}
+					}
+				}
+				pingFailCount = 0
+				vpnState.Lock()
+				vpnState.Latency = ""
+				vpnState.Unlock()
+				continue
+			}
+
+			agentURL := os.Getenv("DEV_AGENT_URL")
+			if agentURL == "" {
+				agentURL = os.Getenv("STG_AGENT_URL")
+			}
+			if agentURL == "" {
+				agentURL = os.Getenv("PROD_AGENT_URL")
+			}
+			if agentURL == "" {
+				agentURL = "http://ip-api.com/json/"
+			}
+
+			client := http.Client{Timeout: 3 * time.Second}
+			start := time.Now()
+			resp, err := client.Head(agentURL)
+			duration := time.Since(start)
+
+			if err == nil {
+				resp.Body.Close()
+				pingFailCount = 0
+				latencyStr := fmt.Sprintf("%dms", duration.Milliseconds())
+				vpnState.Lock()
+				vpnState.Latency = latencyStr
+				vpnState.Unlock()
+			} else {
+				pingFailCount++
+				log.Printf("[VPN Monitor] Latency check failed (%d/3): %v", pingFailCount, err)
+
+				vpnState.Lock()
+				vpnState.Latency = "timeout"
+				vpnState.Unlock()
+
+				if pingFailCount >= 3 {
+					log.Printf("[VPN Monitor] VPN connection failed 3 consecutive checks. Triggering auto-reconnect...")
+					pingFailCount = 0
+
+					_ = stopVPN()
+					time.Sleep(3 * time.Second)
+
+					creds, err := loadCredentials()
+					if err == nil {
+						if cred, ok := creds[activeCfg]; ok {
+							vpnBroadcaster.Broadcast("SYSTEM: Auto-reconnecting VPN due to connection loss...")
+							_ = startVPN(activeCfg, cred.Username, cred.Password, true)
+						} else {
+							log.Printf("[VPN Monitor] No saved credentials found for config: %s", activeCfg)
+						}
+					} else {
+						log.Printf("[VPN Monitor] Failed to load credentials: %v", err)
+					}
+				}
+			}
+		}
+	}()
+}
+

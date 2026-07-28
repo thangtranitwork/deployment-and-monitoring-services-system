@@ -411,6 +411,38 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		send("[Git Reset Staging] Restoring previous Git state...")
+
+		// Determine if we need to clean up build/deployment artifacts.
+		// We only clean if we successfully moved away from the original branch/commit.
+		cmdCur := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "--abbrev-ref", "HEAD")
+		cmdCur.Dir = svc.Dir
+		curBranch := ""
+		if curOut, err := cmdCur.CombinedOutput(); err == nil {
+			curBranch = strings.TrimSpace(string(curOut))
+		}
+
+		cmdCurCommit := exec.Command(gitPath, "-c", "safe.directory=*", "rev-parse", "HEAD")
+		cmdCurCommit.Dir = svc.Dir
+		curCommit := ""
+		if curCommitOut, err := cmdCurCommit.CombinedOutput(); err == nil {
+			curCommit = strings.TrimSpace(string(curCommitOut))
+		}
+
+		if curBranch != "" && (curBranch != prevBranch || (prevBranch == "HEAD" && curCommit != prevCommit)) {
+			send("[Git Reset Staging] Cleaning up temporary deployment changes and build artifacts...")
+			cmdReset := exec.Command(gitPath, "-c", "safe.directory=*", "reset", "--hard", "HEAD")
+			cmdReset.Dir = svc.Dir
+			if resetOut, err := cmdReset.CombinedOutput(); err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ⚠️ Git reset --hard warning: %v\n%s", err, string(resetOut)))
+			}
+
+			cmdClean := exec.Command(gitPath, "-c", "safe.directory=*", "clean", "-fd")
+			cmdClean.Dir = svc.Dir
+			if cleanOut, err := cmdClean.CombinedOutput(); err != nil {
+				send(fmt.Sprintf("[Git Reset Staging] ⚠️ Git clean warning: %v\n%s", err, string(cleanOut)))
+			}
+		}
+
 		if prevBranch == "HEAD" && prevCommit != "" {
 			send(fmt.Sprintf("[Git Reset Staging] Checking out previous commit %s...", prevCommit))
 			cmdRestore := exec.Command(gitPath, "-c", "safe.directory=*", "checkout", prevCommit)

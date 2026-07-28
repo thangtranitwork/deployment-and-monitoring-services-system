@@ -97,6 +97,9 @@ func main() {
 	mux.HandleFunc("/api/git/fetch/{service_name}", gitFetchHandler)
 	mux.HandleFunc("/api/git/push/{service_name}", gitPushHandler)
 	mux.HandleFunc("/api/git/pull/{service_name}", gitPullHandler)
+	mux.HandleFunc("/api/git/stash-show/{service_name}", gitStashShowHandler)
+	mux.HandleFunc("/api/git/stash-diff/{service_name}", gitStashDiffHandler)
+	mux.HandleFunc("/api/terminal/exec", terminalExecHandler)
 
 	// VPN Integration Routes
 	mux.HandleFunc("/api/configs", handleConfigs)
@@ -112,6 +115,8 @@ func main() {
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(basePath, "static", "favicon.ico"))
 	})
+
+	startVPNMonitor()
 
 	port := os.Getenv("PORT")
 	if port == "" {

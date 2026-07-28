@@ -766,3 +766,98 @@ func gitCompareAllHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
 }
+
+func gitStashShowHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	stashRef := r.URL.Query().Get("stash_ref")
+	if stashRef == "" {
+		http.Error(w, "stash_ref query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "stash", "show", "--name-status", stashRef)
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error running git stash show: %s", string(out)), http.StatusInternalServerError)
+		return
+	}
+
+	type StashFile struct {
+		Path   string `json:"path"`
+		Status string `json:"status"`
+	}
+	var files []StashFile
+
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 {
+			statusChar := parts[0]
+			filePath := parts[1]
+
+			statusText := "Modified"
+			if strings.HasPrefix(statusChar, "A") {
+				statusText = "Added"
+			} else if strings.HasPrefix(statusChar, "D") {
+				statusText = "Deleted"
+			} else if strings.HasPrefix(statusChar, "R") {
+				statusText = "Renamed"
+			} else if strings.HasPrefix(statusChar, "C") {
+				statusText = "Copied"
+			}
+
+			files = append(files, StashFile{
+				Path:   filePath,
+				Status: statusText,
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(files)
+}
+
+func gitStashDiffHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	stashRef := r.URL.Query().Get("stash_ref")
+	filePath := r.URL.Query().Get("file_path")
+	if stashRef == "" || filePath == "" {
+		http.Error(w, "stash_ref and file_path query parameters are required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "diff", stashRef+"^!", "--", filePath)
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			http.Error(w, fmt.Sprintf("Error running git diff: %v: %s", err, string(out)), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write(out)
+}
+

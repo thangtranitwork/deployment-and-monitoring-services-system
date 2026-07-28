@@ -120,6 +120,7 @@ function closeTerminalTab(serviceName) {
 
 // Multi Deploy Modal Functions
 function openMultiDeployModal() {
+    const overlay = document.getElementById('multi-deploy-modal-overlay');
     if (overlay) overlay.style.display = 'flex';
 
     modalSelectedServices.clear();
@@ -909,17 +910,19 @@ async function loadGitTabContent(tab) {
                 listEl.appendChild(row);
             });
         } else if (tab === 'stash') {
-
             if (data.length === 0) {
                 listEl.innerHTML = '<div style="padding: 10px; color: var(--text-dim);">No stashes found.</div>';
             } else {
                 data.forEach((s, idx) => {
                     const row = document.createElement('div');
-                    row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--border);';
+                    row.style.cssText = 'display: flex; flex-direction: column; padding: 10px 14px; background: var(--bg-hover); border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--border); cursor: pointer;';
+                    row.onclick = () => toggleStashPreview(idx, row);
                     row.innerHTML = `
-                        <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-main); margin-right: 12px;">${s}</div>
-                        <button class="primary" style="font-size: 10px; padding: 2px 8px; height: 24px; background: #2ecc71;" 
-                                onclick="popStash(${idx})">Pop</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-main); margin-right: 12px;">📁 ${s}</div>
+                            <button class="primary" style="font-size: 10px; padding: 2px 8px; height: 24px; background: #2ecc71;" 
+                                    onclick="event.stopPropagation(); popStash(${idx})">Pop</button>
+                        </div>
                     `;
                     listEl.appendChild(row);
                 });
@@ -1419,6 +1422,12 @@ async function refreshServices() {
         item.onclick = () => selectSvc(svc, item);
         const stashTag = svc.has_stash ? '<span style="color: #f1c40f; margin-left: 8px;" title="Has Git Stash">📥</span>' : '';
         const stagedTag = svc.staged_changes > 0 ? `<span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; margin-left: 6px;" title="${svc.staged_changes} Staged Changes">Staged: ${svc.staged_changes}</span>` : '';
+        
+        const recommendTag = (svc.ahead_staging > 0 || svc.ahead > 0) ? `
+            <span class="recommend-badge" style="background: rgba(241, 196, 15, 0.08); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.25); font-size: 8.5px; padding: 1px 5px; border-radius: 4px; font-weight: bold; animation: deployPulse 2s infinite; display: inline-flex; align-items: center; gap: 3px;" title="Has un-deployed changes (Staging: +${svc.ahead_staging}, Production: +${svc.ahead})">
+                💡 Deploy Suggest
+            </span>
+        ` : '';
 
         let healthHtml = '';
         if (svc.metrics) {
@@ -1456,6 +1465,7 @@ async function refreshServices() {
                     <span>${svc.name}</span>
                     ${stashTag}
                     ${statusTagHtml}
+                    ${recommendTag}
                 </div>
                 ${healthHtml}
             </div>
@@ -2719,6 +2729,7 @@ function updateVPNUIState(state) {
     const statIp = document.getElementById('vpn-stat-ip');
     const statInterface = document.getElementById('vpn-stat-interface');
     const statUptime = document.getElementById('vpn-stat-uptime');
+    const statLatency = document.getElementById('vpn-stat-latency');
 
     const btnConnect = document.getElementById('vpn-btn-connect');
     const btnDisconnect = document.getElementById('vpn-btn-disconnect');
@@ -2734,6 +2745,9 @@ function updateVPNUIState(state) {
     stateRing.className = `state-glowing-ring ${status}`;
     stateDot.className = `state-dot ${status}`;
     stateName.textContent = status.toUpperCase();
+    if (statLatency) {
+        statLatency.textContent = state.latency || '--';
+    }
 
     // Update header toggle button state
     const vpnToggleBtn = document.getElementById('vpn-toggle');
@@ -3078,3 +3092,214 @@ async function deleteSelectedVPNAccount() {
 init();
 
 initResizer();
+
+function handleTerminalCommand(event) {
+    if (event.key !== 'Enter') return;
+    const input = event.target;
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    
+    if (!selectedService) {
+        showAlert('Error', 'Please select a service first.');
+        return;
+    }
+    
+    input.value = '';
+    runTerminalCommand(selectedService.name, cmd);
+}
+
+function runTerminalCommand(svcName, cmd) {
+    const terminal = document.getElementById('terminal');
+    const statusSpan = document.getElementById('terminal-status');
+    
+    terminal.innerHTML = `<span style="color: var(--accent); font-weight: bold;">$ ${cmd}</span>\n`;
+    if (statusSpan) {
+        statusSpan.innerText = 'running';
+        statusSpan.style.color = 'var(--accent)';
+    }
+
+    fetch('/api/terminal/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            service_name: svcName, 
+            command: cmd
+        })
+    }).then(response => {
+        if (!response.ok) {
+            response.text().then(text => {
+                terminal.innerHTML += `\n<span style="color: var(--error)">Error: ${text}</span>\n`;
+                if (statusSpan) {
+                    statusSpan.innerText = 'failed';
+                    statusSpan.style.color = 'var(--error)';
+                }
+            });
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        function read() {
+            reader.read().then(({ done, value }) => {
+                if (done) {
+                    if (statusSpan) {
+                        statusSpan.innerText = 'idle';
+                        statusSpan.style.color = 'var(--text-dim)';
+                    }
+                    return;
+                }
+
+                const chunk = decoder.decode(value, { stream: true });
+                chunk.split('\n\n').forEach(event => {
+                    const trimmed = event.trimStart();
+                    if (trimmed.startsWith('data: ')) {
+                        const content = trimmed.slice(6);
+                        if (content.trim() === '[EOF]') {
+                            if (statusSpan) {
+                                statusSpan.innerText = 'idle';
+                                statusSpan.style.color = 'var(--text-dim)';
+                            }
+                            return;
+                        }
+                        terminal.innerHTML += content.endsWith('\n') ? content : content + '\n';
+                        terminal.scrollTop = terminal.scrollHeight;
+                    }
+                });
+                read();
+            });
+        }
+        read();
+    }).catch(err => {
+        terminal.innerHTML += `\n<span style="color: var(--error)">Connection Error: ${err.message}</span>\n`;
+        if (statusSpan) {
+            statusSpan.innerText = 'failed';
+            statusSpan.style.color = 'var(--error)';
+        }
+    });
+}
+
+async function toggleStashPreview(idx, rowElement) {
+    let previewDiv = rowElement.querySelector('.stash-preview-container');
+    if (previewDiv) {
+        if (previewDiv.style.display === 'none') {
+            previewDiv.style.display = 'block';
+        } else {
+            previewDiv.style.display = 'none';
+        }
+        return;
+    }
+
+    previewDiv = document.createElement('div');
+    previewDiv.className = 'stash-preview-container';
+    previewDiv.style.cssText = 'width: 100%; border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;';
+    previewDiv.innerHTML = '<div class="shimmer" style="height: 30px"></div>';
+    rowElement.appendChild(previewDiv);
+
+    try {
+        const res = await fetch(`/api/git/stash-show/${selectedService.name}?stash_ref=stash@{${idx}}`);
+        if (!res.ok) {
+            throw new Error(await res.text());
+        }
+        const files = await res.json();
+        
+        previewDiv.innerHTML = '';
+        if (files.length === 0) {
+            previewDiv.innerHTML = '<div style="font-size: 11px; color: var(--text-dim);">No files changed in this stash.</div>';
+            return;
+        }
+
+        files.forEach(file => {
+            const item = document.createElement('div');
+            item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: background 0.2s;';
+            item.title = "Click to view diff";
+            item.onmouseover = () => item.style.background = 'var(--bg-hover)';
+            item.onmouseout = () => item.style.background = 'var(--bg-card)';
+            
+            let statusColor = '#f1c40f';
+            let statusBg = 'rgba(241, 196, 15, 0.1)';
+            if (file.status === 'Added') {
+                statusColor = '#2ecc71';
+                statusBg = 'rgba(46, 204, 113, 0.1)';
+            } else if (file.status === 'Deleted') {
+                statusColor = '#e74c3c';
+                statusBg = 'rgba(231, 76, 60, 0.1)';
+            }
+
+            item.innerHTML = `
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; color: var(--text-main);">${file.path}</span>
+                <span style="font-size: 9px; font-weight: bold; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; color: ${statusColor}; background: ${statusBg}; border: 1px solid ${statusColor}40; letter-spacing: 0.5px;">${file.status}</span>
+            `;
+            
+            item.onclick = (e) => {
+                e.stopPropagation();
+                viewStashFileDiff(idx, file.path);
+            };
+            previewDiv.appendChild(item);
+        });
+    } catch (err) {
+        previewDiv.innerHTML = `<div style="font-size: 11px; color: var(--error);">Failed to load stash preview: ${err.message}</div>`;
+    }
+}
+
+async function viewStashFileDiff(idx, filePath) {
+    const modal = document.getElementById('diff-viewer-modal');
+    const title = document.getElementById('diff-viewer-title');
+    const body = document.getElementById('diff-viewer-body');
+    
+    if (!modal || !title || !body) return;
+    
+    title.textContent = `${filePath} (stash@{${idx}})`;
+    body.innerHTML = '<div class="shimmer" style="height: 100px"></div>';
+    modal.style.display = 'flex';
+    
+    try {
+        const res = await fetch(`/api/git/stash-diff/${selectedService.name}?stash_ref=stash@{${idx}}&file_path=${encodeURIComponent(filePath)}`);
+        if (!res.ok) {
+            throw new Error(await res.text());
+        }
+        const diffText = await res.text();
+        
+        if (!diffText.trim()) {
+            body.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No differences or binary file.</div>';
+            return;
+        }
+
+        const lines = diffText.split('\n');
+        const colorized = lines.map(line => {
+            let color = 'inherit';
+            let bg = 'transparent';
+            if (line.startsWith('+') && !line.startsWith('+++')) {
+                color = '#2ecc71';
+                bg = 'rgba(46, 204, 113, 0.05)';
+            } else if (line.startsWith('-') && !line.startsWith('---')) {
+                color = '#e74c3c';
+                bg = 'rgba(231, 76, 60, 0.05)';
+            } else if (line.startsWith('@@')) {
+                color = '#9b59b6';
+            } else if (line.startsWith('diff') || line.startsWith('index') || line.startsWith('---') || line.startsWith('+++')) {
+                color = 'var(--text-dim)';
+                bg = 'rgba(255, 255, 255, 0.02)';
+            }
+            return `<div style="color: ${color}; background: ${bg}; padding: 0 4px; min-height: 1.5em; border-radius: 2px;">${escapeHtml(line)}</div>`;
+        }).join('');
+        
+        body.innerHTML = colorized;
+    } catch (err) {
+        body.innerHTML = `<span style="color: var(--error)">Failed to fetch diff: ${err.message}</span>`;
+    }
+}
+
+function closeDiffViewerModal() {
+    const modal = document.getElementById('diff-viewer-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
