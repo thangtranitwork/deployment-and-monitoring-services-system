@@ -56,12 +56,15 @@ function switchTerminalTab(serviceName) {
     activeTerminalTab = serviceName;
     updateTerminalTabs();
     
-    const terminal = document.getElementById('terminal');
+    const deployElem = document.getElementById('terminal-deploy');
     const statusSpan = document.getElementById('terminal-status');
     const dep = activeDeployments[serviceName];
     
-    if (dep && terminal) {
-        terminal.innerText = dep.logs;
+    if (dep) {
+        if (deployElem) {
+            deployElem.innerText = dep.logs;
+            deployElem.scrollTop = deployElem.scrollHeight;
+        }
         if (statusSpan) {
             statusSpan.innerText = dep.status;
             if (dep.status === 'running') {
@@ -74,7 +77,6 @@ function switchTerminalTab(serviceName) {
                 statusSpan.style.color = 'var(--text-dim)';
             }
         }
-        terminal.scrollTop = terminal.scrollHeight;
     }
 }
 
@@ -499,13 +501,18 @@ function openMultiDeployLogsModal(svcNamesList = null) {
             box.className = `multi-log-box ${dep.status || ''}`;
             box.id = `multi-log-box-${name}`;
             box.innerHTML = `
-                <div class="multi-log-box-header">
+                <div class="multi-log-box-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-weight: 700; font-size: 14px; color: var(--text-main);">📦 ${name}</span>
                         <span style="font-size: 10px; opacity: 0.7; padding: 1px 6px; background: var(--bg-body); border-radius: 4px; border: 1px solid var(--border);">${dep.env}</span>
                     </div>
-                    <div id="multi-log-status-${name}">
-                        ${statusBadge}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick="retryMultiDeploySingle('${name}')" title="Retry Deploy for ${name}" style="background: rgba(241, 196, 15, 0.12); border: 1px solid rgba(241, 196, 15, 0.35); color: #f1c40f; font-size: 10px; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.15s ease;">
+                            Retry
+                        </button>
+                        <div id="multi-log-status-${name}">
+                            ${statusBadge}
+                        </div>
                     </div>
                 </div>
                 <pre class="multi-log-box-body" id="multi-log-pre-${name}">${dep.logs || ''}</pre>
@@ -522,6 +529,42 @@ function openMultiDeployLogsModal(svcNamesList = null) {
     
     const overlay = document.getElementById('multi-deploy-logs-modal-overlay');
     if (overlay) overlay.style.display = 'flex';
+}
+
+function retryMultiDeploySingle(svcName) {
+    const svc = services.find(s => s.name === svcName);
+    if (!svc) {
+        showAlert('Error', `Service ${svcName} not found.`);
+        return;
+    }
+
+    const dep = activeDeployments[svcName];
+    const env = (dep && dep.env) ? dep.env : modalCurrentEnv || currentEnv || 'Development';
+    const msg = (dep && dep.message) ? dep.message : (svc.last_commit || 'Retry deployment');
+    const resetStaging = (dep && dep.reset_staging) || (localStorage.getItem('lastResetStaging') === 'true');
+
+    if (env === 'Production') {
+        const pass = prompt(`Enter Production password for ${svcName}:`);
+        if (!pass) return;
+        executeDeployFromModal(svc, env, msg, pass, resetStaging);
+    } else {
+        executeDeployFromModal(svc, env, msg, '', resetStaging);
+    }
+}
+
+function retryAllFailedMultiDeploys() {
+    const failedServices = Object.keys(activeDeployments).filter(name => {
+        return activeDeployments[name] && activeDeployments[name].status === 'failed';
+    });
+
+    if (failedServices.length === 0) {
+        showAlert('Info', 'No failed deployments to retry.');
+        return;
+    }
+
+    failedServices.forEach(name => {
+        retryMultiDeploySingle(name);
+    });
 }
 
 function closeMultiDeployLogsModal() {
@@ -575,6 +618,7 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
     activeTerminalTab = svcName;
     updateTerminalTabs();
     switchTerminalTab(svcName);
+    switchTerminalView('deploy');
     updateSidebarItemStatus(svcName, 'running');
     updateMultiLogBox(svcName);
     validateForm();
@@ -648,6 +692,11 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
                             updateMultiLogBox(svcName);
                             if (activeTerminalTab === svcName) {
                                 switchTerminalTab(svcName);
+                                setTimeout(() => {
+                                    if (selectedService && selectedService.name === svcName) {
+                                        connectTerminalWS(svcName);
+                                    }
+                                }, 1000);
                             } else {
                                 updateTerminalTabs();
                             }
@@ -669,9 +718,10 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
                                 activeDeployments[svcName].logs += content.endsWith('\n') ? content : content + '\n';
                                 updateMultiLogBox(svcName);
                                 if (activeTerminalTab === svcName) {
-                                    if (terminal) {
-                                        terminal.innerText = activeDeployments[svcName].logs;
-                                        terminal.scrollTop = terminal.scrollHeight;
+                                    const deployElem = document.getElementById('terminal-deploy');
+                                    if (deployElem) {
+                                        deployElem.innerText = activeDeployments[svcName].logs;
+                                        deployElem.scrollTop = deployElem.scrollHeight;
                                     }
                                 }
                             }
@@ -726,6 +776,7 @@ async function init() {
         }
     });
     await initVPN();
+    initTerminal();
 }
 
 function matchSearchQuery(text, query) {
@@ -1550,7 +1601,9 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
         }
     } catch (err) { }
     document.getElementById('deploy-msg').value = svc.last_commit;
-    if (!skipTerminalReset && !activeTerminalTab) document.getElementById('terminal').innerText = `Ready to deploy ${svc.name}...`;
+    if (!skipTerminalReset && !activeTerminalTab) {
+        connectTerminalWS(svc.name);
+    }
     if (!gitHiddenManually) {
         document.getElementById('git-card').style.display = 'block';
         document.getElementById('resizer').style.display = 'block';
@@ -3093,6 +3146,278 @@ init();
 
 initResizer();
 
+let term = null;
+let fitAddon = null;
+let termSocket = null;
+let currentTerminalService = null;
+let terminalSnippets = [];
+let currentTerminalView = 'pty';
+
+function switchTerminalView(view) {
+    currentTerminalView = view;
+    const ptyContainer = document.getElementById('terminal');
+    const deployContainer = document.getElementById('terminal-deploy');
+    const pwdDisplay = document.getElementById('terminal-pwd-display');
+    const btnPty = document.getElementById('tab-btn-pty');
+    const btnDeploy = document.getElementById('tab-btn-deploy');
+    const snippetBar = document.getElementById('terminal-snippet-bar');
+
+    if (view === 'pty') {
+        if (ptyContainer) ptyContainer.style.display = 'block';
+        if (deployContainer) deployContainer.style.display = 'none';
+        if (pwdDisplay) pwdDisplay.style.display = 'inline-block';
+        if (snippetBar) snippetBar.style.display = 'flex';
+
+        if (btnPty) {
+            btnPty.style.background = 'var(--accent)';
+            btnPty.style.color = '#000';
+        }
+        if (btnDeploy) {
+            btnDeploy.style.background = 'transparent';
+            btnDeploy.style.color = 'var(--text-dim)';
+        }
+
+        if (fitAddon) {
+            setTimeout(() => fitAddon.fit(), 50);
+        }
+    } else {
+        if (ptyContainer) ptyContainer.style.display = 'none';
+        if (deployContainer) deployContainer.style.display = 'block';
+        if (pwdDisplay) pwdDisplay.style.display = 'none';
+        if (snippetBar) snippetBar.style.display = 'none';
+
+        if (btnDeploy) {
+            btnDeploy.style.background = 'var(--accent)';
+            btnDeploy.style.color = '#000';
+        }
+        if (btnPty) {
+            btnPty.style.background = 'transparent';
+            btnPty.style.color = 'var(--text-dim)';
+        }
+    }
+}
+
+function initTerminal() {
+    const termElem = document.getElementById('terminal');
+    if (!termElem) return;
+
+    if (window.Terminal) {
+        termElem.innerHTML = '';
+        term = new Terminal({
+            cursorBlink: true,
+            fontSize: 12,
+            fontFamily: 'JetBrains Mono, monospace',
+            theme: {
+                background: '#07090e',
+                foreground: '#e0e0e0',
+                cursor: '#00ffaa',
+                selectionBackground: 'rgba(255, 255, 255, 0.2)',
+                black: '#000000',
+                red: '#ff5f56',
+                green: '#27c93f',
+                yellow: '#ffbd2e',
+                blue: '#007acc',
+                magenta: '#bc13fe',
+                cyan: '#00d3a7',
+                white: '#ffffff'
+            }
+        });
+
+        if (window.FitAddon && window.FitAddon.FitAddon) {
+            fitAddon = new window.FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+        }
+
+        term.open(termElem);
+        if (fitAddon) {
+            setTimeout(() => fitAddon.fit(), 100);
+        }
+
+        term.onData(data => {
+            if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+                termSocket.send(JSON.stringify({ type: 'input', data: data }));
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (fitAddon) fitAddon.fit();
+            if (termSocket && termSocket.readyState === WebSocket.OPEN && term) {
+                termSocket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+            }
+        });
+    }
+
+    fetchSnippets();
+}
+
+function updatePwdDisplay(path) {
+    const pwdElem = document.getElementById('pwd-path');
+    const pwdContainer = document.getElementById('terminal-pwd-display');
+    if (!pwdElem) return;
+    
+    let displayPath = path || '~';
+    if (path && path.startsWith('/home/thang')) {
+        displayPath = '~' + path.slice('/home/thang'.length);
+    }
+    pwdElem.innerText = displayPath;
+    if (pwdContainer) {
+        pwdContainer.title = `Current Working Directory: ${path}`;
+    }
+}
+
+function connectTerminalWS(svcName) {
+    if (!svcName) return;
+    if (currentTerminalService === svcName && termSocket && (termSocket.readyState === WebSocket.OPEN || termSocket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+
+    if (termSocket) {
+        try { termSocket.close(); } catch (e) {}
+        termSocket = null;
+    }
+
+    currentTerminalService = svcName;
+    const statusSpan = document.getElementById('terminal-status');
+    if (statusSpan) {
+        statusSpan.innerText = 'connecting...';
+        statusSpan.style.color = 'var(--accent)';
+    }
+
+    if (term) {
+        term.reset();
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws/${encodeURIComponent(svcName)}`;
+
+    try {
+        termSocket = new WebSocket(wsUrl);
+
+        termSocket.onopen = () => {
+            if (statusSpan) {
+                statusSpan.innerText = 'connected (pty)';
+                statusSpan.style.color = '#27c93f';
+            }
+            if (term && fitAddon) {
+                fitAddon.fit();
+                termSocket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+            }
+        };
+
+        fetch(`/api/terminal/cwd/${encodeURIComponent(svcName)}`)
+            .then(res => res.json())
+            .then(data => { if (data.cwd) updatePwdDisplay(data.cwd); })
+            .catch(() => {});
+
+        termSocket.onmessage = (event) => {
+            if (typeof event.data === 'string' && event.data.includes('"cwd"')) {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed.path) {
+                        updatePwdDisplay(parsed.path);
+                        return;
+                    }
+                } catch (e) {}
+            }
+            if (term) {
+                term.write(event.data);
+            }
+        };
+
+        termSocket.onerror = (err) => {
+            console.error('[WS Terminal Error]', err);
+            if (statusSpan) {
+                statusSpan.innerText = 'error';
+                statusSpan.style.color = 'var(--error)';
+            }
+        };
+
+        termSocket.onclose = () => {
+            if (statusSpan) {
+                statusSpan.innerText = 'disconnected';
+                statusSpan.style.color = 'var(--text-dim)';
+            }
+        };
+    } catch (e) {
+        console.error('[WS Terminal Exception]', e);
+    }
+}
+
+async function fetchSnippets() {
+    try {
+        const res = await fetch('/api/terminal/snippets');
+        if (res.ok) {
+            terminalSnippets = await res.json();
+            renderSnippetChips();
+        }
+    } catch (err) {
+        console.error('[Fetch Snippets Error]', err);
+    }
+}
+
+function renderSnippetChips() {
+    const container = document.getElementById('snippet-chips');
+    if (!container) return;
+    container.innerHTML = '';
+
+    terminalSnippets.forEach((snippet, index) => {
+        const chip = document.createElement('div');
+        chip.style.cssText = `
+            display: inline-flex; align-items: center; background: rgba(0, 211, 167, 0.08);
+            border: 1px solid rgba(0, 211, 167, 0.25); border-radius: 4px; padding: 2px 8px;
+            font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+            cursor: pointer; transition: all 0.15s ease; white-space: nowrap; user-select: none;
+        `;
+        chip.onmouseover = () => { chip.style.background = 'rgba(0, 211, 167, 0.2)'; };
+        chip.onmouseout = () => { chip.style.background = 'rgba(0, 211, 167, 0.08)'; };
+        
+        chip.innerHTML = `
+            <span onclick="runSnippet('${snippet.replace(/'/g, "\\'")}')" style="margin-right: 4px;">${snippet}</span>
+            <span onclick="deleteSnippet(${index}, event)" style="color: var(--text-dim); font-weight: bold; margin-left: 4px; opacity: 0.6;" title="Remove snippet">&times;</span>
+        `;
+        container.appendChild(chip);
+    });
+}
+
+function runSnippet(cmd) {
+    if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+        termSocket.send(JSON.stringify({ type: 'input', data: cmd + '\r' }));
+    } else if (selectedService) {
+        runTerminalCommand(selectedService.name, cmd);
+    } else {
+        showAlert('Info', 'Please select a service first.');
+    }
+}
+
+async function addCustomSnippet() {
+    const snippet = prompt('Enter quick command snippet (e.g. go test ./...):');
+    if (!snippet || !snippet.trim()) return;
+    const clean = snippet.trim();
+    if (!terminalSnippets.includes(clean)) {
+        terminalSnippets.push(clean);
+        await saveSnippets();
+    }
+}
+
+async function deleteSnippet(index, event) {
+    if (event) event.stopPropagation();
+    terminalSnippets.splice(index, 1);
+    await saveSnippets();
+}
+
+async function saveSnippets() {
+    renderSnippetChips();
+    try {
+        await fetch('/api/terminal/snippets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ snippets: terminalSnippets })
+        });
+    } catch (err) {
+        console.error('[Save Snippets Error]', err);
+    }
+}
+
 function handleTerminalCommand(event) {
     if (event.key !== 'Enter') return;
     const input = event.target;
@@ -3109,12 +3434,14 @@ function handleTerminalCommand(event) {
 }
 
 function runTerminalCommand(svcName, cmd) {
-    const terminal = document.getElementById('terminal');
+    if (termSocket && termSocket.readyState === WebSocket.OPEN) {
+        termSocket.send(JSON.stringify({ type: 'input', data: cmd + '\r' }));
+        return;
+    }
+
     const statusSpan = document.getElementById('terminal-status');
-    
-    terminal.innerHTML = `<span style="color: var(--accent); font-weight: bold;">$ ${cmd}</span>\n`;
     if (statusSpan) {
-        statusSpan.innerText = 'running';
+        statusSpan.innerText = 'running...';
         statusSpan.style.color = 'var(--accent)';
     }
 
@@ -3128,7 +3455,7 @@ function runTerminalCommand(svcName, cmd) {
     }).then(response => {
         if (!response.ok) {
             response.text().then(text => {
-                terminal.innerHTML += `\n<span style="color: var(--error)">Error: ${text}</span>\n`;
+                if (term) term.writeln(`\r\n\x1b[31mError: ${text}\x1b[0m`);
                 if (statusSpan) {
                     statusSpan.innerText = 'failed';
                     statusSpan.style.color = 'var(--error)';
@@ -3162,8 +3489,7 @@ function runTerminalCommand(svcName, cmd) {
                             }
                             return;
                         }
-                        terminal.innerHTML += content.endsWith('\n') ? content : content + '\n';
-                        terminal.scrollTop = terminal.scrollHeight;
+                        if (term) term.write(content + '\r\n');
                     }
                 });
                 read();
@@ -3171,7 +3497,7 @@ function runTerminalCommand(svcName, cmd) {
         }
         read();
     }).catch(err => {
-        terminal.innerHTML += `\n<span style="color: var(--error)">Connection Error: ${err.message}</span>\n`;
+        if (term) term.writeln(`\r\n\x1b[31mConnection Error: ${err.message}\x1b[0m`);
         if (statusSpan) {
             statusSpan.innerText = 'failed';
             statusSpan.style.color = 'var(--error)';

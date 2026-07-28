@@ -36,8 +36,9 @@ type Settings struct {
 	ShowProduction bool              `json:"show_production"`
 	DarkTheme      ThemeColors       `json:"dark_theme"`
 	LightTheme     ThemeColors       `json:"light_theme"`
-	CustomCmds     map[string]string `json:"custom_cmds"`
-	Services       []ServiceConfig   `json:"services"`
+	CustomCmds       map[string]string `json:"custom_cmds"`
+	TerminalSnippets []string          `json:"terminal_snippets"`
+	Services         []ServiceConfig   `json:"services"`
 }
 
 type Service struct {
@@ -98,4 +99,8 @@ var (
 	// Metrics
 	globalMetrics = make(map[string]map[string]ServiceMetrics) // env -> service -> metrics
 	metricsMu     sync.RWMutex
+
+	// Persistent Working Directory for Terminal Sessions
+	serviceWorkingDir   = make(map[string]string)
+	serviceWorkingDirMu sync.RWMutex
 )

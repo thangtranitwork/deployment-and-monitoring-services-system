@@ -12,13 +12,16 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
     <link rel="stylesheet" href="/static/css/style.css?v=1.6.8">
 </head>
 
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.3</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.4</span></div>
         <div class="header-actions">
             <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
@@ -123,9 +126,9 @@
             <div class="terminal-container"
                 style="flex: 1; display: flex; flex-direction: column; min-height: 100px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);">
                 <div
-                    style="background: #111; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
-                    <div style="display: flex; align-items: center;">
-                        <div style="display: flex; gap: 6px; margin-right: 16px;">
+                    style="background: #111; padding: 6px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; gap: 6px; margin-right: 8px;">
                             <span
                                 style="width: 10px; height: 10px; border-radius: 50%; background: #ff5f56; display: inline-block;"></span>
                             <span
@@ -133,19 +136,29 @@
                             <span
                                 style="width: 10px; height: 10px; border-radius: 50%; background: #27c93f; display: inline-block;"></span>
                         </div>
-                        <div class="label" style="margin-bottom: 0; font-size: 10px;">Logs Terminal</div>
+                        <div class="terminal-tab-group" style="display: flex; gap: 4px; background: rgba(255,255,255,0.05); padding: 2px; border-radius: 6px;">
+                            <button id="tab-btn-pty" onclick="switchTerminalView('pty')" class="term-tab-btn" style="padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px; background: var(--accent); color: #000; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">💻 Interactive Terminal</button>
+                            <button id="tab-btn-deploy" onclick="switchTerminalView('deploy')" class="term-tab-btn" style="padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px; background: transparent; color: var(--text-dim); font-weight: 600; cursor: pointer; transition: all 0.15s ease;">🚀 Deploy Logs</button>
+                        </div>
+                        <div id="terminal-pwd-display" style="font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 600; user-select: none; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Current Working Directory">
+                            <span id="pwd-path">~</span> <span style="color: var(--accent); font-weight: bold;">$</span>
+                        </div>
                     </div>
                     <span id="terminal-status"
                         style="font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);">idle</span>
                 </div>
-                <div id="terminal" style="border: none; border-radius: 0; box-shadow: none;">Select a service to
-                    start...</div>
-                <div id="terminal-cmd-bar" style="display: flex; background: #07090e; border-top: 1px solid var(--border); padding: 8px 12px; align-items: center; gap: 8px;">
-                    <span style="font-family: var(--font-mono); font-size: 13px; color: var(--accent); font-weight: bold; user-select: none;">$</span>
-                    <input type="text" id="terminal-cmd-input" placeholder="Run quick command in service dir... (e.g. go mod tidy)" 
-                        style="flex: 1; background: transparent; border: none; color: var(--text-main); font-family: var(--font-mono); font-size: 13px; padding: 4px 0; outline: none; box-shadow: none;"
-                        onkeydown="handleTerminalCommand(event)">
-                    <span style="font-size: 10px; color: var(--text-dim); font-family: var(--font-mono); font-weight: normal; user-select: none;">Press Enter</span>
+
+                <!-- View 1: Interactive PTY Terminal (xterm.js) -->
+                <div id="terminal" style="border: none; border-radius: 0; box-shadow: none; flex: 1; min-height: 120px;">Select a service to start...</div>
+
+                <!-- View 2: Deploy Logs Console -->
+                <div id="terminal-deploy" style="display: none; border: none; border-radius: 0; box-shadow: none; flex: 1; min-height: 120px; background: var(--terminal-bg); padding: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--terminal-text); overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">No deployment logs available.</div>
+
+                <!-- Quick Snippets Bar (Active for Terminal View) -->
+                <div id="terminal-snippet-bar" style="display: flex; background: #0c0f17; border-top: 1px solid var(--border); padding: 6px 12px; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none;">
+                    <span style="font-size: 10px; color: var(--text-dim); text-transform: uppercase; font-weight: 600; white-space: nowrap; margin-right: 4px;">⚡ Snippets:</span>
+                    <div id="snippet-chips" style="display: flex; gap: 6px; align-items: center;"></div>
+                    <button onclick="addCustomSnippet()" style="background: rgba(255,255,255,0.05); border: 1px dashed var(--border); color: var(--text-dim); font-size: 10px; padding: 2px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap;">+ Add Snippet</button>
                 </div>
             </div>
 
@@ -913,7 +926,10 @@
                             style="font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 12px; background: var(--bg-hover); color: var(--text-main);">0
                             Services</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" onclick="retryAllFailedMultiDeploys()"
+                            title="Retry all failed deployments"
+                            style="background: rgba(241, 196, 15, 0.15); border: 1px solid rgba(241, 196, 15, 0.4); color: #f1c40f; font-size: 11px; padding: 4px 10px; height: 28px; border-radius: 4px; font-weight: 600; cursor: pointer;">Retry Failed</button>
                         <button type="button" onclick="toggleMultiLogsGridCols()"
                             style="font-size: 11px; padding: 4px 10px; height: 28px;">🔲 Auto Grid</button>
                         <span onclick="closeMultiDeployLogsModal()"

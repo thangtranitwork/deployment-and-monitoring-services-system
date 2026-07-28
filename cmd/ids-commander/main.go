@@ -100,6 +100,9 @@ func main() {
 	mux.HandleFunc("/api/git/stash-show/{service_name}", gitStashShowHandler)
 	mux.HandleFunc("/api/git/stash-diff/{service_name}", gitStashDiffHandler)
 	mux.HandleFunc("/api/terminal/exec", terminalExecHandler)
+	mux.HandleFunc("/api/terminal/ws/{service_name}", terminalWebSocketHandler)
+	mux.HandleFunc("/api/terminal/snippets", terminalSnippetsHandler)
+	mux.HandleFunc("/api/terminal/cwd/{service_name}", terminalCwdHandler)
 
 	// VPN Integration Routes
 	mux.HandleFunc("/api/configs", handleConfigs)

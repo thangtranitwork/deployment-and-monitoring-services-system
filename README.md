@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.6.3
+# 🚀 Internal Deploy System (IDS) - v1.6.4
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -61,7 +61,7 @@ deploy-tool/
 
 - **OpenVPN Integration**: Toggle VPN connection state on the host directly from the Web interface.
 - **Real-time Status**: Displays active tunnel status (connected, disconnected, connecting, disconnecting, or error state) with real-time logs via Server-Sent Events (SSE). Shows active WAN IP address, geo-location, active network interface, and uptime.
-- **Config & Account Management**: 
+- **Config & Account Management**:
   - Scan for `.ovpn` profiles in custom directories or user folders.
   - Save, edit, and delete multiple VPN credentials/accounts with custom labels.
   - Automatically loads last saved credentials or persistent profiles.
@@ -193,18 +193,18 @@ PROD_AGENT_URL=http://your-prod-agent-ip:8080
 
 1. **Configure Environment**: Copy `.env.example` to `.env` and fill in your database, SSH, and agent URLs.
 2. **Configure Agent**: Deploy `ids-health` to your target servers and set agent URLs in `.env`.
-2. **Configure OpenVPN Permissions (Required)**:
+3. **Configure OpenVPN Permissions (Required)**:
    Since OpenVPN requires root privileges to manipulate routing tables and create TUN/TAP interfaces, the system service (running as the unprivileged user `thang`) needs a passwordless sudoers exception. Run the following command on the host:
    ```bash
    echo "thang ALL=(ALL) NOPASSWD: /usr/sbin/openvpn" | sudo tee /etc/sudoers.d/openvpn
    ```
-3. **Build & Run**:
+4. **Build & Run**:
    ```bash
    # Build ids-commander
    go build -o ids-commander ./cmd/ids-commander
    ./ids-commander
    ```
-4. **Configure Services**: Open **Settings > Deployment** to configure folder mappings, service names, custom deployment commands, and production environment flags for each service.
+5. **Configure Services**: Open **Settings > Deployment** to configure folder mappings, service names, custom deployment commands, and production environment flags for each service.
 
 ## 📄 License
 
