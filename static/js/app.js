@@ -146,9 +146,15 @@ function openMultiDeployModal() {
     document.getElementById('modal-deploy-msg').value = mainMsg ? mainMsg.value : '';
     document.getElementById('modal-svc-search').value = '';
     
-    const savedResetStaging = localStorage.getItem('lastResetStaging') === 'true';
-    const resetStgBtn = document.getElementById('reset-staging-btn');
-    if (resetStgBtn) resetStgBtn.classList.toggle('active', savedResetStaging);
+    const savedResetMode = localStorage.getItem('lastGitResetMode') || 'none';
+    const btnStg = document.getElementById('reset-staging-btn');
+    const btnStgNd = document.getElementById('reset-staging-nd-btn');
+    const btnMain = document.getElementById('reset-main-btn');
+    const btnMainNd = document.getElementById('reset-main-nd-btn');
+    if (btnStg) btnStg.classList.toggle('active', savedResetMode === 'reset_staging_deploy');
+    if (btnStgNd) btnStgNd.classList.toggle('active', savedResetMode === 'reset_staging_no_deploy');
+    if (btnMain) btnMain.classList.toggle('active', savedResetMode === 'reset_main_deploy');
+    if (btnMainNd) btnMainNd.classList.toggle('active', savedResetMode === 'reset_main_no_deploy');
     
     updateModalEnvSelector();
     renderModalServicesGrid();
@@ -277,10 +283,15 @@ function updateModalSelectionUI() {
     const countSpan = document.getElementById('modal-selected-count');
     if (countSpan) countSpan.innerText = `${count} selected`;
     
+    const resetMode = localStorage.getItem('lastGitResetMode') || 'none';
     const deployBtn = document.getElementById('modal-btn-deploy');
     if (deployBtn) {
         deployBtn.disabled = count === 0;
-        deployBtn.innerText = `🚀 Deploy Selected (${count})`;
+        if (resetMode === 'reset_staging_no_deploy' || resetMode === 'reset_main_no_deploy') {
+            deployBtn.innerText = `🔄 Reset Selected (${count})`;
+        } else {
+            deployBtn.innerText = `🚀 Deploy Selected (${count})`;
+        }
     }
     
     const selectAllBtn = document.getElementById('modal-btn-select-all');
@@ -320,11 +331,27 @@ function toggleModalSelectAllBtn() {
     updateModalSelectionUI();
 }
 
-function toggleResetStagingCheckbox() {
-    const btn = document.getElementById('reset-staging-btn');
-    if (!btn) return;
-    const active = btn.classList.toggle('active');
-    localStorage.setItem('lastResetStaging', active ? 'true' : 'false');
+function setGitResetMode(mode) {
+    const btnStg = document.getElementById('reset-staging-btn');
+    const btnStgNd = document.getElementById('reset-staging-nd-btn');
+    const btnMain = document.getElementById('reset-main-btn');
+    const btnMainNd = document.getElementById('reset-main-nd-btn');
+    
+    let currentMode = localStorage.getItem('lastGitResetMode') || 'none';
+    
+    if (currentMode === mode) {
+        mode = 'none';
+    }
+    
+    localStorage.setItem('lastGitResetMode', mode);
+    localStorage.setItem('lastResetStaging', mode === 'reset_staging_deploy' ? 'true' : 'false');
+    
+    if (btnStg) btnStg.classList.toggle('active', mode === 'reset_staging_deploy');
+    if (btnStgNd) btnStgNd.classList.toggle('active', mode === 'reset_staging_no_deploy');
+    if (btnMain) btnMain.classList.toggle('active', mode === 'reset_main_deploy');
+    if (btnMainNd) btnMainNd.classList.toggle('active', mode === 'reset_main_no_deploy');
+    
+    updateModalSelectionUI();
 }
 
 function runModalDeploy() {
@@ -349,7 +376,9 @@ function runModalDeploy() {
     
     if (targets.length === 0) return;
     
-    const resetStaging = document.getElementById('reset-staging-btn')?.classList.contains('active') || false;
+    const resetMode = localStorage.getItem('lastGitResetMode') || 'none';
+    
+    const resetStaging = (resetMode === 'reset_staging_deploy');
     localStorage.setItem('lastResetStaging', resetStaging);
     
     // Save choices to localStorage
@@ -362,7 +391,7 @@ function runModalDeploy() {
         closeMultiDeployModal();
         openMultiDeployLogsModal(targets.map(t => t.name));
         targets.forEach(t => {
-            executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd, resetStaging);
+            executeDeployFromModal(t, modalCurrentEnv, deployMsg, pwd, resetStaging, resetMode);
         });
     };
     
@@ -434,7 +463,8 @@ function runFastMultiDeploy() {
         return;
     }
     
-    const resetStaging = localStorage.getItem('lastResetStaging') === 'true';
+    const resetMode = localStorage.getItem('lastGitResetMode') || 'none';
+    const resetStaging = (resetMode === 'reset_staging_deploy');
     
     const mainMsg = document.getElementById('deploy-msg');
     const deployMsg = mainMsg ? mainMsg.value || '' : '';
@@ -443,7 +473,7 @@ function runFastMultiDeploy() {
         closeMultiDeployModal();
         openMultiDeployLogsModal(targets.map(t => t.name));
         targets.forEach(t => {
-            executeDeployFromModal(t, savedEnv, deployMsg, pwd, resetStaging);
+            executeDeployFromModal(t, savedEnv, deployMsg, pwd, resetStaging, resetMode);
         });
     };
     
@@ -603,7 +633,7 @@ function updateMultiLogBox(serviceName) {
     }
 }
 
-function executeDeployFromModal(svc, env, message, password = '', resetStaging = false) {
+function executeDeployFromModal(svc, env, message, password = '', resetStaging = false, gitResetMode = 'none') {
     const svcName = svc.name;
     const terminal = document.getElementById('terminal');
     
@@ -613,10 +643,15 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
         toggleGitManagement();
     }
     
+    // Adjust start message if no-deploy is requested
+    const startMsg = (gitResetMode === 'reset_staging_no_deploy' || gitResetMode === 'reset_main_no_deploy') 
+        ? `Starting Git Reset for ${svcName} (No Deploy)...\n`
+        : `Starting deployment for ${svcName} to ${env}...\n`;
+
     activeDeployments[svcName] = {
         env: env,
         status: 'running',
-        logs: `Starting deployment for ${svcName} to ${env}...\n`,
+        logs: startMsg,
         reader: null,
         message: message
     };
@@ -637,7 +672,8 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
             env: env, 
             message: message,
             password: password,
-            reset_staging: resetStaging
+            reset_staging: resetStaging,
+            git_reset_mode: gitResetMode
         })
     }).then(response => {
         if (response.status === 401) {

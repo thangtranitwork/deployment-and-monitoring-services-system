@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.4
+# 🚀 Internal Deploy System (IDS) - v1.7.5
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
