@@ -1,0 +1,2670 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDS Tools Suite</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.7.3">
+    
+    <!-- Marked for MD parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Highlight.js for code highlight -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- QRCode & jsQR for QR Generation & Scanning -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-body);
+            color: var(--text-main);
+        }
+
+        #tools-container {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #sidebar {
+            width: 250px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .tool-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .tool-nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-main);
+        }
+
+        .tool-nav-item.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border-left-color: var(--accent);
+            font-weight: 600;
+        }
+
+        #workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-body);
+        }
+
+        /* Tool views */
+        .tool-content {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .tool-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preset-btn {
+            font-size: 12px;
+            padding: 4px 10px;
+            height: 28px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: var(--font-mono);
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .split-workspace {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .split-workspace .split-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .split-workspace .split-pane:first-child {
+            border-right: 1px solid var(--border);
+        }
+
+        .pane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.01);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .editor-area {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            resize: none;
+            border: none;
+            outline: none;
+            padding: 16px;
+            background: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 13.5px;
+            line-height: 1.6;
+            overflow-y: auto;
+        }
+
+        .preview-area {
+            flex: 1;
+            padding: 20px 24px;
+            overflow-y: auto;
+            background: var(--bg-body);
+        }
+
+        /* Beautiful Markdown Preview Typography */
+        .markdown-body {
+            font-size: 14.5px;
+            line-height: 1.65;
+            word-wrap: break-word;
+            color: var(--text-main);
+        }
+
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, 
+        .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: var(--accent);
+        }
+
+        .markdown-body h1 { font-size: 1.8em; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px; }
+        .markdown-body h2 { font-size: 1.4em; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
+        .markdown-body h3 { font-size: 1.2em; }
+        .markdown-body h4 { font-size: 1em; }
+
+        .markdown-body p { margin-top: 0; margin-bottom: 16px; }
+        .markdown-body strong { color: var(--text-main); font-weight: 600; }
+        .markdown-body em { font-style: italic; }
+
+        .markdown-body a {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--accent);
+        }
+        .markdown-body a:hover {
+            border-bottom-style: solid;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            padding-left: 2em;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+
+        .markdown-body li { margin-top: 0.25em; }
+
+        .markdown-body code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            color: #e74c3c;
+        }
+
+        .markdown-body pre {
+            margin-top: 0;
+            margin-bottom: 16px;
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+            font-size: inherit;
+        }
+
+        .markdown-body blockquote {
+            padding: 0 1em;
+            color: var(--text-dim);
+            border-left: 0.25em solid var(--accent);
+            margin: 0 0 16px 0;
+            background: rgba(255, 255, 255, 0.01);
+            padding: 8px 16px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .markdown-body table {
+            display: block;
+            width: 100%;
+            overflow: auto;
+            margin-top: 0;
+            margin-bottom: 16px;
+            border-collapse: collapse;
+        }
+
+        .markdown-body table th {
+            font-weight: 600;
+            background: rgba(255,255,255,0.03);
+            color: var(--accent);
+        }
+
+        .markdown-body table th, .markdown-body table td {
+            padding: 6px 13px;
+            border: 1px solid var(--border);
+        }
+
+        .markdown-body table tr {
+            background-color: transparent;
+            border-top: 1px solid var(--border);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 16px;
+            padding: 6px 16px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+        }
+
+        /* Diff styling */
+        .diff-added {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border-left: 3px solid #2ecc71;
+            padding-left: 8px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            margin: 2px 0;
+            white-space: pre-wrap;
+        }
+        .diff-removed {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            border-left: 3px solid #e74c3c;
+            padding-left: 8px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            margin: 2px 0;
+            white-space: pre-wrap;
+        }
+        .diff-unchanged {
+            color: var(--text-main);
+            padding-left: 11px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            margin: 2px 0;
+            white-space: pre-wrap;
+        }
+
+        /* General styles for custom tool view cards */
+        .tool-panel-card {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #tools-container {
+                flex-direction: column;
+            }
+            #sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+            .split-workspace {
+                flex-direction: column;
+            }
+            .split-workspace .split-pane:first-child {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                height: 50%;
+            }
+        }
+
+        /* Collapsible JSON Tree Viewer */
+        .json-tree-node {
+            margin-left: 16px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .json-tree-toggle {
+            cursor: pointer;
+            user-select: none;
+            color: var(--text-dim);
+            margin-right: 4px;
+            font-size: 9px;
+            display: inline-block;
+            transition: transform 0.1s ease;
+        }
+        .json-tree-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+        .json-tree-key {
+            color: #88c0d0; /* accent light blue */
+            margin-right: 4px;
+        }
+        .json-tree-val-string {
+            color: #a3be8c; /* green */
+        }
+        .json-tree-val-number {
+            color: #b48ead; /* purple */
+        }
+        .json-tree-val-boolean {
+            color: #d08770; /* orange */
+        }
+        .json-tree-val-null {
+            color: #bf616a; /* red */
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;">
+            <span>IDS</span> Tools Suite
+        </div>
+        <div class="header-actions">
+            <button onclick="location.href='/'" style="
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-main);
+                font-size: 13px;
+                font-weight: 500;
+                padding: 6px 16px;
+                height: 34px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='rgba(255, 255, 255, 0.1)'; this.style.borderColor='var(--accent)';" onmouseout="this.style.background='rgba(255, 255, 255, 0.05)'; this.style.borderColor='var(--border)';">
+                <span>🏠</span> Dashboard
+            </button>
+        </div>
+    </header>
+
+    <div id="tools-container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-header">Utility Tools</div>
+            <div class="tool-nav-item active" data-tool="markdown" onclick="selectTool('markdown')">
+                <span>📝</span> Markdown Preview
+            </div>
+            <div class="tool-nav-item" data-tool="json" onclick="selectTool('json')">
+                <span>🔍</span> JSON Formatter
+            </div>
+            <div class="tool-nav-item" data-tool="jwt" onclick="selectTool('jwt')">
+                <span>🔑</span> JWT Decoder
+            </div>
+            <div class="tool-nav-item" data-tool="kv" onclick="selectTool('kv')">
+                <span>🔄</span> KV to JSON Parser
+            </div>
+            <div class="tool-nav-item" data-tool="diff" onclick="selectTool('diff')">
+                <span>📊</span> Text Diff Compare
+            </div>
+            <div class="tool-nav-item" data-tool="bcrypt" onclick="selectTool('bcrypt')">
+                <span>🔒</span> Bcrypt Generator
+            </div>
+            <div class="tool-nav-item" data-tool="time" onclick="selectTool('time')">
+                <span>🕒</span> Time Converter
+            </div>
+            <div class="tool-nav-item" data-tool="curl" onclick="selectTool('curl')">
+                <span>🌐</span> Curl Online Runner
+            </div>
+            <div class="tool-nav-item" data-tool="qr" onclick="selectTool('qr')">
+                <span>📷</span> QR Code Gen/Reader
+            </div>
+            <div class="tool-nav-item" data-tool="dns" onclick="selectTool('dns')">
+                <span>🌐</span> DNS Dig / Whois / GeoIP
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div id="workspace">
+            
+            <!-- Markdown Tool -->
+            <div id="markdown-tool" class="tool-content">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <button onclick="triggerPreset('bold')" class="preset-btn" title="Bold">**B**</button>
+                        <button onclick="triggerPreset('italic')" class="preset-btn" title="Italic">*I*</button>
+                        <button onclick="triggerPreset('heading')" class="preset-btn" title="Heading">#</button>
+                        <button onclick="triggerPreset('link')" class="preset-btn" title="Link">🔗</button>
+                        <button onclick="triggerPreset('code')" class="preset-btn" title="Code Block">&lt;/&gt;</button>
+                        <button onclick="triggerPreset('table')" class="preset-btn" title="Table">田</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button onclick="importMD()" style="font-size: 11px; padding: 0 10px; height: 28px;">📂 Import</button>
+                        <button onclick="exportMD()" style="font-size: 11px; padding: 0 10px; height: 28px;">💾 Export</button>
+                        <input type="file" id="md-file-input" style="display: none;" accept=".md,.txt" onchange="handleFileImport(event)">
+                    </div>
+                </div>
+
+                <div class="split-workspace">
+                    <!-- Editor Pane -->
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Markdown Editor</span>
+                            <button onclick="copyToClipboard('editor')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Raw</button>
+                        </div>
+                        <textarea id="md-editor" class="editor-area" placeholder="Type your markdown here..."></textarea>
+                    </div>
+
+                    <!-- Preview Pane -->
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Live HTML Preview</span>
+                            <button onclick="copyToClipboard('preview')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy HTML</button>
+                        </div>
+                        <div id="md-preview" class="preview-area markdown-body">
+                            <!-- Rendered HTML goes here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-bar">
+                    <span id="stat-words">0 words</span>
+                    <span id="stat-chars">0 characters</span>
+                    <span id="stat-read-time">0 min read</span>
+                </div>
+            </div>
+
+            <!-- JSON Formatter Tool -->
+            <div id="json-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <button onclick="formatJSON(2)" style="font-size: 11px; padding: 0 12px; height: 28px;">Beautify (2 Spaces)</button>
+                        <button onclick="formatJSON(4)" style="font-size: 11px; padding: 0 12px; height: 28px;">Beautify (4 Spaces)</button>
+                        <button onclick="minifyJSON()" style="font-size: 11px; padding: 0 12px; height: 28px;">Minify (Compact)</button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button onclick="clearJSON()" style="font-size: 11px; padding: 0 12px; height: 28px; background: transparent; border: 1px solid var(--border);">🧹 Clear</button>
+                    </div>
+                </div>
+
+                <div id="json-error-banner" style="display: none; background: rgba(231, 76, 60, 0.15); border-left: 4px solid #e74c3c; padding: 10px 16px; margin: 0; font-size: 12.5px; color: #e74c3c; font-family: var(--font-mono);">
+                    ⚠️ Invalid JSON: <span id="json-error-text"></span>
+                </div>
+
+                <div class="split-workspace">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Input JSON</span>
+                            <button onclick="copyToClipboard('json-raw')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Raw</button>
+                        </div>
+                        <textarea id="json-editor" class="editor-area" placeholder="Paste your raw JSON here..."></textarea>
+                    </div>
+
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Formatted Output</span>
+                            <button onclick="copyToClipboard('json-formatted')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Output</button>
+                        </div>
+                        <pre style="flex: 1; margin: 0; padding: 16px; overflow: auto; background: var(--bg-body); border: none;"><code id="json-preview" class="language-json" style="font-size: 13px; font-family: var(--font-mono); line-height: 1.5; white-space: pre-wrap; word-break: break-all;"></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JWT Decoder & Editor Tool -->
+            <div id="jwt-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Interactive 2-Way JWT Editor</span>
+                    </div>
+                    <div class="toolbar-group">
+                        <button onclick="clearJWT()" style="font-size: 11px; padding: 0 12px; height: 28px; background: transparent; border: 1px solid var(--border);">🧹 Clear</button>
+                    </div>
+                </div>
+
+                <div id="jwt-error-banner" style="display: none; background: rgba(231, 76, 60, 0.15); border-left: 4px solid #e74c3c; padding: 10px 16px; margin: 0; font-size: 12.5px; color: #e74c3c; font-family: var(--font-mono);">
+                    ⚠️ Error: <span id="jwt-error-text"></span>
+                </div>
+
+                <div class="split-workspace">
+                    <!-- Left: Encoded Token Panel -->
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Encoded JWT Token</span>
+                            <button onclick="copyToClipboard('jwt-raw')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Token</button>
+                        </div>
+                        <textarea id="jwt-editor" class="editor-area" style="font-size: 12.5px; word-break: break-all; font-family: var(--font-mono); line-height: 1.6;" placeholder="Paste encoded JWT token (header.payload.signature) here..."></textarea>
+                    </div>
+
+                    <!-- Right: Decoded Panels & Verify Card -->
+                    <div class="split-pane" style="background: rgba(0,0,0,0.1); overflow-y: auto; padding: 16px 24px;">
+                        
+                        <!-- JWT Signature Verification Card -->
+                        <div id="jwt-signature-card" style="border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid var(--border); background: var(--bg-card);">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <span>Verify Signature (HMAC-SHA256)</span>
+                                <span id="jwt-signature-status" style="font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; color: var(--text-dim);">UNKNOWN</span>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="font-size: 12.5px; color: var(--text-dim); font-family: var(--font-mono);">Secret:</span>
+                                <input type="text" id="jwt-secret" value="secret" placeholder="Enter HS256 secret key..."
+                                    style="font-size: 12.5px; padding: 6px 12px; height: 32px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); flex: 1;">
+                            </div>
+                        </div>
+
+                        <!-- Token Expiration Status Card -->
+                        <div id="jwt-status-card" style="display: none; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; border: 1px solid var(--border); align-items: center; justify-content: space-between; background: var(--bg-card);">
+                            <div>
+                                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 2px;">Token Expiration</div>
+                                <div id="jwt-expiry-time" style="font-size: 15px; font-weight: 600; color: var(--text-main);">N/A</div>
+                                <div id="jwt-expiry-relative" style="font-size: 12px; color: var(--text-dim);">N/A</div>
+                            </div>
+                            <div id="jwt-status-badge" style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase;">
+                                UNKNOWN
+                            </div>
+                        </div>
+
+                        <!-- Decoded Header Editor -->
+                        <div style="margin-bottom: 20px;">
+                            <div style="font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                                <span>Header (Algorithm & Token Type)</span>
+                                <button onclick="copyToClipboard('jwt-header')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy</button>
+                            </div>
+                            <textarea id="jwt-header-editor" class="editor-area" style="min-height: 120px; font-size: 12.5px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-top: 4px; font-family: var(--font-mono); line-height: 1.5; color: #e67e22;"></textarea>
+                        </div>
+
+                        <!-- Decoded Payload Editor -->
+                        <div style="margin-bottom: 20px;">
+                            <div style="font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                                <span>Payload (Decoded Claims)</span>
+                                <button onclick="copyToClipboard('jwt-payload')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy</button>
+                            </div>
+                            <textarea id="jwt-payload-editor" class="editor-area" style="min-height: 250px; font-size: 12.5px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-top: 4px; font-family: var(--font-mono); line-height: 1.5; color: #2ecc71;"></textarea>
+                        </div>
+
+                        <!-- Token Metadata Info -->
+                        <div id="jwt-meta-card" style="display: none; border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border); background: var(--bg-card);">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Token Claims Overview</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 12.5px;">
+                                <div><span style="color: var(--text-dim);">Algorithm (alg):</span> <span id="jwt-meta-alg" style="font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                <div><span style="color: var(--text-dim);">Subject (sub):</span> <span id="jwt-meta-sub" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                <div><span style="color: var(--text-dim);">Issuer (iss):</span> <span id="jwt-meta-iss" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                <div><span style="color: var(--text-dim);">Issued At (iat):</span> <span id="jwt-meta-iat" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KV to JSON Parser Tool -->
+            <div id="kv-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Key-Value / Log to JSON Parser</span>
+                    </div>
+                    <div class="toolbar-group">
+                        <button onclick="clearKV()" style="font-size: 11px; padding: 0 12px; height: 28px; background: transparent; border: 1px solid var(--border);">🧹 Clear</button>
+                    </div>
+                </div>
+
+                <div class="split-workspace">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Raw Key-Value / Log Input</span>
+                            <button onclick="copyToClipboard('kv-raw')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Raw</button>
+                        </div>
+                        <textarea id="kv-editor" class="editor-area" placeholder="Paste your log or key-value format here..."></textarea>
+                    </div>
+
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Parsed JSON Output</span>
+                            <button onclick="copyToClipboard('kv-formatted')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Output</button>
+                        </div>
+                        <pre style="flex: 1; margin: 0; padding: 16px; overflow: auto; background: var(--bg-body); border: none;"><code id="kv-preview" class="language-json" style="font-size: 13px; font-family: var(--font-mono); line-height: 1.5; white-space: pre-wrap; word-break: break-all;"></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Diff Tool -->
+            <div id="diff-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Text Diff Compare</span>
+                    </div>
+                    <div class="toolbar-group">
+                        <button onclick="clearDiff()" style="font-size: 11px; padding: 0 12px; height: 28px; background: transparent; border: 1px solid var(--border);">🧹 Clear</button>
+                    </div>
+                </div>
+
+                <div class="split-workspace" style="max-height: 40%;">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Original Text (Left)</span>
+                        </div>
+                        <textarea id="diff-old" class="editor-area" placeholder="Paste original text here..."></textarea>
+                    </div>
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Modified Text (Right)</span>
+                        </div>
+                        <textarea id="diff-new" class="editor-area" placeholder="Paste modified text here..."></textarea>
+                    </div>
+                </div>
+
+                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--border);">
+                    <div class="pane-header" style="background: rgba(255,255,255,0.01);">
+                        <span>Comparison Output (Line Diff)</span>
+                    </div>
+                    <div id="diff-output" style="flex: 1; padding: 16px; overflow-y: auto; background: var(--bg-body); font-family: var(--font-mono); font-size: 13px; line-height: 1.6;">
+                        <!-- Diff results render here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bcrypt Generator Tool -->
+            <div id="bcrypt-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Bcrypt Password Generator & Verifier</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace" style="padding: 24px; gap: 24px; overflow-y: auto;">
+                    <!-- Left Column: Generator -->
+                    <div class="tool-panel-card" style="flex: 1;">
+                        <h3 style="margin-top: 0; color: var(--accent); font-size: 15px; margin-bottom: 16px;">🔑 Generate Hash</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Plaintext Password</label>
+                                <input type="text" id="bcrypt-pass-input" placeholder="Enter password to hash..." 
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Rounds / Work Cost (4-31)</label>
+                                <input type="number" id="bcrypt-rounds-input" value="10" min="4" max="31"
+                                    style="width: 100px; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                            </div>
+                            <button onclick="generateBcrypt()" class="primary" style="align-self: flex-start; height: 32px; padding: 0 16px; font-size: 12px;">Generate Bcrypt Hash</button>
+                            
+                            <div style="margin-top: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="font-size: 12px; color: var(--text-dim);">Generated Hash</label>
+                                    <button onclick="copyToClipboard('bcrypt-hash')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy</button>
+                                </div>
+                                <pre style="margin: 0; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border); overflow-x: auto;"><code id="bcrypt-hash-output" style="font-size: 12.5px; font-family: var(--font-mono); color: var(--text-main); word-break: break-all; white-space: pre-wrap;"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Verifier -->
+                    <div class="tool-panel-card" style="flex: 1;">
+                        <h3 style="margin-top: 0; color: var(--accent); font-size: 15px; margin-bottom: 16px;">🛡️ Verify Hash</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Password to Test</label>
+                                <input type="text" id="bcrypt-test-pass" placeholder="Enter password to test..." 
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Bcrypt Hash to Compare</label>
+                                <input type="text" id="bcrypt-test-hash" placeholder="Paste bcrypt hash ($2a$10$...)" 
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                            </div>
+                            <button onclick="verifyBcrypt()" class="primary" style="align-self: flex-start; height: 32px; padding: 0 16px; font-size: 12px;">Verify Match</button>
+
+                            <div id="bcrypt-verify-result-card" style="display: none; margin-top: 12px; border-radius: 6px; padding: 12px; text-align: center; font-weight: 700; font-size: 13.5px;">
+                                <span id="bcrypt-verify-text">UNKNOWN</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Converter Tool -->
+            <div id="time-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Time Zone & Time Format Converter</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace" style="padding: 24px; gap: 24px; flex-direction: column; overflow-y: auto;">
+                    <div class="tool-panel-card">
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                            <div style="flex: 2; min-width: 250px;">
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Input Timestamp / Date String (Auto-detected)</label>
+                                <input type="text" id="time-input" placeholder="e.g. 1785312820, 1785312820120, or ISO 8601 string" 
+                                    style="width: 100%; font-size: 13.5px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Target Timezone</label>
+                                <select id="time-timezone-select" style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); height: 37px;">
+                                    <option value="UTC">UTC</option>
+                                    <option value="Asia/Ho_Chi_Minh" selected>Asia/Ho_Chi_Minh (Indochina Time)</option>
+                                    <option value="America/New_York">America/New_York (EST/EDT)</option>
+                                    <option value="Europe/London">Europe/London (GMT/BST)</option>
+                                    <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tool-panel-card" style="flex: 1;">
+                        <h3 style="margin-top: 0; color: var(--accent); font-size: 14.5px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 8px;">Formatted Outputs</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">ISO 8601 (UTC)</span>
+                                <div id="time-out-iso" style="font-size: 13.5px; font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">Local Browser Time</span>
+                                <div id="time-out-local" style="font-size: 13.5px; font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">Target Timezone Time</span>
+                                <div id="time-out-target" style="font-size: 13.5px; font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">Epoch Seconds</span>
+                                <div id="time-out-epoch" style="font-size: 13.5px; font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">Epoch Milliseconds</span>
+                                <div id="time-out-epoch-ms" style="font-size: 13.5px; font-family: var(--font-mono); font-weight: 600; color: var(--text-main);">N/A</div>
+                            </div>
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 4px;">Relative Time</span>
+                                <div id="time-out-relative" style="font-size: 13.5px; font-weight: 600; color: var(--accent);">N/A</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Curl Online Tool -->
+            <div id="curl-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">Curl Request Parser & Executor</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Raw Curl Command</span>
+                            <button onclick="executeCurl()" class="primary" style="font-size: 10.5px; padding: 2px 10px; border-radius: 4px; height: 24px;">🚀 Execute Request</button>
+                        </div>
+                        <textarea id="curl-cmd" class="editor-area" placeholder="Paste your curl command here...&#10;e.g. curl -X POST https://jsonplaceholder.typicode.com/posts -H 'Content-Type: application/json' -d '{&quot;title&quot;: &quot;hello&quot;}'"></textarea>
+                    </div>
+
+                    <div class="split-pane" style="background: rgba(0,0,0,0.05); overflow-y: auto; padding: 16px 20px;">
+                        <div class="pane-header" style="background: transparent; border-bottom: 1px solid rgba(255,255,255,0.04); margin-bottom: 16px; padding: 0 0 8px 0;">
+                            <span>Response Inspector</span>
+                            <span id="curl-status-badge" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">N/A</span>
+                        </div>
+
+                        <div style="display: flex; gap: 16px; margin-bottom: 16px; font-size: 12.5px;">
+                            <div><span style="color: var(--text-dim);">Method:</span> <span id="curl-resp-method" style="font-weight: 700; color: var(--accent);">GET</span></div>
+                            <div><span style="color: var(--text-dim);">Duration:</span> <span id="curl-resp-time" style="font-weight: 700; color: var(--text-main);">0 ms</span></div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px;">Headers</div>
+                            <pre style="margin: 0; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; max-height: 150px;"><code id="curl-resp-headers" style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); white-space: pre-wrap;"></code></pre>
+                        </div>
+
+                        <div>
+                            <!-- Response Tabs -->
+                            <div style="display: flex; gap: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; padding-bottom: 2px;">
+                                <span id="curl-tab-preview" onclick="setCurlResponseTab('preview')" style="font-size: 11.5px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid var(--accent); color: var(--accent);">Preview</span>
+                                <span id="curl-tab-raw" onclick="setCurlResponseTab('raw')" style="font-size: 11.5px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; color: var(--text-dim);">Raw Response</span>
+                            </div>
+
+                            <!-- Preview Panel -->
+                            <div id="curl-resp-preview-container" style="min-height: 200px; padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; overflow-y: auto;">
+                                <span style="color: var(--text-dim); font-size: 12.5px;">No response data.</span>
+                            </div>
+
+                            <!-- Raw Response Panel -->
+                            <div id="curl-resp-raw-container" style="display: none;">
+                                <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
+                                    <button onclick="copyToClipboard('curl-body')" style="font-size: 10px; background: transparent; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Raw</button>
+                                </div>
+                                <pre style="margin: 0; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; min-height: 200px;"><code id="curl-resp-body" class="language-json" style="font-size: 12.5px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all;"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code Tool -->
+            <div id="qr-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group" style="display: flex; gap: 12px; border-bottom: none; margin: 0; padding: 0;">
+                        <span id="qr-tab-gen" onclick="setQrSubTab('gen')" style="font-size: 13px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid var(--accent); color: var(--accent);">Generate QR</span>
+                        <span id="qr-tab-read" onclick="setQrSubTab('read')" style="font-size: 13px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; color: var(--text-dim);">Read QR</span>
+                    </div>
+                </div>
+
+                <div id="qr-gen-workspace" class="split-workspace">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>QR Code Generator Inputs</span>
+                        </div>
+                        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Text or URL Link</label>
+                                <textarea id="qr-gen-input" class="editor-area" style="min-height: 120px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; background: var(--bg-body);" placeholder="Type URL or text to convert into QR..."></textarea>
+                            </div>
+                            <div style="display: flex; gap: 16px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">QR Image Size</label>
+                                    <select id="qr-gen-size" style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                        <option value="128">128 x 128</option>
+                                        <option value="256" selected>256 x 256</option>
+                                        <option value="512">512 x 512</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Error Correction</label>
+                                    <select id="qr-gen-error" style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                        <option value="L">Low (7%)</option>
+                                        <option value="M" selected>Medium (15%)</option>
+                                        <option value="Q">Quartile (25%)</option>
+                                        <option value="H">High (30%)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button onclick="generateQRCode()" class="primary" style="height: 36px; padding: 0 16px; align-self: flex-start; font-size: 13px;">Generate QR Code</button>
+                        </div>
+                    </div>
+
+                    <div class="split-pane" style="align-items: center; justify-content: center; padding: 32px; background: rgba(0,0,0,0.05); min-height: 0;">
+                        <div id="qr-gen-output-container" style="padding: 16px; background: white; border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; min-height: 288px; min-width: 288px;">
+                            <div style="color: black; font-size: 13px;">No QR Code Generated</div>
+                        </div>
+                        <button id="qr-download-btn" onclick="downloadQRCode()" style="margin-top: 16px; font-size: 12px; padding: 6px 16px; height: 32px; display: none;">💾 Download PNG</button>
+                    </div>
+                </div>
+
+                <div id="qr-read-workspace" class="split-workspace" style="display: none;">
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Image Scan / Camera Scanner</span>
+                        </div>
+                        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex: 1;">
+                            <div id="qr-dropzone" style="border: 2px dashed var(--border); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; background: rgba(0,0,0,0.05);"
+                                onclick="document.getElementById('qr-file-input').click()"
+                                ondragover="event.preventDefault()"
+                                ondrop="handleQrFileDrop(event)">
+                                <span style="font-size: 28px; display: block; margin-bottom: 8px;">📁</span>
+                                <span style="font-size: 13px; color: var(--text-main); font-weight: 600;">Drag & drop QR image or Click to Upload</span>
+                                <span style="font-size: 11px; color: var(--text-dim); display: block; margin-top: 4px;">Supports PNG, JPG, JPEG</span>
+                                <input type="file" id="qr-file-input" style="display: none;" accept="image/*" onchange="handleQrFileSelect(event)">
+                            </div>
+
+                            <div style="text-align: center; color: var(--text-dim); font-size: 12px; font-weight: 600;">— OR —</div>
+
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                                <div style="position: relative; width: 320px; height: 240px; background: black; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+                                    <video id="qr-video" style="width: 100%; height: 100%; object-fit: cover;" playsinline></video>
+                                    <canvas id="qr-canvas" style="display: none;"></canvas>
+                                    <div id="qr-camera-placeholder" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 13px;">Camera Inactive</div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button onclick="startQrWebcam()" class="primary" style="height: 30px; font-size: 11.5px; padding: 0 12px;">🎥 Start Camera</button>
+                                    <button onclick="stopQrWebcam()" style="height: 30px; font-size: 11.5px; padding: 0 12px; background: transparent; border: 1px solid var(--border);">🛑 Stop</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="split-pane">
+                        <div class="pane-header">
+                            <span>Decoded QR Content</span>
+                            <button onclick="copyToClipboard('qr-decoded')" style="font-size: 10px; padding: 2px 6px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy</button>
+                        </div>
+                        <textarea id="qr-decoded-output" class="editor-area" style="padding: 16px; font-size: 13.5px;" readonly placeholder="Scan result will appear here..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DNS Dig & Whois & GeoIP Tool -->
+            <div id="dns-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">DNS Dig, WHOIS Registry & GeoIP Tracker</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace">
+                    <div class="split-pane" style="max-width: 400px; border-right: 1px solid var(--border);">
+                        <div class="pane-header">
+                            <span>Query Diagnostic Inputs</span>
+                        </div>
+                        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Domain Name / Host</label>
+                                <input type="text" id="dns-domain-input" placeholder="e.g. google.com, vnnic.vn"
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Record Type</label>
+                                    <select id="dns-record-type" style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                        <option value="ALL" selected>ANY / ALL</option>
+                                        <option value="A">A (IPv4 Address)</option>
+                                        <option value="AAAA">AAAA (IPv6 Address)</option>
+                                        <option value="CNAME">CNAME (Alias)</option>
+                                        <option value="MX">MX (Mail Exchange)</option>
+                                        <option value="NS">NS (Name Server)</option>
+                                        <option value="TXT">TXT (Text Records)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Custom DNS Resolver IP (Optional)</label>
+                                <input type="text" id="dns-custom-resolver" placeholder="e.g. 8.8.8.8, 1.1.1.1 (Leave empty for default)"
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                            </div>
+                            <button onclick="executeDnsLookup()" class="primary" style="height: 36px; padding: 0 16px; align-self: flex-start; font-size: 13px;">🔍 Run DNS Dig & Registry Lookup</button>
+                        </div>
+                    </div>
+
+                    <div class="split-pane" style="background: rgba(0,0,0,0.05); overflow-y: auto; padding: 16px 24px;">
+                        <div style="display: flex; gap: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; padding-bottom: 4px;">
+                            <span id="dns-tab-records" onclick="setDnsResultTab('records')" style="font-size: 13px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid var(--accent); color: var(--accent);">DNS Records</span>
+                            <span id="dns-tab-whois" onclick="setDnsResultTab('whois')" style="font-size: 13px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; color: var(--text-dim);">WHOIS Registry</span>
+                            <span id="dns-tab-geoip" onclick="setDnsResultTab('geoip')" style="font-size: 13px; font-weight: 600; cursor: pointer; padding-bottom: 4px; border-bottom: 2px solid transparent; color: var(--text-dim);">GeoIP / ISP Location</span>
+                        </div>
+
+                        <div id="dns-out-records-container">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; text-align: left;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid var(--border); color: var(--accent);">
+                                        <th style="padding: 8px 12px; width: 100px;">Type</th>
+                                        <th style="padding: 8px 12px;">Resolved Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dns-records-tbody">
+                                    <tr>
+                                        <td colspan="2" style="padding: 12px; text-align: center; color: var(--text-dim);">No queries run yet.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="dns-out-whois-container" style="display: none;">
+                            <div style="display: flex; justify-content: flex-end; margin-bottom: 6px;">
+                                <button onclick="copyToClipboard('dns-whois')" style="font-size: 10px; background: transparent; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; color: var(--text-dim); cursor: pointer;">Copy Whois</button>
+                            </div>
+                            <pre style="margin: 0; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; overflow-x: auto; max-height: 500px;"><code id="dns-whois-output" style="font-size: 12px; font-family: var(--font-mono); color: var(--text-dim); white-space: pre-wrap;">No WHOIS query run yet.</code></pre>
+                        </div>
+
+                        <div id="dns-out-geoip-container" style="display: none; display: flex; flex-direction: column; gap: 16px;">
+                            <div id="dns-geoip-card" class="tool-panel-card" style="display: none; margin: 0;">
+                                <h4 style="margin-top: 0; color: var(--accent); font-size: 14.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                                    <span id="dns-geoip-flag" style="font-size: 20px;">🏳️</span>
+                                    <span id="dns-geoip-ip-title">IP Address Info</span>
+                                </h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; font-size: 13px;">
+                                    <div><span style="color: var(--text-dim);">Country:</span> <span id="dns-geoip-country" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                    <div><span style="color: var(--text-dim);">City:</span> <span id="dns-geoip-city" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                    <div><span style="color: var(--text-dim);">ISP Provider:</span> <span id="dns-geoip-isp" style="font-weight: 600; color: var(--text-main);">N/A</span></div>
+                                    <div><span style="color: var(--text-dim);">Coordinates:</span> <span id="dns-geoip-coords" style="font-weight: 600; color: var(--text-main); font-family: var(--font-mono);">N/A</span></div>
+                                </div>
+                            </div>
+                            <div id="dns-geoip-empty" style="color: var(--text-dim); font-size: 12.5px;">
+                                No GeoIP location found (Resolve A-record domain first).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const editor = document.getElementById('md-editor');
+        const preview = document.getElementById('md-preview');
+
+        // Debounce helper
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // Configure marked options
+        marked.setOptions({
+            gfm: true,
+            breaks: true,
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            }
+        });
+
+        // Initialize editor with welcome content
+        const welcomeContent = `# Welcome to IDS Markdown Live Preview! 📝
+
+This is a premium, real-time Markdown editor built right into your **IDS Dashboard**. 
+
+## ✨ Key Features:
+- **Instant Rendering**: Type on the left, watch it render on the right.
+- **Code Highlighting**: Syntax highlighting for multiple languages.
+- **Preset Formatting**: Use the toolbar buttons above to insert formatting templates.
+- **Import/Export**: Load local \`.md\` files or download your work instantly.
+- **Analytics**: Live word count, character count, and reading time estimation.
+
+---
+
+## 💻 Code Block Example:
+\`\`\`javascript
+// Quick server status checker
+async function checkServiceHealth(port) {
+    try {
+        const res = await fetch(\`http://localhost:\${port}/health\`);
+        return res.ok ? "🟢 Healthy" : "🔴 Unhealthy";
+    } catch {
+        return "🔴 Offline";
+    }
+}
+\`\`\`
+
+## 📊 Table Example:
+| Service | Environment | Status | Port |
+| :--- | :--- | :--- | :--- |
+| **ids-commander** | Production | 🟢 Online | 8080 |
+| **ids-health** | Production | 🟢 Online | 8081 |
+| **nginx** | Staging | 🟡 Warning | 80 |
+
+## 💡 Blockquote & Lists:
+> "Simplicity is the soul of efficiency." — Austin Freeman
+
+### Quick Checklist:
+- [x] Integrate marked.js parser
+- [x] Configure highlight.js colorizer
+- [ ] Add base64 utility tool
+`;
+
+        // Event Listeners for MD Editor
+        editor.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_md_val', editor.value);
+            updatePreview();
+        });
+
+        function updatePreview() {
+            const rawMD = editor.value;
+            preview.innerHTML = marked.parse(rawMD);
+            preview.querySelectorAll('pre code').forEach((el) => {
+                hljs.highlightElement(el);
+            });
+            updateStats(rawMD);
+        }
+
+        function updateStats(text) {
+            const chars = text.length;
+            const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+            const readTime = Math.ceil(words / 200);
+
+            document.getElementById('stat-chars').innerText = `${chars} characters`;
+            document.getElementById('stat-words').innerText = `${words} words`;
+            document.getElementById('stat-read-time').innerText = `${readTime} min read`;
+        }
+
+        // Preset Toolbar Actions
+        function triggerPreset(type) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+            const selectedText = text.substring(start, end);
+            
+            let insertedText = '';
+            let cursorOffset = 0;
+
+            switch(type) {
+                case 'bold':
+                    insertedText = `**${selectedText || 'bold text'}**`;
+                    cursorOffset = selectedText ? 0 : 2;
+                    break;
+                case 'italic':
+                    insertedText = `*${selectedText || 'italic text'}*`;
+                    cursorOffset = selectedText ? 0 : 1;
+                    break;
+                case 'heading':
+                    insertedText = `\n# ${selectedText || 'Heading'}\n`;
+                    cursorOffset = selectedText ? 0 : 2;
+                    break;
+                case 'link':
+                    insertedText = `[${selectedText || 'Link Title'}](https://example.com)`;
+                    cursorOffset = selectedText ? 0 : 1;
+                    break;
+                case 'code':
+                    insertedText = `\n\`\`\`javascript\n${selectedText || '// code here'}\n\`\`\`\n`;
+                    cursorOffset = selectedText ? 0 : 15;
+                    break;
+                case 'table':
+                    insertedText = `\n| Column 1 | Column 2 |\n| :--- | :--- |\n| Cell 1 | Cell 2 |\n`;
+                    cursorOffset = 0;
+                    break;
+            }
+
+            editor.value = text.substring(0, start) + insertedText + text.substring(end);
+            editor.focus();
+            
+            if (selectedText) {
+                editor.setSelectionRange(start + insertedText.length, start + insertedText.length);
+            } else {
+                editor.setSelectionRange(start + insertedText.length - cursorOffset, start + insertedText.length - cursorOffset);
+            }
+            updatePreview();
+            localStorage.setItem('ids_tool_md_val', editor.value);
+        }
+
+        // File Import & Export
+        function importMD() {
+            document.getElementById('md-file-input').click();
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                editor.value = e.target.result;
+                updatePreview();
+                localStorage.setItem('ids_tool_md_val', editor.value);
+            };
+            reader.readAsText(file);
+        }
+
+        // ----------------------------------------------------
+        // JSON Formatter Logic (Real-time with Debounce)
+        // ----------------------------------------------------
+        const jsonEditor = document.getElementById('json-editor');
+        
+        const debouncedFormat = debounce(() => {
+            const errorBanner = document.getElementById('json-error-banner');
+            const preview = document.getElementById('json-preview');
+            const val = jsonEditor.value.trim();
+            if (!val) {
+                preview.innerText = '';
+                return;
+            }
+            try {
+                const parsed = JSON.parse(val);
+                const mode = localStorage.getItem('ids_tool_json_format_mode') || '2';
+                const formatted = mode === 'minify' ? JSON.stringify(parsed) : JSON.stringify(parsed, null, Number(mode));
+                renderJSON(formatted);
+            } catch (err) {
+                // Let validation error banner handle
+            }
+        }, 300);
+
+        jsonEditor.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_json_val', jsonEditor.value);
+            validateJSON();
+            debouncedFormat();
+        });
+
+        function validateJSON() {
+            const errorBanner = document.getElementById('json-error-banner');
+            const errorText = document.getElementById('json-error-text');
+            const val = jsonEditor.value.trim();
+            
+            if (!val) {
+                errorBanner.style.display = 'none';
+                return;
+            }
+
+            try {
+                JSON.parse(val);
+                errorBanner.style.display = 'none';
+            } catch (err) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = err.message;
+            }
+        }
+
+        function formatJSON(indent) {
+            const errorBanner = document.getElementById('json-error-banner');
+            const errorText = document.getElementById('json-error-text');
+            
+            errorBanner.style.display = 'none';
+            const val = jsonEditor.value.trim();
+            if (!val) return;
+
+            try {
+                const parsed = JSON.parse(val);
+                const formatted = JSON.stringify(parsed, null, indent);
+                
+                jsonEditor.value = formatted;
+                localStorage.setItem('ids_tool_json_val', formatted);
+                localStorage.setItem('ids_tool_json_format_mode', indent);
+                
+                renderJSON(formatted);
+            } catch (err) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = err.message;
+            }
+        }
+
+        function minifyJSON() {
+            const errorBanner = document.getElementById('json-error-banner');
+            const errorText = document.getElementById('json-error-text');
+            
+            errorBanner.style.display = 'none';
+            const val = jsonEditor.value.trim();
+            if (!val) return;
+
+            try {
+                const parsed = JSON.parse(val);
+                const minified = JSON.stringify(parsed);
+                
+                jsonEditor.value = minified;
+                localStorage.setItem('ids_tool_json_val', minified);
+                localStorage.setItem('ids_tool_json_format_mode', 'minify');
+                
+                renderJSON(minified);
+            } catch (err) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = err.message;
+            }
+        }
+
+        function renderJSON(val) {
+            const preview = document.getElementById('json-preview');
+            preview.textContent = val;
+            hljs.highlightElement(preview);
+        }
+
+        function clearJSON() {
+            jsonEditor.value = '';
+            document.getElementById('json-preview').innerText = '';
+            document.getElementById('json-error-banner').style.display = 'none';
+            localStorage.setItem('ids_tool_json_val', '');
+        }
+
+        // ----------------------------------------------------
+        // JWT Interactive 2-Way Editor Logic
+        // ----------------------------------------------------
+        const jwtEditor = document.getElementById('jwt-editor');
+        const jwtHeaderEditor = document.getElementById('jwt-header-editor');
+        const jwtPayloadEditor = document.getElementById('jwt-payload-editor');
+        const jwtSecretInput = document.getElementById('jwt-secret');
+
+        jwtEditor.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_jwt_val', jwtEditor.value);
+            decodeJWT();
+        });
+        jwtHeaderEditor.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_jwt_header', jwtHeaderEditor.value);
+            encodeJWT();
+        });
+        jwtPayloadEditor.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_jwt_payload', jwtPayloadEditor.value);
+            encodeJWT();
+        });
+        jwtSecretInput.addEventListener('input', () => {
+            localStorage.setItem('ids_tool_jwt_secret', jwtSecretInput.value);
+            decodeJWT();
+        });
+
+        // Default tokens
+        const defaultHeader = { "alg": "HS256", "typ": "JWT" };
+        const defaultPayload = {
+            "sub": "1234567890",
+            "name": "John Doe",
+            "admin": true,
+            "iat": Math.floor(Date.now() / 1000),
+            "exp": Math.floor(Date.now() / 1000) + 3600
+        };
+
+        function base64UrlEncodeStr(str) {
+            const bytes = new TextEncoder().encode(str);
+            const binary = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+            const base64 = btoa(binary);
+            return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        function base64UrlDecode(str) {
+            let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) {
+                base64 += '=';
+            }
+            try {
+                return decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (err) {
+                return atob(base64);
+            }
+        }
+
+        async function signHS256(headerB64, payloadB64, secret) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(headerB64 + '.' + payloadB64);
+            const keyData = encoder.encode(secret);
+            
+            try {
+                const key = await crypto.subtle.importKey(
+                    'raw',
+                    keyData,
+                    { name: 'HMAC', hash: 'SHA-256' },
+                    false,
+                    ['sign']
+                );
+                const signature = await crypto.subtle.sign('HMAC', key, data);
+                const hashArray = Array.from(new Uint8Array(signature));
+                const binaryString = hashArray.map(b => String.fromCharCode(b)).join('');
+                const base64 = btoa(binaryString);
+                return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            } catch (err) {
+                console.error('HS256 Signing failed: ', err);
+                return 'signature_error';
+            }
+        }
+
+        async function decodeJWT() {
+            const errorBanner = document.getElementById('jwt-error-banner');
+            const errorText = document.getElementById('jwt-error-text');
+            const statusCard = document.getElementById('jwt-status-card');
+            const metaCard = document.getElementById('jwt-meta-card');
+            
+            errorBanner.style.display = 'none';
+            const token = jwtEditor.value.trim();
+            const secret = jwtSecretInput.value;
+            
+            if (!token) {
+                jwtHeaderEditor.value = '';
+                jwtPayloadEditor.value = '';
+                statusCard.style.display = 'none';
+                metaCard.style.display = 'none';
+                updateSignatureBadge(false);
+                return;
+            }
+
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = 'JWT Token must consist of 3 parts separated by dots (header.payload.signature).';
+                statusCard.style.display = 'none';
+                metaCard.style.display = 'none';
+                updateSignatureBadge(false);
+                return;
+            }
+
+            try {
+                const headerDecoded = base64UrlDecode(parts[0]);
+                const payloadDecoded = base64UrlDecode(parts[1]);
+
+                const headerObj = JSON.parse(headerDecoded);
+                const payloadObj = JSON.parse(payloadDecoded);
+
+                jwtHeaderEditor.value = JSON.stringify(headerObj, null, 2);
+                jwtPayloadEditor.value = JSON.stringify(payloadObj, null, 2);
+                
+                localStorage.setItem('ids_tool_jwt_header', jwtHeaderEditor.value);
+                localStorage.setItem('ids_tool_jwt_payload', jwtPayloadEditor.value);
+
+                // Verify
+                const computedSig = await signHS256(parts[0], parts[1], secret);
+                updateSignatureBadge(computedSig === parts[2]);
+
+                statusCard.style.display = 'flex';
+                const expiryTimeDiv = document.getElementById('jwt-expiry-time');
+                const expiryRelativeDiv = document.getElementById('jwt-expiry-relative');
+                const statusBadge = document.getElementById('jwt-status-badge');
+
+                if (payloadObj.exp) {
+                    const expiryDate = new Date(payloadObj.exp * 1000);
+                    expiryTimeDiv.innerText = expiryDate.toLocaleString();
+                    const diffMs = expiryDate - new Date();
+
+                    if (diffMs > 0) {
+                        statusBadge.innerText = 'ACTIVE';
+                        statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                        statusBadge.style.color = '#2ecc71';
+                        const diffMins = Math.floor(diffMs / 60000);
+                        const hours = Math.floor(diffMins / 60);
+                        expiryRelativeDiv.innerText = hours > 0 ? `Expires in ${hours} hours and ${diffMins % 60} minutes` : `Expires in ${diffMins} minutes`;
+                    } else {
+                        statusBadge.innerText = 'EXPIRED';
+                        statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                        statusBadge.style.color = '#e74c3c';
+                        const diffMins = Math.floor(Math.abs(diffMs) / 60000);
+                        const hours = Math.floor(diffMins / 60);
+                        expiryRelativeDiv.innerText = hours > 0 ? `Expired ${hours} hours and ${diffMins % 60} minutes ago` : `Expired ${diffMins} minutes ago`;
+                    }
+                } else {
+                    expiryTimeDiv.innerText = 'Never Expires';
+                    expiryRelativeDiv.innerText = 'Token does not contain an exp claim.';
+                    statusBadge.innerText = 'ACTIVE';
+                    statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                    statusBadge.style.color = '#2ecc71';
+                }
+
+                metaCard.style.display = 'block';
+                document.getElementById('jwt-meta-alg').innerText = headerObj.alg || 'N/A';
+                document.getElementById('jwt-meta-sub').innerText = payloadObj.sub || 'N/A';
+                document.getElementById('jwt-meta-iss').innerText = payloadObj.iss || 'N/A';
+                document.getElementById('jwt-meta-iat').innerText = payloadObj.iat ? new Date(payloadObj.iat * 1000).toLocaleString() : 'N/A';
+
+            } catch (err) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = 'Error decoding token: ' + err.message;
+                statusCard.style.display = 'none';
+                metaCard.style.display = 'none';
+                updateSignatureBadge(false);
+            }
+        }
+
+        async function encodeJWT() {
+            const errorBanner = document.getElementById('jwt-error-banner');
+            const errorText = document.getElementById('jwt-error-text');
+            const statusCard = document.getElementById('jwt-status-card');
+            const metaCard = document.getElementById('jwt-meta-card');
+            
+            errorBanner.style.display = 'none';
+            const headerText = jwtHeaderEditor.value.trim();
+            const payloadText = jwtPayloadEditor.value.trim();
+            const secret = jwtSecretInput.value;
+
+            if (!headerText || !payloadText) {
+                jwtEditor.value = '';
+                statusCard.style.display = 'none';
+                metaCard.style.display = 'none';
+                updateSignatureBadge(false);
+                return;
+            }
+
+            try {
+                const headerObj = JSON.parse(headerText);
+                const payloadObj = JSON.parse(payloadText);
+
+                const headerB64 = base64UrlEncodeStr(JSON.stringify(headerObj));
+                const payloadB64 = base64UrlEncodeStr(JSON.stringify(payloadObj));
+
+                const signatureB64 = await signHS256(headerB64, payloadB64, secret);
+                jwtEditor.value = `${headerB64}.${payloadB64}.${signatureB64}`;
+                
+                localStorage.setItem('ids_tool_jwt_val', jwtEditor.value);
+                updateSignatureBadge(true);
+                
+                statusCard.style.display = 'flex';
+                const expiryTimeDiv = document.getElementById('jwt-expiry-time');
+                const expiryRelativeDiv = document.getElementById('jwt-expiry-relative');
+                const statusBadge = document.getElementById('jwt-status-badge');
+
+                if (payloadObj.exp) {
+                    const expiryDate = new Date(payloadObj.exp * 1000);
+                    expiryTimeDiv.innerText = expiryDate.toLocaleString();
+                    const diffMs = expiryDate - new Date();
+
+                    if (diffMs > 0) {
+                        statusBadge.innerText = 'ACTIVE';
+                        statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                        statusBadge.style.color = '#2ecc71';
+                        expiryRelativeDiv.innerText = `Expires in ${Math.floor(diffMs / 60000)} minutes`;
+                    } else {
+                        statusBadge.innerText = 'EXPIRED';
+                        statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                        statusBadge.style.color = '#e74c3c';
+                        expiryRelativeDiv.innerText = `Expired ${Math.floor(Math.abs(diffMs) / 60000)} minutes ago`;
+                    }
+                } else {
+                    expiryTimeDiv.innerText = 'Never Expires';
+                    expiryRelativeDiv.innerText = 'Token does not contain an exp claim.';
+                    statusBadge.innerText = 'ACTIVE';
+                    statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                    statusBadge.style.color = '#2ecc71';
+                }
+
+                metaCard.style.display = 'block';
+                document.getElementById('jwt-meta-alg').innerText = headerObj.alg || 'N/A';
+                document.getElementById('jwt-meta-sub').innerText = payloadObj.sub || 'N/A';
+                document.getElementById('jwt-meta-iss').innerText = payloadObj.iss || 'N/A';
+                document.getElementById('jwt-meta-iat').innerText = payloadObj.iat ? new Date(payloadObj.iat * 1000).toLocaleString() : 'N/A';
+
+            } catch (err) {
+                errorBanner.style.display = 'block';
+                errorText.innerText = 'JSON syntax error: ' + err.message;
+                updateSignatureBadge(false);
+            }
+        }
+
+        function updateSignatureBadge(isValid) {
+            const badge = document.getElementById('jwt-signature-status');
+            if (!badge) return;
+
+            if (isValid) {
+                badge.innerText = 'Signature Verified';
+                badge.style.background = 'rgba(46, 204, 113, 0.15)';
+                badge.style.color = '#2ecc71';
+            } else {
+                badge.innerText = 'Invalid Signature';
+                badge.style.background = 'rgba(231, 76, 60, 0.15)';
+                badge.style.color = '#e74c3c';
+            }
+        }
+
+        function clearJWT() {
+            jwtEditor.value = '';
+            jwtHeaderEditor.value = '';
+            jwtPayloadEditor.value = '';
+            document.getElementById('jwt-error-banner').style.display = 'none';
+            document.getElementById('jwt-status-card').style.display = 'none';
+            document.getElementById('jwt-meta-card').style.display = 'none';
+            updateSignatureBadge(false);
+            localStorage.setItem('ids_tool_jwt_val', '');
+            localStorage.setItem('ids_tool_jwt_header', '');
+            localStorage.setItem('ids_tool_jwt_payload', '');
+        }
+
+        // ----------------------------------------------------
+        // KV Parser Logic
+        // ----------------------------------------------------
+        const kvEditor = document.getElementById('kv-editor');
+        if (kvEditor) {
+            kvEditor.addEventListener('input', () => {
+                localStorage.setItem('ids_tool_kv_val', kvEditor.value);
+                parseKV();
+            });
+        }
+
+        const sampleKV = `id:490882 price:200000 weight:5 height:40 width:50 status:DELIVERY_ORDER_STATUS_PENDING handle_option:HANDLE_OPTION_TEMPERATURE_SENSITIVE type_item:"Hàng dễ vỡ" delivery_batch_id:1396 go_request_id:7401026 pickup_address:"123 Hương Giang, Phường Hòa Hưng, Thành phố Hồ Chí Minh, Việt Nam" pickup_lat:10.783053 pickup_lng:106.662529 delivery_address:"Rửa Xe 417, 417 Vườn Lài, Phường Phú Thọ Hòa, Thành phố Hồ Chí Minh, Việt Nam" delivery_lat:10.788382 delivery_lng:106.624062 amount:1 created_at:"2026-07-22T21:27:26+07:00" updated_at:"2026-07-22T21:27:26+07:00" length:50 vendor_id:2873 delivery_code:"CODE2" receiver_name:"Người nhận 2" receiver_phone:"0367854658" note:"Ghi chú 2" is_cod:1000 who_pay:1 sender_name:"Người gửi" sender_phone:"0123456789" merchant_id:99 distance_km:5710 cost:32600 duration_min:1226`;
+
+        function parseKV() {
+            const preview = document.getElementById('kv-preview');
+            const inputVal = kvEditor.value.trim();
+            if (!inputVal) {
+                preview.innerText = '';
+                return;
+            }
+
+            const regex = /([a-zA-Z0-9_-]+):(?:"([^"\\]*(?:\\.[^"\\]*)*)"|([^\s"]+))/g;
+            const obj = {};
+            let match;
+
+            while ((match = regex.exec(inputVal)) !== null) {
+                const key = match[1];
+                let rawValue = match[2] !== undefined ? match[2] : match[3];
+
+                if (match[2] !== undefined) {
+                    rawValue = rawValue.replace(/\\"/g, '"');
+                }
+
+                let parsedValue = rawValue;
+                if (rawValue === 'true') {
+                    parsedValue = true;
+                } else if (rawValue === 'false') {
+                    parsedValue = false;
+                } else if (/^-?\d+(\.\d+)?$/.test(rawValue)) {
+                    parsedValue = Number(rawValue);
+                }
+
+                obj[key] = parsedValue;
+            }
+
+            preview.textContent = JSON.stringify(obj, null, 2);
+            hljs.highlightElement(preview);
+        }
+
+        function clearKV() {
+            kvEditor.value = '';
+            document.getElementById('kv-preview').innerText = '';
+            localStorage.setItem('ids_tool_kv_val', '');
+        }
+
+        // ----------------------------------------------------
+        // Text Diff Logic
+        // ----------------------------------------------------
+        const diffOld = document.getElementById('diff-old');
+        const diffNew = document.getElementById('diff-new');
+
+        if (diffOld && diffNew) {
+            diffOld.addEventListener('input', () => {
+                localStorage.setItem('ids_tool_diff_old', diffOld.value);
+                renderDiff();
+            });
+            diffNew.addEventListener('input', () => {
+                localStorage.setItem('ids_tool_diff_new', diffNew.value);
+                renderDiff();
+            });
+        }
+
+        function renderDiff() {
+            const output = document.getElementById('diff-output');
+            const oText = diffOld.value;
+            const nText = diffNew.value;
+            if (!oText && !nText) {
+                output.innerHTML = '<span style="color: var(--text-dim)">Paste text above to compare...</span>';
+                return;
+            }
+
+            const diff = diffLinesLCS(oText, nText);
+            let html = '';
+            diff.forEach(item => {
+                if (item.type === 'added') {
+                    html += `<div class="diff-added">+ ${escapeHtml(item.text)}</div>`;
+                } else if (item.type === 'removed') {
+                    html += `<div class="diff-removed">- ${escapeHtml(item.text)}</div>`;
+                } else {
+                    html += `<div class="diff-unchanged">  ${escapeHtml(item.text)}</div>`;
+                }
+            });
+            output.innerHTML = html;
+        }
+
+        function diffLinesLCS(oldStr, newStr) {
+            const oldLines = oldStr.split(/\r?\n/);
+            const newLines = newStr.split(/\r?\n/);
+            const dp = Array(oldLines.length + 1).fill(null).map(() => Array(newLines.length + 1).fill(0));
+            
+            for (let i = 1; i <= oldLines.length; i++) {
+                for (let j = 1; j <= newLines.length; j++) {
+                    if (oldLines[i - 1] === newLines[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            
+            let i = oldLines.length;
+            let j = newLines.length;
+            const result = [];
+            
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+                    result.unshift({ type: 'unchanged', text: oldLines[i - 1] });
+                    i--;
+                    j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    result.unshift({ type: 'added', text: newLines[j - 1] });
+                    j--;
+                } else {
+                    result.unshift({ type: 'removed', text: oldLines[i - 1] });
+                    i--;
+                }
+            }
+            return result;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function clearDiff() {
+            diffOld.value = '';
+            diffNew.value = '';
+            document.getElementById('diff-output').innerHTML = '<span style="color: var(--text-dim)">Paste text above to compare...</span>';
+            localStorage.setItem('ids_tool_diff_old', '');
+            localStorage.setItem('ids_tool_diff_new', '');
+        }
+
+        // ----------------------------------------------------
+        // Bcrypt Logic (Generator & Verifier)
+        // ----------------------------------------------------
+        const bcryptPassInput = document.getElementById('bcrypt-pass-input');
+        const bcryptRoundsInput = document.getElementById('bcrypt-rounds-input');
+        const bcryptTestPass = document.getElementById('bcrypt-test-pass');
+        const bcryptTestHash = document.getElementById('bcrypt-test-hash');
+
+        if (bcryptPassInput) {
+            bcryptPassInput.addEventListener('input', () => localStorage.setItem('ids_tool_bcrypt_pass', bcryptPassInput.value));
+            bcryptRoundsInput.addEventListener('input', () => localStorage.setItem('ids_tool_bcrypt_rounds', bcryptRoundsInput.value));
+            bcryptTestPass.addEventListener('input', () => localStorage.setItem('ids_tool_bcrypt_test_pass', bcryptTestPass.value));
+            bcryptTestHash.addEventListener('input', () => localStorage.setItem('ids_tool_bcrypt_test_hash', bcryptTestHash.value));
+        }
+
+        async function generateBcrypt() {
+            const password = bcryptPassInput.value;
+            const rounds = parseInt(bcryptRoundsInput.value) || 10;
+            const output = document.getElementById('bcrypt-hash-output');
+            
+            if (!password) {
+                output.innerText = 'Please enter a password';
+                return;
+            }
+
+            output.innerText = 'Generating hash...';
+
+            try {
+                const res = await fetch('/api/tools/bcrypt/hash', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, rounds })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    output.innerText = 'Error: ' + data.error;
+                } else {
+                    output.innerText = data.hash;
+                    localStorage.setItem('ids_tool_bcrypt_generated', data.hash);
+                }
+            } catch (err) {
+                output.innerText = 'Error connection: ' + err.message;
+            }
+        }
+
+        async function verifyBcrypt() {
+            const password = bcryptTestPass.value;
+            const hash = bcryptTestHash.value;
+            const card = document.getElementById('bcrypt-verify-result-card');
+            const text = document.getElementById('bcrypt-verify-text');
+
+            if (!password || !hash) {
+                alert('Please enter both password and hash to verify');
+                return;
+            }
+
+            card.style.display = 'block';
+            card.style.background = 'rgba(255,255,255,0.05)';
+            card.style.color = 'var(--text-dim)';
+            text.innerText = 'Verifying...';
+
+            try {
+                const res = await fetch('/api/tools/bcrypt/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, hash })
+                });
+                const data = await res.json();
+                if (data.valid) {
+                    card.style.background = 'rgba(46, 204, 113, 0.15)';
+                    card.style.color = '#2ecc71';
+                    text.innerText = 'MATCHES (Valid Password)';
+                } else {
+                    card.style.background = 'rgba(231, 76, 60, 0.15)';
+                    card.style.color = '#e74c3c';
+                    text.innerText = 'DOES NOT MATCH (Invalid Password)';
+                }
+            } catch (err) {
+                card.style.background = 'rgba(231, 76, 60, 0.15)';
+                card.style.color = '#e74c3c';
+                text.innerText = 'Connection Error: ' + err.message;
+            }
+        }
+
+        // ----------------------------------------------------
+        // Time Converter Logic
+        // ----------------------------------------------------
+        const timeInput = document.getElementById('time-input');
+        const timeTimezoneSelect = document.getElementById('time-timezone-select');
+
+        if (timeInput && timeTimezoneSelect) {
+            timeInput.addEventListener('input', () => {
+                localStorage.setItem('ids_tool_time_input', timeInput.value);
+                convertTime();
+            });
+            timeTimezoneSelect.addEventListener('change', () => {
+                localStorage.setItem('ids_tool_time_timezone', timeTimezoneSelect.value);
+                convertTime();
+            });
+        }
+
+        function convertTime() {
+            const val = timeInput.value.trim();
+            
+            const outIso = document.getElementById('time-out-iso');
+            const outLocal = document.getElementById('time-out-local');
+            const outTarget = document.getElementById('time-out-target');
+            const outEpoch = document.getElementById('time-out-epoch');
+            const outEpochMs = document.getElementById('time-out-epoch-ms');
+            const outRelative = document.getElementById('time-out-relative');
+
+            if (!val) {
+                outIso.innerText = 'N/A';
+                outLocal.innerText = 'N/A';
+                outTarget.innerText = 'N/A';
+                outEpoch.innerText = 'N/A';
+                outEpochMs.innerText = 'N/A';
+                outRelative.innerText = 'N/A';
+                return;
+            }
+
+            let dateObj;
+
+            // Check if it's pure digits (Epoch seconds or milliseconds)
+            if (/^\d+$/.test(val)) {
+                const num = Number(val);
+                if (val.length >= 12) {
+                    dateObj = new Date(num); // ms
+                } else {
+                    dateObj = new Date(num * 1000); // seconds
+                }
+            } else {
+                dateObj = new Date(val);
+            }
+
+            // Check validity
+            if (isNaN(dateObj.getTime())) {
+                outIso.innerText = 'Invalid Date format';
+                outLocal.innerText = 'N/A';
+                outTarget.innerText = 'N/A';
+                outEpoch.innerText = 'N/A';
+                outEpochMs.innerText = 'N/A';
+                outRelative.innerText = 'N/A';
+                return;
+            }
+
+            // Fill Outputs
+            outIso.innerText = dateObj.toISOString();
+            outLocal.innerText = dateObj.toString();
+            
+            // Format for selected target timezone
+            const targetTz = timeTimezoneSelect.value;
+            try {
+                outTarget.innerText = dateObj.toLocaleString('en-US', { timeZone: targetTz });
+            } catch (err) {
+                outTarget.innerText = 'Unsupported Timezone';
+            }
+
+            outEpoch.innerText = Math.floor(dateObj.getTime() / 1000);
+            outEpochMs.innerText = dateObj.getTime();
+
+            // Relative Countdown
+            const diffMs = dateObj - new Date();
+            const absDiff = Math.abs(diffMs);
+            const minutes = Math.floor(absDiff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            let relativeStr = '';
+            if (days > 0) relativeStr = `${days} day${days > 1 ? 's' : ''}`;
+            else if (hours > 0) relativeStr = `${hours} hour${hours > 1 ? 's' : ''}`;
+            else relativeStr = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+
+            if (diffMs > 0) {
+                outRelative.innerText = `in ${relativeStr}`;
+            } else {
+                outRelative.innerText = `${relativeStr} ago`;
+            }
+        }
+
+        // ----------------------------------------------------
+        // Curl Online Logic
+        // ----------------------------------------------------
+        const curlCmdInput = document.getElementById('curl-cmd');
+        if (curlCmdInput) {
+            curlCmdInput.addEventListener('input', () => {
+                localStorage.setItem('ids_tool_curl_cmd', curlCmdInput.value);
+            });
+        }
+
+        function parseCurl(curlCmd) {
+            let cmd = curlCmd.replace(/\\\n/g, ' ').replace(/\n/g, ' ').trim();
+            const result = {
+                method: 'GET',
+                url: '',
+                headers: {},
+                body: ''
+            };
+
+            const urlMatches = cmd.match(/(https?:\/\/[^\s'"]+)/);
+            if (urlMatches) {
+                result.url = urlMatches[1];
+            } else {
+                const tokens = cmd.split(/\s+/);
+                for (let token of tokens) {
+                    if (!token.startsWith('-') && (token.includes('.') || token.includes('localhost'))) {
+                        token = token.replace(/['"]/g, '');
+                        result.url = token.startsWith('http') ? token : 'http://' + token;
+                        break;
+                    }
+                }
+            }
+
+            const methodMatch = cmd.match(/-X\s+([A-Za-z]+)|--request\s+([A-Za-z]+)/);
+            if (methodMatch) {
+                result.method = methodMatch[1] || methodMatch[2];
+            }
+
+            const headerRegex = /(?:-H|--header)\s+["']([^"']+)["']/g;
+            let match;
+            while ((match = headerRegex.exec(cmd)) !== null) {
+                const parts = match[1].split(':');
+                if (parts.length >= 2) {
+                    const key = parts[0].trim();
+                    const value = parts.slice(1).join(':').trim();
+                    result.headers[key] = value;
+                }
+            }
+
+            // Extract Body (matching single/double quoted data strings)
+            const bodyMatch = cmd.match(/(?:-d|--data|--data-raw|--data-binary)\s+["']([^"']+)["']/) ||
+                              cmd.match(/(?:-d|--data|--data-raw|--data-binary)\s+([^\s"']+)/);
+            if (bodyMatch) {
+                result.body = bodyMatch[1];
+                if (!methodMatch) {
+                    result.method = 'POST';
+                }
+            }
+
+            return result;
+        }
+
+        function decodeBase64UTF8(base64) {
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return new TextDecoder().decode(bytes);
+        }
+
+        function setCurlResponseTab(tabName) {
+            const previewBtn = document.getElementById('curl-tab-preview');
+            const rawBtn = document.getElementById('curl-tab-raw');
+            const previewContainer = document.getElementById('curl-resp-preview-container');
+            const rawContainer = document.getElementById('curl-resp-raw-container');
+
+            if (tabName === 'preview') {
+                previewBtn.style.borderBottomColor = 'var(--accent)';
+                previewBtn.style.color = 'var(--accent)';
+                rawBtn.style.borderBottomColor = 'transparent';
+                rawBtn.style.color = 'var(--text-dim)';
+                previewContainer.style.display = 'block';
+                rawContainer.style.display = 'none';
+            } else {
+                rawBtn.style.borderBottomColor = 'var(--accent)';
+                rawBtn.style.color = 'var(--accent)';
+                previewBtn.style.borderBottomColor = 'transparent';
+                previewBtn.style.color = 'var(--text-dim)';
+                rawContainer.style.display = 'block';
+                previewContainer.style.display = 'none';
+            }
+        }
+
+        function renderJsonTree(obj, container) {
+            container.innerHTML = '';
+            const rootNode = createJsonTreeNode('', obj, true);
+            container.appendChild(rootNode);
+        }
+
+        function createJsonTreeNode(key, val, isRoot = false) {
+            const node = document.createElement('div');
+            node.className = 'json-tree-node';
+            if (isRoot) {
+                node.style.marginLeft = '0';
+            }
+
+            const type = typeof val;
+            const isObject = val !== null && type === 'object';
+
+            if (key !== '') {
+                const keySpan = document.createElement('span');
+                keySpan.className = 'json-tree-key';
+                keySpan.textContent = key + ':';
+                node.appendChild(keySpan);
+            }
+
+            if (isObject) {
+                const toggle = document.createElement('span');
+                toggle.className = 'json-tree-toggle';
+                toggle.textContent = '▼';
+                node.insertBefore(toggle, node.firstChild);
+
+                const isArr = Array.isArray(val);
+                const summary = document.createElement('span');
+                summary.className = 'json-tree-summary';
+                summary.style.color = 'var(--text-dim)';
+                
+                if (isArr) {
+                    summary.textContent = `Array(${val.length})`;
+                } else {
+                    summary.textContent = `Object`;
+                }
+                node.appendChild(summary);
+
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'json-tree-children';
+                childrenContainer.style.paddingLeft = '12px';
+                childrenContainer.style.borderLeft = '1px dashed rgba(255, 255, 255, 0.05)';
+                node.appendChild(childrenContainer);
+
+                for (const [childKey, childVal] of Object.entries(val)) {
+                    const childNode = createJsonTreeNode(childKey, childVal);
+                    childrenContainer.appendChild(childNode);
+                }
+
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const collapsed = childrenContainer.style.display === 'none';
+                    childrenContainer.style.display = collapsed ? 'block' : 'none';
+                    toggle.textContent = collapsed ? '▼' : '▶';
+                    toggle.classList.toggle('collapsed', !collapsed);
+                });
+
+            } else {
+                const valSpan = document.createElement('span');
+                if (type === 'string') {
+                    valSpan.className = 'json-tree-val-string';
+                    valSpan.textContent = `"${val}"`;
+                } else if (type === 'number') {
+                    valSpan.className = 'json-tree-val-number';
+                    valSpan.textContent = val;
+                } else if (type === 'boolean') {
+                    valSpan.className = 'json-tree-val-boolean';
+                    valSpan.textContent = val;
+                } else if (val === null) {
+                    valSpan.className = 'json-tree-val-null';
+                    valSpan.textContent = 'null';
+                } else {
+                    valSpan.textContent = val;
+                }
+                node.appendChild(valSpan);
+            }
+
+            return node;
+        }
+
+        async function executeCurl() {
+            const cmd = curlCmdInput.value.trim();
+            const statusBadge = document.getElementById('curl-status-badge');
+            const respMethod = document.getElementById('curl-resp-method');
+            const respTime = document.getElementById('curl-resp-time');
+            const respHeaders = document.getElementById('curl-resp-headers');
+            const respBody = document.getElementById('curl-resp-body');
+            const previewContainer = document.getElementById('curl-resp-preview-container');
+
+            if (!cmd) {
+                alert('Please paste a curl command first');
+                return;
+            }
+
+            statusBadge.innerText = 'Sending...';
+            statusBadge.style.background = 'rgba(255,255,255,0.05)';
+            statusBadge.style.color = 'var(--text-dim)';
+            respHeaders.innerText = '';
+            respBody.innerText = 'Executing request on backend proxy...';
+            previewContainer.innerHTML = '<span style="color: var(--text-dim); font-size: 12.5px;">Waiting for response...</span>';
+
+            const parsed = parseCurl(cmd);
+            respMethod.innerText = parsed.method;
+
+            try {
+                const res = await fetch('/api/tools/curl/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed)
+                });
+                const data = await res.json();
+                
+                if (data.error) {
+                    statusBadge.innerText = 'ERROR';
+                    statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                    statusBadge.style.color = '#e74c3c';
+                    respBody.innerText = data.error;
+                    previewContainer.innerHTML = `<span style="color: #bf616a;">${data.error}</span>`;
+                    respTime.innerText = '0 ms';
+                    return;
+                }
+
+                statusBadge.innerText = data.status_text || `${data.status}`;
+                if (data.status >= 200 && data.status < 300) {
+                    statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                    statusBadge.style.color = '#2ecc71';
+                } else {
+                    statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                    statusBadge.style.color = '#e74c3c';
+                }
+
+                respTime.innerText = `${data.time_ms} ms`;
+                
+                let hStr = '';
+                let contentType = 'text/plain';
+                for (const [k, v] of Object.entries(data.headers)) {
+                    hStr += `${k}: ${v}\n`;
+                    if (k.toLowerCase() === 'content-type') {
+                        contentType = v.split(';')[0].trim();
+                    }
+                }
+                respHeaders.innerText = hStr;
+
+                const isImage = contentType.startsWith('image/');
+                
+                if (isImage) {
+                    previewContainer.innerHTML = `<img src="data:${contentType};base64,${data.body}" style="max-width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--border);">`;
+                    respBody.textContent = `[Binary Image Data: ${contentType}]`;
+                    respBody.className = 'plaintext';
+                    setCurlResponseTab('preview');
+                } else {
+                    let decodedBody = '';
+                    try {
+                        decodedBody = decodeBase64UTF8(data.body);
+                    } catch (err) {
+                        decodedBody = atob(data.body);
+                    }
+
+                    localStorage.setItem('ids_tool_curl_last_body', decodedBody);
+
+                    try {
+                        const parsedJson = JSON.parse(decodedBody);
+                        respBody.textContent = JSON.stringify(parsedJson, null, 2);
+                        respBody.className = 'language-json';
+                        renderJsonTree(parsedJson, previewContainer);
+                    } catch {
+                        respBody.textContent = decodedBody;
+                        respBody.className = 'plaintext';
+                        previewContainer.textContent = decodedBody;
+                    }
+                    hljs.highlightElement(respBody);
+                    setCurlResponseTab('preview');
+                }
+
+            } catch (err) {
+                statusBadge.innerText = 'CONN ERROR';
+                statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                statusBadge.style.color = '#e74c3c';
+                respBody.innerText = 'Connection Error: ' + err.message;
+                previewContainer.innerHTML = `<span style="color: #bf616a;">Connection Error: ${err.message}</span>`;
+            }
+        }
+
+
+
+        // ----------------------------------------------------
+        // QR Code Generator & Reader Logic
+        // ----------------------------------------------------
+        function setQrSubTab(tab) {
+            const genTab = document.getElementById('qr-tab-gen');
+            const readTab = document.getElementById('qr-tab-read');
+            const genWorkspace = document.getElementById('qr-gen-workspace');
+            const readWorkspace = document.getElementById('qr-read-workspace');
+            if (tab === 'gen') {
+                genTab.style.borderBottomColor = 'var(--accent)';
+                genTab.style.color = 'var(--accent)';
+                readTab.style.borderBottomColor = 'transparent';
+                readTab.style.color = 'var(--text-dim)';
+                genWorkspace.style.display = 'flex';
+                readWorkspace.style.display = 'none';
+                stopQrWebcam();
+            } else {
+                readTab.style.borderBottomColor = 'var(--accent)';
+                readTab.style.color = 'var(--accent)';
+                genTab.style.borderBottomColor = 'transparent';
+                genTab.style.color = 'var(--text-dim)';
+                readWorkspace.style.display = 'flex';
+                genWorkspace.style.display = 'none';
+            }
+        }
+
+        let qrcodeInstance = null;
+        function generateQRCode() {
+            const inputEl = document.getElementById('qr-gen-input');
+            const sizeEl = document.getElementById('qr-gen-size');
+            const errorEl = document.getElementById('qr-gen-error');
+            const container = document.getElementById('qr-gen-output-container');
+            const downloadBtn = document.getElementById('qr-download-btn');
+            
+            const text = inputEl.value.trim();
+            if (!text) {
+                alert('Please enter some text/URL to generate QR Code');
+                return;
+            }
+
+            container.innerHTML = '';
+            const size = parseInt(sizeEl.value);
+            
+            let correctLevel = QRCode.CorrectLevel.M;
+            if (errorEl.value === 'L') correctLevel = QRCode.CorrectLevel.L;
+            else if (errorEl.value === 'Q') correctLevel = QRCode.CorrectLevel.Q;
+            else if (errorEl.value === 'H') correctLevel = QRCode.CorrectLevel.H;
+
+            qrcodeInstance = new QRCode(container, {
+                text: text,
+                width: size,
+                height: size,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : correctLevel
+            });
+
+            setTimeout(() => {
+                downloadBtn.style.display = 'block';
+            }, 100);
+
+            localStorage.setItem('ids_tool_qr_gen_input', text);
+        }
+
+        function downloadQRCode() {
+            const container = document.getElementById('qr-gen-output-container');
+            const img = container.querySelector('img');
+            if (!img) return;
+
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'qrcode.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handleQrFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) decodeQrImage(file);
+        }
+
+        function handleQrFileDrop(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0];
+            if (file) decodeQrImage(file);
+        }
+
+        function decodeQrImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+
+                    const output = document.getElementById('qr-decoded-output');
+                    if (code) {
+                        output.value = code.data;
+                    } else {
+                        output.value = "⚠️ Could not find any valid QR Code in the image.";
+                    }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        let qrVideo = null;
+        let qrCanvas = null;
+        let qrCanvasCtx = null;
+        let qrStream = null;
+        let qrRequestID = null;
+
+        function startQrWebcam() {
+            qrVideo = document.getElementById('qr-video');
+            qrCanvas = document.getElementById('qr-canvas');
+            qrCanvasCtx = qrCanvas.getContext('2d');
+            const placeholder = document.getElementById('qr-camera-placeholder');
+
+            placeholder.style.display = 'none';
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function(stream) {
+                qrStream = stream;
+                qrVideo.srcObject = stream;
+                qrVideo.setAttribute("playsinline", true);
+                qrVideo.play();
+                qrRequestID = requestAnimationFrame(tickQrWebcam);
+            }).catch(err => {
+                console.error(err);
+                placeholder.style.display = 'flex';
+                placeholder.innerText = "Camera Access Denied";
+            });
+        }
+
+        function stopQrWebcam() {
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+            if (qrVideo) {
+                qrVideo.srcObject = null;
+            }
+            if (qrRequestID) {
+                cancelAnimationFrame(qrRequestID);
+                qrRequestID = null;
+            }
+            const placeholder = document.getElementById('qr-camera-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'flex';
+                placeholder.innerText = "Camera Inactive";
+            }
+        }
+
+        function tickQrWebcam() {
+            if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+                qrCanvas.height = qrVideo.videoHeight;
+                qrCanvas.width = qrVideo.videoWidth;
+                qrCanvasCtx.drawImage(qrVideo, 0, 0, qrCanvas.width, qrCanvas.height);
+                const imageData = qrCanvasCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+                if (code) {
+                    document.getElementById('qr-decoded-output').value = code.data;
+                    stopQrWebcam();
+                    return;
+                }
+            }
+            qrRequestID = requestAnimationFrame(tickQrWebcam);
+        }
+
+        // ----------------------------------------------------
+        // DNS Dig & Whois & GeoIP Logic
+        // ----------------------------------------------------
+        function setDnsResultTab(tabName) {
+            const tabRecords = document.getElementById('dns-tab-records');
+            const tabWhois = document.getElementById('dns-tab-whois');
+            const tabGeoip = document.getElementById('dns-tab-geoip');
+
+            const outRecords = document.getElementById('dns-out-records-container');
+            const outWhois = document.getElementById('dns-out-whois-container');
+            const outGeoip = document.getElementById('dns-out-geoip-container');
+
+            [tabRecords, tabWhois, tabGeoip].forEach(tab => {
+                tab.style.borderBottomColor = 'transparent';
+                tab.style.color = 'var(--text-dim)';
+            });
+            [outRecords, outWhois, outGeoip].forEach(pane => {
+                pane.style.display = 'none';
+            });
+
+            const activeTabBtn = document.getElementById(`dns-tab-${tabName}`);
+            const activePane = document.getElementById(`dns-out-${tabName}-container`);
+
+            activeTabBtn.style.borderBottomColor = 'var(--accent)';
+            activeTabBtn.style.color = 'var(--accent)';
+            activePane.style.display = tabName === 'geoip' ? 'flex' : 'block';
+        }
+
+        async function executeDnsLookup() {
+            const domainInput = document.getElementById('dns-domain-input');
+            const typeSelect = document.getElementById('dns-record-type');
+            const customResolver = document.getElementById('dns-custom-resolver');
+
+            const domain = domainInput.value.trim();
+            const type = typeSelect.value;
+            const dnsServer = customResolver.value.trim();
+
+            if (!domain) {
+                alert('Please enter a domain name');
+                return;
+            }
+
+            const tbody = document.getElementById('dns-records-tbody');
+            const whoisOutput = document.getElementById('dns-whois-output');
+            const geoipCard = document.getElementById('dns-geoip-card');
+            const geoipEmpty = document.getElementById('dns-geoip-empty');
+
+            tbody.innerHTML = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: var(--accent);">Running diagnostics...</td></tr>`;
+            whoisOutput.innerText = 'Running WHOIS query...';
+            geoipCard.style.display = 'none';
+            geoipEmpty.style.display = 'block';
+            geoipEmpty.innerText = 'Resolving IP address...';
+
+            try {
+                const res = await fetch('/api/tools/dns/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, type, dns_server: dnsServer })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: #bf616a;">Error: ${data.error}</td></tr>`;
+                    whoisOutput.innerText = 'Error: ' + data.error;
+                    geoipEmpty.innerText = 'Error: ' + data.error;
+                    return;
+                }
+
+                if (!data.records || data.records.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: var(--text-dim);">No records found.</td></tr>`;
+                } else {
+                    let html = '';
+                    data.records.forEach(rec => {
+                        html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <td style="padding: 8px 12px; font-weight: bold; color: var(--accent);">${rec.type}</td>
+                            <td style="padding: 8px 12px; font-family: var(--font-mono);">${rec.value}</td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                }
+
+                whoisOutput.innerText = data.whois || 'No WHOIS records found.';
+
+                if (data.geoip) {
+                    geoipCard.style.display = 'block';
+                    geoipEmpty.style.display = 'none';
+
+                    const flagEmoji = getFlagEmoji(data.geoip.country_code);
+                    document.getElementById('dns-geoip-flag').innerText = flagEmoji;
+                    document.getElementById('dns-geoip-ip-title').innerText = `GeoIP: ${data.geoip.ip}`;
+                    document.getElementById('dns-geoip-country').innerText = `${data.geoip.country} (${data.geoip.country_code})`;
+                    document.getElementById('dns-geoip-city').innerText = data.geoip.city || 'N/A';
+                    document.getElementById('dns-geoip-isp').innerText = data.geoip.isp || 'N/A';
+                    document.getElementById('dns-geoip-coords').innerText = `${data.geoip.lat}, ${data.geoip.lon}`;
+                } else {
+                    geoipCard.style.display = 'none';
+                    geoipEmpty.style.display = 'block';
+                    geoipEmpty.innerText = 'No IPv4 address resolved to fetch location.';
+                }
+
+                localStorage.setItem('ids_tool_dns_domain', domain);
+                localStorage.setItem('ids_tool_dns_type', type);
+                localStorage.setItem('ids_tool_dns_resolver', dnsServer);
+
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: #bf616a;">Fetch error: ${err.message}</td></tr>`;
+                whoisOutput.innerText = 'Connection error: ' + err.message;
+                geoipEmpty.innerText = 'Connection error: ' + err.message;
+            }
+        }
+
+        function getFlagEmoji(countryCode) {
+            if (!countryCode) return '🏳️';
+            const codePoints = countryCode
+                .toUpperCase()
+                .split('')
+                .map(char => 127397 + char.charCodeAt(0));
+            return String.fromCodePoint(...codePoints);
+        }
+
+        // ----------------------------------------------------
+        // Global Helpers & State Loaders
+        // ----------------------------------------------------
+        async function copyToClipboard(source) {
+            let text = '';
+            if (source === 'editor') text = editor.value;
+            else if (source === 'preview') text = preview.innerHTML;
+            else if (source === 'json-raw') text = jsonEditor.value;
+            else if (source === 'json-formatted') text = document.getElementById('json-preview').innerText;
+            else if (source === 'jwt-header') text = jwtHeaderEditor.value;
+            else if (source === 'jwt-payload') text = jwtPayloadEditor.value;
+            else if (source === 'jwt-raw') text = jwtEditor.value;
+            else if (source === 'kv-raw') text = kvEditor.value;
+            else if (source === 'kv-formatted') text = document.getElementById('kv-preview').innerText;
+            else if (source === 'bcrypt-hash') text = document.getElementById('bcrypt-hash-output').innerText;
+            else if (source === 'curl-body') text = localStorage.getItem('ids_tool_curl_last_body') || document.getElementById('curl-resp-body').innerText;
+            else if (source === 'qr-decoded') text = document.getElementById('qr-decoded-output').value;
+            else if (source === 'dns-whois') text = document.getElementById('dns-whois-output').innerText;
+            
+            if (!text.trim()) return;
+
+            try {
+                await navigator.clipboard.writeText(text);
+                alert('Copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+        }
+
+        function selectTool(toolName) {
+            localStorage.setItem('ids_tool_active', toolName);
+            
+            document.querySelectorAll('.tool-nav-item').forEach(item => {
+                if (item.getAttribute('data-tool') === toolName) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            document.getElementById('markdown-tool').style.display = toolName === 'markdown' ? 'flex' : 'none';
+            document.getElementById('json-tool').style.display = toolName === 'json' ? 'flex' : 'none';
+            document.getElementById('jwt-tool').style.display = toolName === 'jwt' ? 'flex' : 'none';
+            document.getElementById('kv-tool').style.display = toolName === 'kv' ? 'flex' : 'none';
+            document.getElementById('diff-tool').style.display = toolName === 'diff' ? 'flex' : 'none';
+            document.getElementById('bcrypt-tool').style.display = toolName === 'bcrypt' ? 'flex' : 'none';
+            document.getElementById('time-tool').style.display = toolName === 'time' ? 'flex' : 'none';
+            document.getElementById('curl-tool').style.display = toolName === 'curl' ? 'flex' : 'none';
+            document.getElementById('qr-tool').style.display = toolName === 'qr' ? 'flex' : 'none';
+            document.getElementById('dns-tool').style.display = toolName === 'dns' ? 'flex' : 'none';
+            
+            if (toolName !== 'qr') stopQrWebcam();
+        }
+
+        function restoreState() {
+            // Restore Markdown
+            const mdVal = localStorage.getItem('ids_tool_md_val');
+            editor.value = mdVal !== null ? mdVal : welcomeContent;
+            updatePreview();
+
+            // Restore JSON
+            const jsonVal = localStorage.getItem('ids_tool_json_val');
+            if (jsonVal !== null) {
+                jsonEditor.value = jsonVal;
+            }
+            validateJSON();
+            debouncedFormat();
+
+            // Restore JWT
+            const jwtVal = localStorage.getItem('ids_tool_jwt_val');
+            if (jwtVal !== null) {
+                jwtEditor.value = jwtVal;
+            }
+            const jwtSecretVal = localStorage.getItem('ids_tool_jwt_secret');
+            if (jwtSecretVal !== null) {
+                jwtSecretInput.value = jwtSecretVal;
+            }
+            const jwtHeaderVal = localStorage.getItem('ids_tool_jwt_header');
+            if (jwtHeaderVal !== null) {
+                jwtHeaderEditor.value = jwtHeaderVal;
+            } else {
+                jwtHeaderEditor.value = JSON.stringify(defaultHeader, null, 2);
+            }
+            const jwtPayloadVal = localStorage.getItem('ids_tool_jwt_payload');
+            if (jwtPayloadVal !== null) {
+                jwtPayloadEditor.value = jwtPayloadVal;
+            } else {
+                jwtPayloadEditor.value = JSON.stringify(defaultPayload, null, 2);
+            }
+            if (jwtVal !== null) {
+                decodeJWT();
+            } else {
+                encodeJWT();
+            }
+
+            // Restore KV
+            if (kvEditor) {
+                const kvVal = localStorage.getItem('ids_tool_kv_val');
+                kvEditor.value = kvVal !== null ? kvVal : sampleKV;
+                parseKV();
+            }
+
+            // Restore Diff
+            if (diffOld && diffNew) {
+                diffOld.value = localStorage.getItem('ids_tool_diff_old') || '';
+                diffNew.value = localStorage.getItem('ids_tool_diff_new') || '';
+                renderDiff();
+            }
+
+            // Restore Bcrypt values
+            if (bcryptPassInput) {
+                bcryptPassInput.value = localStorage.getItem('ids_tool_bcrypt_pass') || '';
+                bcryptRoundsInput.value = localStorage.getItem('ids_tool_bcrypt_rounds') || '10';
+                bcryptTestPass.value = localStorage.getItem('ids_tool_bcrypt_test_pass') || '';
+                bcryptTestHash.value = localStorage.getItem('ids_tool_bcrypt_test_hash') || '';
+                document.getElementById('bcrypt-hash-output').innerText = localStorage.getItem('ids_tool_bcrypt_generated') || '';
+            }
+
+            // Restore Time
+            if (timeInput) {
+                timeInput.value = localStorage.getItem('ids_tool_time_input') || '';
+                timeTimezoneSelect.value = localStorage.getItem('ids_tool_time_timezone') || 'Asia/Ho_Chi_Minh';
+                convertTime();
+            }
+
+            // Restore Curl command
+            if (curlCmdInput) {
+                curlCmdInput.value = localStorage.getItem('ids_tool_curl_cmd') || '';
+            }
+
+            // Restore QR Gen
+            const qrGenIn = localStorage.getItem('ids_tool_qr_gen_input');
+            if (qrGenIn) {
+                document.getElementById('qr-gen-input').value = qrGenIn;
+                generateQRCode();
+            }
+
+            // Restore DNS
+            const dnsDomain = localStorage.getItem('ids_tool_dns_domain');
+            if (dnsDomain) {
+                document.getElementById('dns-domain-input').value = dnsDomain;
+                document.getElementById('dns-record-type').value = localStorage.getItem('ids_tool_dns_type') || 'ALL';
+                document.getElementById('dns-custom-resolver').value = localStorage.getItem('ids_tool_dns_resolver') || '';
+                executeDnsLookup();
+            }
+
+            // Restore Active Tab
+            const activeTab = localStorage.getItem('ids_tool_active') || 'markdown';
+            selectTool(activeTab);
+        }
+
+        window.addEventListener('load', restoreState);
+    </script>
+</body>
+
+</html>

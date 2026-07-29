@@ -22,6 +22,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(basePath, "templates", "index.html"))
 }
 
+func toolsHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, filepath.Join(basePath, "templates", "tools.html"))
+}
+
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var s Settings

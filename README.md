@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.0
+# 🚀 Internal Deploy System (IDS) - v1.7.3
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -84,6 +84,20 @@ deploy-tool/
 - **Formatted Dialogs**: System alerts, confirms, and prompts support HTML formatting natively (e.g., highlighting key names in bold) for a cleaner UX.
 - **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
 - **Shortcuts Modal**: Quick-reference guide for all system keyboard shortcuts.
+
+### 🛠️ Developer Utility Tools (IDS Tools Suite)
+
+A comprehensive suite of local developer utility tools integrated into the workspace dashboard:
+- **Markdown Live Preview**: Real-time Markdown parsing and preview rendering with built-in export and raw copy actions.
+- **JSON Formatter**: Instantly beautify, compact, or validate JSON strings in real-time using a debounced formatting engine.
+- **JWT Decoder & Editor**: Parse token segments, sign/verify HMAC-SHA256 signatures, and edit payloads/headers directly in real-time.
+- **KV to JSON Parser**: Auto-convert key-value logging sequences (like `id:1 name:user`) into valid structured JSON.
+- **Text Diff Compare**: Local line-by-line diffing utilizing a custom LCS (Longest Common Subsequence) algorithm with color-coded additions/deletions.
+- **Bcrypt Generator**: Backend-powered password hashing and hash validation using native Go bcrypt packages.
+- **Time Converter**: Multi-format time conversions (ISO, Local, Epoch timestamp offsets, Relative time) supporting custom destination timezones.
+- **Curl Online Runner**: Execute HTTP requests from raw curl commands using a secure backend proxy to bypass CORS. Supports Chrome DevTools-style collapsible JSON tree viewer and image rendering.
+- **QR Code Gen/Reader**: Local QR Code generation with error correction control and download actions. Includes local QR file reading (drag-and-drop) and webcam scanning streams.
+- **DNS Dig / Whois / GeoIP**: Run DNS queries (A, AAAA, MX, CNAME, etc.) via custom resolvers, query domain registry WHOIS metadata directly over TCP socket port 43, and look up geographical server ISP info.
 
 ## ⌨️ Keyboard Shortcuts
 

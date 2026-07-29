@@ -72,6 +72,11 @@ func main() {
 
 	mux.HandleFunc("/", indexHandler)
 	mux.HandleFunc("/health-monitor", healthMonitorHandler)
+	mux.HandleFunc("/tools", toolsHandler)
+	mux.HandleFunc("/api/tools/bcrypt/hash", bcryptHashHandler)
+	mux.HandleFunc("/api/tools/bcrypt/verify", bcryptVerifyHandler)
+	mux.HandleFunc("/api/tools/curl/execute", curlProxyHandler)
+	mux.HandleFunc("/api/tools/dns/lookup", dnsLookupHandler)
 	mux.HandleFunc("/api/settings", settingsHandler)
 	mux.HandleFunc("/api/workspace-folders", workspaceFoldersHandler)
 	mux.HandleFunc("/api/services", servicesHandler)
