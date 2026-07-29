@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.3
+# 🚀 Internal Deploy System (IDS) - v1.7.4
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -88,6 +88,7 @@ deploy-tool/
 ### 🛠️ Developer Utility Tools (IDS Tools Suite)
 
 A comprehensive suite of local developer utility tools integrated into the workspace dashboard:
+
 - **Markdown Live Preview**: Real-time Markdown parsing and preview rendering with built-in export and raw copy actions.
 - **JSON Formatter**: Instantly beautify, compact, or validate JSON strings in real-time using a debounced formatting engine.
 - **JWT Decoder & Editor**: Parse token segments, sign/verify HMAC-SHA256 signatures, and edit payloads/headers directly in real-time.
@@ -98,6 +99,7 @@ A comprehensive suite of local developer utility tools integrated into the works
 - **Curl Online Runner**: Execute HTTP requests from raw curl commands using a secure backend proxy to bypass CORS. Supports Chrome DevTools-style collapsible JSON tree viewer and image rendering.
 - **QR Code Gen/Reader**: Local QR Code generation with error correction control and download actions. Includes local QR file reading (drag-and-drop) and webcam scanning streams.
 - **DNS Dig / Whois / GeoIP**: Run DNS queries (A, AAAA, MX, CNAME, etc.) via custom resolvers, query domain registry WHOIS metadata directly over TCP socket port 43, and look up geographical server ISP info.
+- **WebSocket Client**: Interactive WebSocket connection testing client. Supports connecting to custom ws/wss URLs, filtering console message logs, sending custom payloads, subscribing to channels with quick presets, and collapsible JSON tree rendering for socket message payloads.
 
 ## ⌨️ Keyboard Shortcuts
 

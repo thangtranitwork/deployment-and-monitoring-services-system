@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=1.7.3">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.7.4">
     
     <!-- Marked for MD parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -461,6 +461,9 @@
             </div>
             <div class="tool-nav-item" data-tool="dns" onclick="selectTool('dns')">
                 <span>🌐</span> DNS Dig / Whois / GeoIP
+            </div>
+            <div class="tool-nav-item" data-tool="ws" onclick="selectTool('ws')">
+                <span>🔌</span> WebSocket Client
             </div>
         </div>
 
@@ -1058,6 +1061,78 @@
                             <div id="dns-geoip-empty" style="color: var(--text-dim); font-size: 12.5px;">
                                 No GeoIP location found (Resolve A-record domain first).
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WebSocket Client Tool -->
+            <div id="ws-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">WebSocket Client Diagnostic Tool</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace">
+                    <!-- Left: Connection config & send -->
+                    <div class="split-pane" style="max-width: 400px; border-right: 1px solid var(--border); overflow-y: auto;">
+                        <div class="pane-header">
+                            <span>Connection & Inputs</span>
+                            <span id="ws-status-badge" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; background: rgba(255,255,255,0.05); color: var(--text-dim);">DISCONNECTED</span>
+                        </div>
+                        <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">WebSocket URL</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="ws-url-input" value="wss://echo.websocket.org" placeholder="ws:// or wss://"
+                                        style="flex: 1; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="ws-connect-btn" onclick="connectWebSocket()" class="primary" style="flex: 1; height: 32px; font-size: 12.5px;">🔌 Connect</button>
+                                <button id="ws-disconnect-btn" onclick="disconnectWebSocket()" style="flex: 1; height: 32px; font-size: 12.5px; background: transparent; border: 1px solid var(--border);" disabled>🛑 Disconnect</button>
+                            </div>
+
+                            <hr style="border: 0; border-top: 1px solid var(--border); margin: 4px 0;">
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <label style="font-size: 12px; color: var(--text-dim);">Message Payload</label>
+                                    <button onclick="formatWsMessageJson()" style="font-size: 10px; background: transparent; border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--text-dim); cursor: pointer;">Format JSON</button>
+                                </div>
+                                <textarea id="ws-msg-input" class="editor-area" style="min-height: 120px; font-size: 12.5px; font-family: var(--font-mono);" placeholder='e.g. {"event": "subscribe", "channel": "events"}'></textarea>
+                            </div>
+                            <button id="ws-send-btn" onclick="sendWebSocketMessage()" class="primary" style="height: 36px; padding: 0 16px; align-self: flex-start; font-size: 13px;" disabled>✉️ Send Payload</button>
+
+                            <div style="margin-top: 8px;">
+                                <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; font-weight: 700; letter-spacing: 0.5px;">Quick Channel Subscriptions</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    <button onclick="insertWsSubscription('events')" class="secondary-btn" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text-main); cursor: pointer;">🔔 Sub Events</button>
+                                    <button onclick="insertWsSubscription('orders')" class="secondary-btn" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text-main); cursor: pointer;">📦 Sub Orders</button>
+                                    <button onclick="insertWsSubscription('ping')" class="secondary-btn" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text-main); cursor: pointer;">🏓 Ping</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Console Event logs -->
+                    <div class="split-pane" style="background: rgba(0,0,0,0.05); overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; height: 100%;">
+                        <!-- Filter & actions -->
+                        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+                            <input type="text" id="ws-search-input" placeholder="🔍 Filter messages/events..." oninput="filterWsLogs()"
+                                style="flex: 1; font-size: 12.5px; padding: 6px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                            
+                            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); user-select: none; cursor: pointer;">
+                                <input type="checkbox" id="ws-autoscroll" checked> Auto-scroll
+                            </label>
+                            
+                            <button onclick="clearWsLogs()" style="font-size: 11.5px; padding: 4px 10px; height: 28px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;">🗑️ Clear Console</button>
+                        </div>
+
+                        <!-- Log container list -->
+                        <div id="ws-log-list" style="flex: 1; border: 1px solid var(--border); border-radius: 6px; background: rgba(0,0,0,0.3); padding: 12px; overflow-y: auto; font-family: var(--font-mono); font-size: 12.5px; display: flex; flex-direction: column; gap: 8px;">
+                            <span style="color: var(--text-dim); font-size: 12.5px;">Websocket client console inactive. Fill URL and click Connect.</span>
                         </div>
                     </div>
                 </div>
@@ -2562,8 +2637,302 @@ async function checkServiceHealth(port) {
             document.getElementById('curl-tool').style.display = toolName === 'curl' ? 'flex' : 'none';
             document.getElementById('qr-tool').style.display = toolName === 'qr' ? 'flex' : 'none';
             document.getElementById('dns-tool').style.display = toolName === 'dns' ? 'flex' : 'none';
+            document.getElementById('ws-tool').style.display = toolName === 'ws' ? 'flex' : 'none';
             
             if (toolName !== 'qr') stopQrWebcam();
+            if (toolName !== 'ws') disconnectWebSocket();
+        }
+
+        // ----------------------------------------------------
+        // WebSocket Client Logic
+        // ----------------------------------------------------
+        let wsSocket = null;
+        let wsLogHistory = [];
+
+        function connectWebSocket() {
+            const urlInput = document.getElementById('ws-url-input');
+            const url = urlInput.value.trim();
+            if (!url) {
+                alert('Please enter a WebSocket URL');
+                return;
+            }
+
+            const statusBadge = document.getElementById('ws-status-badge');
+            const connectBtn = document.getElementById('ws-connect-btn');
+            const disconnectBtn = document.getElementById('ws-disconnect-btn');
+            const sendBtn = document.getElementById('ws-send-btn');
+            const logContainer = document.getElementById('ws-log-list');
+
+            statusBadge.innerText = 'CONNECTING';
+            statusBadge.style.background = 'rgba(243, 156, 18, 0.15)';
+            statusBadge.style.color = '#f39c12';
+            connectBtn.disabled = true;
+
+            try {
+                wsSocket = new WebSocket(url);
+                
+                wsSocket.onopen = function(e) {
+                    statusBadge.innerText = 'CONNECTED';
+                    statusBadge.style.background = 'rgba(46, 204, 113, 0.15)';
+                    statusBadge.style.color = '#2ecc71';
+                    disconnectBtn.disabled = false;
+                    sendBtn.disabled = false;
+                    addWsLog('SYSTEM', `Connection established to ${url}`);
+                };
+
+                wsSocket.onclose = function(e) {
+                    statusBadge.innerText = 'DISCONNECTED';
+                    statusBadge.style.background = 'rgba(255,255,255,0.05)';
+                    statusBadge.style.color = 'var(--text-dim)';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendBtn.disabled = true;
+                    addWsLog('SYSTEM', `Connection closed. Code: ${e.code}, Reason: ${e.reason || 'None'}`);
+                    wsSocket = null;
+                };
+
+                wsSocket.onerror = function(err) {
+                    addWsLog('ERROR', `Error: Connection failed`);
+                };
+
+                wsSocket.onmessage = function(e) {
+                    addWsLog('RECEIVED', e.data);
+                };
+
+            } catch (err) {
+                statusBadge.innerText = 'DISCONNECTED';
+                statusBadge.style.background = 'rgba(231, 76, 60, 0.15)';
+                statusBadge.style.color = '#e74c3c';
+                connectBtn.disabled = false;
+                addWsLog('ERROR', `Exception: ${err.message}`);
+            }
+
+            localStorage.setItem('ids_tool_ws_url', url);
+        }
+
+        function disconnectWebSocket() {
+            if (wsSocket) {
+                wsSocket.close();
+            }
+        }
+
+        function sendWebSocketMessage() {
+            const inputEl = document.getElementById('ws-msg-input');
+            const val = inputEl.value.trim();
+            if (!val) return;
+
+            if (wsSocket && wsSocket.readyState === WebSocket.OPEN) {
+                wsSocket.send(val);
+                addWsLog('SENT', val);
+                localStorage.setItem('ids_tool_ws_msg', val);
+            } else {
+                alert('WebSocket is not connected');
+            }
+        }
+
+        function formatWsMessageJson() {
+            const inputEl = document.getElementById('ws-msg-input');
+            try {
+                const parsed = JSON.parse(inputEl.value);
+                inputEl.value = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                alert('Invalid JSON format');
+            }
+        }
+
+        function insertWsSubscription(type) {
+            const inputEl = document.getElementById('ws-msg-input');
+            if (type === 'events') {
+                inputEl.value = JSON.stringify({ event: "subscribe", channel: "events" }, null, 2);
+            } else if (type === 'orders') {
+                inputEl.value = JSON.stringify({ event: "subscribe", channel: "orders" }, null, 2);
+            } else if (type === 'ping') {
+                inputEl.value = JSON.stringify({ ping: Date.now() }, null, 2);
+            }
+            formatWsMessageJson();
+        }
+
+        function addWsLog(type, content) {
+            const logContainer = document.getElementById('ws-log-list');
+            if (wsLogHistory.length === 0) {
+                logContainer.innerHTML = '';
+            }
+
+            const timestamp = new Date().toLocaleTimeString();
+            const logItem = { type, content, timestamp, id: 'ws-log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9) };
+            wsLogHistory.push(logItem);
+
+            const div = document.createElement('div');
+            div.className = 'ws-log-item';
+            div.id = logItem.id;
+            div.style.padding = '8px';
+            div.style.borderRadius = '4px';
+            div.style.border = '1px solid transparent';
+            div.style.marginBottom = '6px';
+            div.style.transition = 'all 0.2s ease';
+
+            let typeColor = 'var(--text-dim)';
+            let typeLabel = type;
+            let bg = 'transparent';
+
+            if (type === 'SENT') {
+                typeColor = '#88c0d0';
+                typeLabel = '⬆️ SENT';
+                bg = 'rgba(136, 192, 208, 0.05)';
+            } else if (type === 'RECEIVED') {
+                typeColor = '#a3be8c';
+                typeLabel = '⬇️ RECEIVED';
+                bg = 'rgba(163, 190, 140, 0.05)';
+            } else if (type === 'SYSTEM') {
+                typeColor = 'var(--accent)';
+                typeLabel = '⚙️ SYSTEM';
+                bg = 'rgba(136, 192, 208, 0.02)';
+            } else if (type === 'ERROR') {
+                typeColor = '#bf616a';
+                typeLabel = '⚠️ ERROR';
+                bg = 'rgba(191, 97, 106, 0.05)';
+            }
+
+            div.style.background = bg;
+
+            let isJson = false;
+            let parsedJson = null;
+            try {
+                parsedJson = JSON.parse(content);
+                isJson = typeof parsedJson === 'object' && parsedJson !== null;
+            } catch {}
+
+            let contentHtml = '';
+            if (isJson) {
+                contentHtml = `
+                    <span style="cursor: pointer; text-decoration: underline; color: var(--accent); margin-top: 4px; display: inline-block; font-size: 11px;" 
+                        onclick="toggleWsLogTree('${logItem.id}')">Toggle JSON Tree</span>
+                    <div class="ws-json-tree" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                    <pre class="ws-raw-text" style="margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-all; opacity: 0.85;">${content}</pre>
+                `;
+            } else {
+                contentHtml = `<pre style="margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-all; opacity: 0.85;">${content}</pre>`;
+            }
+
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                    <span style="font-weight: 700; color: ${typeColor};">${typeLabel}</span>
+                    <span style="color: var(--text-dim);">${timestamp}</span>
+                </div>
+                ${contentHtml}
+            `;
+
+            logContainer.appendChild(div);
+
+            if (isJson) {
+                const treeContainer = div.querySelector('.ws-json-tree');
+                renderJsonTree(parsedJson, treeContainer);
+            }
+
+            const autoscroll = document.getElementById('ws-autoscroll').checked;
+            if (autoscroll) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        function toggleWsLogTree(id) {
+            const item = document.getElementById(id);
+            if (!item) return;
+            const tree = item.querySelector('.ws-json-tree');
+            const raw = item.querySelector('.ws-raw-text');
+            if (tree && raw) {
+                const isCollapsed = tree.style.display === 'none';
+                tree.style.display = isCollapsed ? 'block' : 'none';
+                raw.style.display = isCollapsed ? 'none' : 'block';
+            }
+        }
+
+        function clearWsLogs() {
+            wsLogHistory = [];
+            document.getElementById('ws-log-list').innerHTML = '<span style="color: var(--text-dim); font-size: 12.5px;">Logs cleared.</span>';
+        }
+
+        function filterWsLogs() {
+            const query = document.getElementById('ws-search-input').value.toLowerCase().trim();
+            const logContainer = document.getElementById('ws-log-list');
+            logContainer.innerHTML = '';
+
+            const filtered = wsLogHistory.filter(item => {
+                return item.content.toLowerCase().includes(query) || item.type.toLowerCase().includes(query);
+            });
+
+            if (filtered.length === 0) {
+                logContainer.innerHTML = '<span style="color: var(--text-dim); font-size: 12.5px;">No matching log events.</span>';
+                return;
+            }
+
+            filtered.forEach(logItem => {
+                const div = document.createElement('div');
+                div.className = 'ws-log-item';
+                div.id = logItem.id;
+                div.style.padding = '8px';
+                div.style.borderRadius = '4px';
+                div.style.border = '1px solid transparent';
+                div.style.marginBottom = '6px';
+                
+                let typeColor = 'var(--text-dim)';
+                let typeLabel = logItem.type;
+                let bg = 'transparent';
+
+                if (logItem.type === 'SENT') {
+                    typeColor = '#88c0d0';
+                    typeLabel = '⬆️ SENT';
+                    bg = 'rgba(136, 192, 208, 0.05)';
+                } else if (logItem.type === 'RECEIVED') {
+                    typeColor = '#a3be8c';
+                    typeLabel = '⬇️ RECEIVED';
+                    bg = 'rgba(163, 190, 140, 0.05)';
+                } else if (logItem.type === 'SYSTEM') {
+                    typeColor = 'var(--accent)';
+                    typeLabel = '⚙️ SYSTEM';
+                    bg = 'rgba(136, 192, 208, 0.02)';
+                } else if (logItem.type === 'ERROR') {
+                    typeColor = '#bf616a';
+                    typeLabel = '⚠️ ERROR';
+                    bg = 'rgba(191, 97, 106, 0.05)';
+                }
+
+                div.style.background = bg;
+
+                let isJson = false;
+                let parsedJson = null;
+                try {
+                    parsedJson = JSON.parse(logItem.content);
+                    isJson = typeof parsedJson === 'object' && parsedJson !== null;
+                } catch {}
+
+                let contentHtml = '';
+                if (isJson) {
+                    contentHtml = `
+                        <span style="cursor: pointer; text-decoration: underline; color: var(--accent); margin-top: 4px; display: inline-block; font-size: 11px;" 
+                            onclick="toggleWsLogTree('${logItem.id}')">Toggle JSON Tree</span>
+                        <div class="ws-json-tree" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                        <pre class="ws-raw-text" style="margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-all; opacity: 0.85;">${logItem.content}</pre>
+                    `;
+                } else {
+                    contentHtml = `<pre style="margin: 4px 0 0 0; white-space: pre-wrap; word-break: break-all; opacity: 0.85;">${logItem.content}</pre>`;
+                }
+
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                        <span style="font-weight: 700; color: ${typeColor};">${typeLabel}</span>
+                        <span style="color: var(--text-dim);">${logItem.timestamp}</span>
+                    </div>
+                    ${contentHtml}
+                `;
+
+                logContainer.appendChild(div);
+
+                if (isJson) {
+                    const treeContainer = div.querySelector('.ws-json-tree');
+                    renderJsonTree(parsedJson, treeContainer);
+                }
+            });
         }
 
         function restoreState() {
@@ -2656,6 +3025,16 @@ async function checkServiceHealth(port) {
                 document.getElementById('dns-record-type').value = localStorage.getItem('ids_tool_dns_type') || 'ALL';
                 document.getElementById('dns-custom-resolver').value = localStorage.getItem('ids_tool_dns_resolver') || '';
                 executeDnsLookup();
+            }
+
+            // Restore WS values
+            const wsUrl = localStorage.getItem('ids_tool_ws_url');
+            if (wsUrl) {
+                document.getElementById('ws-url-input').value = wsUrl;
+            }
+            const wsMsg = localStorage.getItem('ids_tool_ws_msg');
+            if (wsMsg) {
+                document.getElementById('ws-msg-input').value = wsMsg;
             }
 
             // Restore Active Tab
