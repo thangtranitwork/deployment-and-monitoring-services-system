@@ -15,26 +15,26 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-    <link rel="stylesheet" href="/static/css/style.css?v=1.6.8">
+    <link rel="stylesheet" href="/static/css/style.css?v=1.7.3">
 </head>
 
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.6.4</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.7.0</span></div>
         <div class="header-actions">
-            <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓 Theme</button>
             <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
                 Health Monitor</button>
-            <button onclick="openShortcutsModal()" title="Shortcut: Alt+Shift+H">⌨️ Shortcuts</button>
-            <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊 Statistics</button>
             <button onclick="openMultiDeployModal()" title="Deploy multiple services concurrently">⚡ Multi
                 Deploy</button>
             <button onclick="openCompareModal()" title="Compare all services branch difference">🔍 Compare Source</button>
-            <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️ Settings</button>
             <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
             <button id="vpn-toggle" onclick="toggleVPNManagement()" title="Shortcut: Alt+Shift+U">🔒 VPN</button>
-            <button onclick="refreshServices()" title="Shortcut: Alt+Shift+R">↻ Refresh</button>
+            <button id="theme-toggle" onclick="toggleTheme()" title="Shortcut: Alt+Shift+T">🌓</button>
+            <button onclick="openShortcutsModal()" title="Shortcut: Alt+Shift+H">⌨️</button>
+            <button onclick="openStatsModal()" title="Shortcut: Alt+Shift+S">📊</button>
+            <button onclick="openSettings()" title="Shortcut: Alt+Shift+I">⚙️</button>
+            <button onclick="refreshServices()" title="Shortcut: Alt+Shift+R">↻</button>
         </div>
     </header>
 
@@ -167,7 +167,7 @@
 
 
             <!-- Git Management Card (New) -->
-            <div id="git-card" class="card" style="display: none;">
+            <div id="git-card" class="card" style="display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 150px;">
                 <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Git Management <span id="git-status-badge"
                             style="margin-left: 8px; font-size: 10px; font-weight: normal; text-transform: none;"></span></span>
@@ -185,26 +185,27 @@
                             title="Hide Git Management">✕</button>
                     </div>
                 </div>
-                <div class="env-selector"
-                    style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; gap: 8px;">
-                        <button class="env-btn active" id="git-tab-branches" onclick="switchGitTab('branches')"
-                            title="Shortcut: Alt+Shift+Q">Branches (Q)</button>
-                        <button class="env-btn" id="git-tab-commits" onclick="switchGitTab('commits')"
-                            title="Shortcut: Alt+Shift+W">Commits (W)</button>
-                        <button class="env-btn" id="git-tab-stash" onclick="switchGitTab('stash')"
-                            title="Shortcut: Alt+Shift+E">Stashes (E)</button>
+                <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div class="env-selector">
+                            <button class="env-btn active" id="git-tab-branches" onclick="switchGitTab('branches')"
+                                title="Shortcut: Alt+Shift+Q">Branches (Q)</button>
+                            <button class="env-btn" id="git-tab-commits" onclick="switchGitTab('commits')"
+                                title="Shortcut: Alt+Shift+W">Commits (W)</button>
+                            <button class="env-btn" id="git-tab-stash" onclick="switchGitTab('stash')"
+                                title="Shortcut: Alt+Shift+E">Stashes (E)</button>
+                            <button class="env-btn" id="git-tab-changes" onclick="switchGitTab('changes')"
+                                title="Shortcut: Alt+Shift+C">Changes (C)</button>
+                        </div>
+                        <input type="text" id="branch-search" placeholder="🔍 Search branches..."
+                            oninput="filterBranches()"
+                            style="font-size: 12px; padding: 6px 12px; height: 32px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); width: 180px;">
                     </div>
                     <div id="git-actions-header"></div>
                 </div>
 
                 <div id="git-tab-container" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">
                     <div id="git-content-branches" class="git-tab-content">
-                        <div style="margin-bottom: 10px;">
-                            <input type="text" id="branch-search" placeholder="🔍 Search branches..."
-                                oninput="filterBranches()"
-                                style="font-size: 12px; padding: 6px 12px; height: 32px; background: var(--bg-body); border-radius: 6px;">
-                        </div>
                         <div id="branches-list" style="display: flex; flex-direction: column; gap: 6px;">
                             <!-- branches injected here -->
                         </div>
@@ -220,6 +221,40 @@
                     <div id="git-content-stash" class="git-tab-content" style="display: none;">
                         <div id="stash-list" style="display: flex; flex-direction: column; gap: 8px;">
                             <!-- stashes injected here -->
+                        </div>
+                    </div>
+
+                    <div id="git-content-changes" class="git-tab-content" style="display: none;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; max-width: 600px;">
+                            <input type="text" id="git-commit-msg" placeholder="Commit message (Ctrl+Enter to commit)..."
+                                style="font-size: 13px; padding: 8px 12px; height: 38px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); flex: 1;"
+                                onkeydown="handleCommitKey(event)">
+                            <button class="primary" onclick="gitCommitChanges()" style="padding: 0 16px; height: 38px; font-size: 13px; font-weight: 600;">✓ Commit</button>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">
+                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Staged Changes</span>
+                                    <button onclick="gitUnstageAll()" style="font-size: 10px; padding: 2px 8px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;" id="git-unstage-all-btn">Unstage All</button>
+                                </div>
+                                <div id="git-staged-list" style="display: flex; flex-direction: column; gap: 4px;">
+                                    <!-- Staged changes list -->
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--border);">
+                                    <span style="font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Changes</span>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button onclick="gitDiscardAll()" style="font-size: 10px; padding: 2px 8px; background: transparent; border: 1px solid var(--error); border-radius: 4px; color: var(--error); cursor: pointer;" id="git-discard-all-btn">Discard All</button>
+                                        <button onclick="gitStageAll()" style="font-size: 10px; padding: 2px 8px; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); cursor: pointer;" id="git-stage-all-btn">Stage All</button>
+                                    </div>
+                                </div>
+                                <div id="git-unstaged-list" style="display: flex; flex-direction: column; gap: 4px;">
+                                    <!-- Unstaged changes list -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -977,7 +1012,7 @@
         </div>
     </div>
 
-        <script src="/static/js/app.js?v=1.6.8"></script>
+        <script src="/static/js/app.js?v=1.7.3"></script>
 </body>
 
 </html>

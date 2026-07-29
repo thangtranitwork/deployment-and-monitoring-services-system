@@ -607,6 +607,12 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
     const svcName = svc.name;
     const terminal = document.getElementById('terminal');
     
+    // Hide Git if active on deploy to show terminal logs
+    const gitCard = document.getElementById('git-card');
+    if (gitCard && gitCard.style.display !== 'none') {
+        toggleGitManagement();
+    }
+    
     activeDeployments[svcName] = {
         env: env,
         status: 'running',
@@ -826,12 +832,23 @@ function switchGitTab(tab) {
     document.querySelectorAll('#git-card .env-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(`git-tab-${tab}`).classList.add('active');
 
+    // Show/hide branch search input based on whether Branches tab is active
+    const searchInput = document.getElementById('branch-search');
+    if (searchInput) {
+        searchInput.style.display = tab === 'branches' ? 'inline-block' : 'none';
+    }
+
     if (selectedService) loadGitTabContent(tab);
 }
 
 async function loadGitTabContent(tab) {
     const svc = selectedService;
     if (!svc) return;
+
+    if (tab === 'changes') {
+        loadGitChanges();
+        return;
+    }
 
     // Clear search when loading
     if (tab === 'branches') document.getElementById('branch-search').value = '';
@@ -1604,10 +1621,19 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
     if (!skipTerminalReset && !activeTerminalTab) {
         connectTerminalWS(svc.name);
     }
+    const terminalContainer = document.querySelector('.terminal-container');
+    const resizer = document.getElementById('resizer');
     if (!gitHiddenManually) {
-        document.getElementById('git-card').style.display = 'block';
-        document.getElementById('resizer').style.display = 'block';
+        document.getElementById('git-card').style.display = 'flex';
         document.getElementById('git-toggle').classList.add('active');
+        terminalContainer.style.display = 'none';
+        resizer.style.display = 'none';
+    } else {
+        document.getElementById('git-card').style.display = 'none';
+        document.getElementById('git-toggle').classList.remove('active');
+        terminalContainer.style.display = 'flex';
+        terminalContainer.style.flex = '1 1 100%';
+        resizer.style.display = 'none';
     }
 
     // Render header actions
@@ -1647,17 +1673,18 @@ function toggleGitManagement() {
     const terminalContainer = document.querySelector('.terminal-container');
     
     if (card.style.display === 'none') {
-        card.style.display = 'block';
-        resizer.style.display = 'block';
+        card.style.display = 'flex';
+        resizer.style.display = 'none';
         btn.classList.add('active');
         gitHiddenManually = false;
-        terminalContainer.style.flex = '0 0 300px'; // Initial height when Git is shown
+        terminalContainer.style.display = 'none';
     } else {
         card.style.display = 'none';
         resizer.style.display = 'none';
         btn.classList.remove('active');
         gitHiddenManually = true;
-        terminalContainer.style.flex = '1 1 100%'; // Full height when Git is hidden
+        terminalContainer.style.display = 'flex';
+        terminalContainer.style.flex = '1 1 100%';
     }
 }
 
@@ -2509,6 +2536,7 @@ document.addEventListener('keydown', (e) => {
             case 'KeyQ': switchGitTab('branches'); break;
             case 'KeyW': switchGitTab('commits'); break;
             case 'KeyE': switchGitTab('stash'); break;
+            case 'KeyC': switchGitTab('changes'); break;
             case 'KeyU': toggleVPNManagement(); break;
             case 'Digit1': setEnv('Development'); break;
             case 'Digit2': setEnv('Staging'); break;
@@ -3619,6 +3647,341 @@ async function viewStashFileDiff(idx, filePath) {
 function closeDiffViewerModal() {
     const modal = document.getElementById('diff-viewer-modal');
     if (modal) modal.style.display = 'none';
+}
+
+async function loadGitChanges() {
+    const svc = selectedService;
+    if (!svc) return;
+
+    const stagedList = document.getElementById('git-staged-list');
+    const unstagedList = document.getElementById('git-unstaged-list');
+    
+    if (!stagedList || !unstagedList) return;
+    
+    stagedList.innerHTML = '<div class="shimmer" style="height: 30px"></div>';
+    unstagedList.innerHTML = '<div class="shimmer" style="height: 30px"></div>';
+
+    try {
+        const res = await fetch(`/api/git/changes/${svc.name}`);
+        if (!res.ok) throw new Error(await res.text());
+        let changes = await res.json();
+        if (!changes) changes = [];
+
+        stagedList.innerHTML = '';
+        unstagedList.innerHTML = '';
+
+        const stagedFiles = changes.filter(c => c.staged);
+        const unstagedFiles = changes.filter(c => !c.staged);
+
+        if (stagedFiles.length === 0) {
+            stagedList.innerHTML = '<div style="font-size: 12px; color: var(--text-dim); padding: 4px 8px; font-style: italic;">No staged changes</div>';
+            document.getElementById('git-unstage-all-btn').style.display = 'none';
+        } else {
+            document.getElementById('git-unstage-all-btn').style.display = 'inline-block';
+            stagedFiles.forEach(file => {
+                stagedList.appendChild(createChangeItem(file, true));
+            });
+        }
+
+        if (unstagedFiles.length === 0) {
+            unstagedList.innerHTML = '<div style="font-size: 12px; color: var(--text-dim); padding: 4px 8px; font-style: italic;">No changes detected</div>';
+            document.getElementById('git-stage-all-btn').style.display = 'none';
+            document.getElementById('git-discard-all-btn').style.display = 'none';
+        } else {
+            document.getElementById('git-stage-all-btn').style.display = 'inline-block';
+            document.getElementById('git-discard-all-btn').style.display = 'inline-block';
+            unstagedFiles.forEach(file => {
+                unstagedList.appendChild(createChangeItem(file, false));
+            });
+        }
+    } catch (err) {
+        stagedList.innerHTML = `<span style="color: var(--error); font-size: 12px;">Error: ${err.message}</span>`;
+        unstagedList.innerHTML = `<span style="color: var(--error); font-size: 12px;">Error: ${err.message}</span>`;
+    }
+}
+
+function createChangeItem(file, isStaged) {
+    const div = document.createElement('div');
+    div.className = 'git-change-item';
+    div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s ease;';
+    
+    div.onmouseenter = () => div.style.background = 'var(--bg-hover)';
+    div.onmouseleave = () => div.style.background = 'transparent';
+
+    const left = document.createElement('div');
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden;';
+    left.onclick = (e) => {
+        e.stopPropagation();
+        viewFileDiff(file.path, isStaged, file.status === '??');
+    };
+
+    const statusBadge = document.createElement('span');
+    let statusColor = 'var(--text-dim)';
+    let statusBg = 'rgba(255,255,255,0.05)';
+    let statusLabel = file.status;
+    
+    if (file.status === 'M') {
+        statusColor = '#f39c12';
+        statusBg = 'rgba(243, 156, 18, 0.1)';
+    } else if (file.status === 'A' || file.status === '??') {
+        statusColor = '#2ecc71';
+        statusBg = 'rgba(46, 204, 113, 0.1)';
+        statusLabel = file.status === '??' ? 'U' : 'A';
+    } else if (file.status === 'D') {
+        statusColor = '#e74c3c';
+        statusBg = 'rgba(231, 76, 60, 0.1)';
+    }
+    
+    statusBadge.style.cssText = `font-family: var(--font-mono); font-size: 10px; font-weight: bold; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: ${statusColor}; background: ${statusBg};`;
+    statusBadge.innerText = statusLabel;
+
+    const parts = file.path.split('/');
+    const filename = parts.pop();
+    const dir = parts.join('/');
+    
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'font-size: 12.5px; color: var(--text-main); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+    nameSpan.innerText = filename;
+    nameSpan.title = file.path;
+
+    if (dir) {
+        const dirSpan = document.createElement('span');
+        dirSpan.style.cssText = 'font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 4px;';
+        dirSpan.innerText = dir;
+        left.appendChild(statusBadge);
+        left.appendChild(nameSpan);
+        left.appendChild(dirSpan);
+    } else {
+        left.appendChild(statusBadge);
+        left.appendChild(nameSpan);
+    }
+
+    const right = document.createElement('div');
+    right.className = 'git-change-actions';
+    right.style.cssText = 'display: flex; gap: 6px; align-items: center;';
+    
+    const stageBtn = document.createElement('button');
+    stageBtn.style.cssText = 'background: transparent; border: none; cursor: pointer; padding: 4px; border-radius: 4px; color: var(--text-dim); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;';
+    stageBtn.onmouseenter = () => { stageBtn.style.background = 'rgba(255,255,255,0.08)'; stageBtn.style.color = 'var(--text-main)'; };
+    stageBtn.onmouseleave = () => { stageBtn.style.background = 'transparent'; stageBtn.style.color = 'var(--text-dim)'; };
+    
+    if (isStaged) {
+        stageBtn.innerHTML = '➖';
+        stageBtn.title = 'Unstage Changes';
+        stageBtn.onclick = (e) => {
+            e.stopPropagation();
+            gitUnstageFile(file.path);
+        };
+    } else {
+        stageBtn.innerHTML = '➕';
+        stageBtn.title = 'Stage Changes';
+        stageBtn.onclick = (e) => {
+            e.stopPropagation();
+            gitStageFile(file.path);
+        };
+    }
+    
+    if (!isStaged) {
+        const discardBtn = document.createElement('button');
+        discardBtn.innerHTML = '↺';
+        discardBtn.title = 'Discard Changes';
+        discardBtn.style.cssText = 'background: transparent; border: none; cursor: pointer; padding: 0; border-radius: 4px; color: var(--text-dim); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; font-size: 15px; font-weight: bold;';
+        discardBtn.onmouseenter = () => { discardBtn.style.background = 'rgba(231,76,60,0.1)'; discardBtn.style.color = '#e74c3c'; };
+        discardBtn.onmouseleave = () => { discardBtn.style.background = 'transparent'; discardBtn.style.color = 'var(--text-dim)'; };
+        discardBtn.onclick = (e) => {
+            e.stopPropagation();
+            showConfirm("Discard Changes?", `Are you sure you want to discard changes in <b>${filename}</b>? This cannot be undone.`, () => {
+                gitDiscardFile(file.path, file.status === '??');
+            });
+        };
+        right.appendChild(discardBtn);
+    }
+    
+    right.appendChild(stageBtn);
+    
+    div.appendChild(left);
+    div.appendChild(right);
+    return div;
+}
+
+async function viewFileDiff(filePath, staged, untracked) {
+    const modal = document.getElementById('diff-viewer-modal');
+    const title = document.getElementById('diff-viewer-title');
+    const body = document.getElementById('diff-viewer-body');
+    
+    if (!modal || !title || !body) return;
+    
+    title.textContent = `${filePath} ${staged ? '(Staged)' : ''}`;
+    body.innerHTML = '<div class="shimmer" style="height: 100px"></div>';
+    modal.style.display = 'flex';
+    
+    try {
+        const res = await fetch(`/api/git/diff/${selectedService.name}?file_path=${encodeURIComponent(filePath)}&staged=${staged}&untracked=${untracked}`);
+        if (!res.ok) {
+            throw new Error(await res.text());
+        }
+        const diffText = await res.text();
+        
+        if (!diffText.trim()) {
+            body.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 20px;">No differences or binary file.</div>';
+            return;
+        }
+
+        const lines = diffText.split('\n');
+        const colorized = lines.map(line => {
+            let color = 'inherit';
+            let bg = 'transparent';
+            if (line.startsWith('+') && !line.startsWith('+++')) {
+                color = '#2ecc71';
+                bg = 'rgba(46, 204, 113, 0.05)';
+            } else if (line.startsWith('-') && !line.startsWith('---')) {
+                color = '#e74c3c';
+                bg = 'rgba(231, 76, 60, 0.05)';
+            } else if (line.startsWith('@@')) {
+                color = '#9b59b6';
+            } else if (line.startsWith('diff') || line.startsWith('index') || line.startsWith('---') || line.startsWith('+++')) {
+                color = 'var(--text-dim)';
+                bg = 'rgba(255, 255, 255, 0.02)';
+            }
+            return `<div style="color: ${color}; background: ${bg}; padding: 0 4px; min-height: 1.5em; border-radius: 2px;">${escapeHtml(line)}</div>`;
+        }).join('');
+        
+        body.innerHTML = colorized;
+    } catch (err) {
+        body.innerHTML = `<span style="color: var(--error)">Failed to fetch diff: ${err.message}</span>`;
+    }
+}
+
+async function gitStageFile(filePath) {
+    if (!selectedService) return;
+    try {
+        const res = await fetch(`/api/git/stage/${selectedService.name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_path: filePath })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        loadGitChanges();
+    } catch (err) {
+        showAlert("Error", "Failed to stage file: " + err.message);
+    }
+}
+
+async function gitUnstageFile(filePath) {
+    if (!selectedService) return;
+    try {
+        const res = await fetch(`/api/git/unstage/${selectedService.name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_path: filePath })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        loadGitChanges();
+    } catch (err) {
+        showAlert("Error", "Failed to unstage file: " + err.message);
+    }
+}
+
+async function gitDiscardFile(filePath, untracked) {
+    if (!selectedService) return;
+    try {
+        const res = await fetch(`/api/git/discard/${selectedService.name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_path: filePath, untracked: untracked })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        loadGitChanges();
+    } catch (err) {
+        showAlert("Error", "Failed to discard changes: " + err.message);
+    }
+}
+
+function gitStageAll() {
+    gitStageFile('.');
+}
+
+function gitUnstageAll() {
+    gitUnstageFile('.');
+}
+
+async function gitCommitChanges() {
+    const msgInput = document.getElementById('git-commit-msg');
+    const msg = msgInput ? msgInput.value.trim() : '';
+    if (!msg) {
+        showAlert("Warning", "Please enter a commit message.");
+        return;
+    }
+
+    const hasStaged = document.querySelectorAll('#git-staged-list > div.git-change-item').length > 0;
+    const hasUnstaged = document.querySelectorAll('#git-unstaged-list > div.git-change-item').length > 0;
+
+    if (!hasStaged && !hasUnstaged) {
+        showAlert("Info", "No changes to commit.");
+        return;
+    }
+
+    if (!hasStaged && hasUnstaged) {
+        showConfirm("No Staged Changes", "There are no staged changes. Would you like to stage all changes and commit them?", async () => {
+            executeCommit(msg, true);
+        });
+        return;
+    }
+
+    executeCommit(msg, false);
+}
+
+async function executeCommit(msg, stageAll) {
+    if (!selectedService) return;
+    try {
+        const res = await fetch(`/api/git/commit/${selectedService.name}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg, stage_all: stageAll })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        
+        const msgInput = document.getElementById('git-commit-msg');
+        if (msgInput) msgInput.value = '';
+        showAlert("Success", "Committed changes successfully!");
+        
+        switchGitTab('commits');
+    } catch (err) {
+        showAlert("Error", "Failed to commit: " + err.message);
+    }
+}
+
+function handleCommitKey(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        gitCommitChanges();
+    }
+}
+
+async function gitDiscardAll() {
+    const svc = selectedService;
+    if (!svc) return;
+    
+    showConfirm("Discard All Changes?", "Are you sure you want to discard all uncommitted changes? This will permanently undo all modifications.", async () => {
+        try {
+            let res = await fetch(`/api/git/discard/${svc.name}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_path: '.', untracked: false })
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            res = await fetch(`/api/git/discard/${svc.name}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_path: '.', untracked: true })
+            });
+            if (!res.ok) throw new Error(await res.text());
+
+            loadGitChanges();
+        } catch (err) {
+            showAlert("Error", "Failed to discard all changes: " + err.message);
+        }
+    });
 }
 
 function escapeHtml(text) {

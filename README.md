@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.6.4
+# 🚀 Internal Deploy System (IDS) - v1.7.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -37,6 +37,7 @@ deploy-tool/
 - **Git Stash Manager**: A dedicated tab in the Git management card to view stashed files, create new stashes, pop, apply, or drop stashes directly.
 - **Git Staging Reset (Reset Staging)**: Automatically stashes local changes, detaches HEAD, deletes local `staging`, pulls a fresh `origin/staging` to deploy, and automatically restores the original workspace state (checkout branch/pop stash) afterwards.
 - **Conflicts & Rollback Manager**: When checkouts or branches conflict with local changes, an interactive modal displays conflicting files, letting users selectively revert/delete untracked files or perform an auto-stash with custom messages.
+- **Git Staging & Commit (Source Control)**: A VS-Code-like staging panel that lists staged/unstaged changes, displays file diffs, allows discarding changes, staging/unstaging individual or all files, and committing directly from the UI.
 
 ### 🚀 Deployment Workflow
 
@@ -45,6 +46,13 @@ deploy-tool/
 - **Production Protection**: Secure modal password verification before triggering any single or multi-service deployment to Production.
 - **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
 - **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
+
+### 💻 Interactive Terminal & Command Shell
+
+- **Real PTY Integration**: Full interactive terminal session in the browser using WebSocket and `creack/pty`, supporting interactive CLI tools (vim, nano, htop).
+- **Persistent Working Directory**: Automatically tracks and maintains your current working directory (`cd` command) across the entire session using real-time `/proc/<pid>/cwd` monitoring.
+- **Quick Command Snippets**: Save, manage, and instantly execute frequently used terminal snippets for rapid operations.
+- **Dual Tabs View**: Seamlessly switch between the `💻 Interactive Terminal` and the `🚀 Deploy Logs` views without losing state.
 
 ### ⚡ Parallel Service Deployment (Multi-Deploy)
 
@@ -56,6 +64,7 @@ deploy-tool/
 - **Choice Persistence**: Automatically saves and reloads your last multi-deployment selections and target environment from `localStorage`.
 - **Fast Multi Deploy**: Instantly trigger deployment for saved services via `Ctrl + Alt + Shift + M`.
 - **Live Multi-Deploy Console Modal (Auto Grid)**: Displays live terminal logs for all deploying services in an auto-layout matrix grid. Completed services light up with vibrant Emerald/Red glow indicators.
+- **Advanced Retry Mechanisms**: Individual `🔄 Retry` buttons for each service in the auto-grid, plus a powerful `🔄 Retry Failed` master button to relaunch all failed deployments with a single click.
 
 ### 🔒 VPN Management
 

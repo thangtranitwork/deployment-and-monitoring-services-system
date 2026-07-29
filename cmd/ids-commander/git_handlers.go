@@ -861,3 +861,274 @@ func gitStashDiffHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(out)
 }
 
+func gitChangesHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	if serviceName == "" {
+		serviceName = strings.TrimPrefix(r.URL.Path, "/api/git/changes/")
+	}
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "status", "--porcelain")
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, string(out), http.StatusInternalServerError)
+		return
+	}
+
+	type GitChange struct {
+		Path   string `json:"path"`
+		Status string `json:"status"` // "M", "A", "D", etc.
+		Staged bool   `json:"staged"`
+	}
+
+	changes := []GitChange{}
+	lines := strings.Split(string(out), "\n")
+	for _, line := range lines {
+		if len(line) < 4 {
+			continue
+		}
+		x := string(line[0])
+		y := string(line[1])
+		filePath := strings.TrimSpace(line[3:])
+
+		// Handle renamed files: format "old -> new"
+		if strings.Contains(filePath, " -> ") {
+			parts := strings.Split(filePath, " -> ")
+			if len(parts) > 1 {
+				filePath = parts[1]
+			}
+		}
+
+		// Clean quotes if git status wrapped it (e.g. non-ascii chars)
+		filePath = strings.Trim(filePath, "\"")
+
+		if x == "?" && y == "?" {
+			// Untracked files
+			changes = append(changes, GitChange{
+				Path:   filePath,
+				Status: "??",
+				Staged: false,
+			})
+		} else {
+			if x != " " && x != "?" {
+				changes = append(changes, GitChange{
+					Path:   filePath,
+					Status: x,
+					Staged: true,
+				})
+			}
+			if y != " " && y != "?" {
+				changes = append(changes, GitChange{
+					Path:   filePath,
+					Status: y,
+					Staged: false,
+				})
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(changes)
+}
+
+func gitDiffHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	filePath := r.URL.Query().Get("file_path")
+	stagedStr := r.URL.Query().Get("staged")
+	isUntrackedStr := r.URL.Query().Get("untracked")
+	if filePath == "" {
+		http.Error(w, "file_path is required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	var args []string
+	if isUntrackedStr == "true" {
+		// Use os.DevNull as comparison baseline for untracked files
+		args = []string{"-c", "safe.directory=*", "diff", "--no-index", os.DevNull, filePath}
+	} else if stagedStr == "true" {
+		args = []string{"-c", "safe.directory=*", "diff", "--cached", "--", filePath}
+	} else {
+		args = []string{"-c", "safe.directory=*", "diff", "--", filePath}
+	}
+
+	cmd := exec.Command(gitPath, args...)
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); !ok {
+			http.Error(w, fmt.Sprintf("Error running git diff: %v: %s", err, string(out)), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write(out)
+}
+
+func gitStageHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	var data struct {
+		FilePath string `json:"file_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if data.FilePath == "" {
+		http.Error(w, "file_path is required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "add", data.FilePath)
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, string(out), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "File staged successfully"})
+}
+
+func gitUnstageHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	var data struct {
+		FilePath string `json:"file_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if data.FilePath == "" {
+		http.Error(w, "file_path is required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	cmd := exec.Command(gitPath, "-c", "safe.directory=*", "restore", "--staged", "--", data.FilePath)
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, string(out), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "File unstaged successfully"})
+}
+
+func gitDiscardHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	var data struct {
+		FilePath  string `json:"file_path"`
+		Untracked bool   `json:"untracked"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if data.FilePath == "" {
+		http.Error(w, "file_path is required", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	var cmd *exec.Cmd
+	if data.Untracked {
+		cmd = exec.Command(gitPath, "-c", "safe.directory=*", "clean", "-fd", "--", data.FilePath)
+	} else {
+		cmd = exec.Command(gitPath, "-c", "safe.directory=*", "checkout", "--", data.FilePath)
+	}
+	cmd.Dir = svc.Dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		http.Error(w, string(out), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Changes discarded successfully"})
+}
+
+func gitCommitHandler(w http.ResponseWriter, r *http.Request) {
+	serviceName := r.PathValue("service_name")
+	var data struct {
+		Message  string `json:"message"`
+		StageAll bool   `json:"stage_all"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(data.Message) == "" {
+		http.Error(w, "Commit message cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	gitPath := getGitPath(s)
+	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+	if svc == nil {
+		http.Error(w, "Service not found", http.StatusNotFound)
+		return
+	}
+
+	if data.StageAll {
+		cmdAdd := exec.Command(gitPath, "-c", "safe.directory=*", "add", "-A")
+		cmdAdd.Dir = svc.Dir
+		if outAdd, err := cmdAdd.CombinedOutput(); err != nil {
+			http.Error(w, fmt.Sprintf("Error staging files: %s", string(outAdd)), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	cmdCommit := exec.Command(gitPath, "-c", "safe.directory=*", "commit", "-m", data.Message)
+	cmdCommit.Dir = svc.Dir
+	outCommit, err := cmdCommit.CombinedOutput()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error committing: %s", string(outCommit)), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Committed successfully", "output": string(outCommit)})
+}
+
