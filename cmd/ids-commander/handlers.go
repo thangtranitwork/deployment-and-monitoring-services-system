@@ -561,7 +561,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 			cmdDelBr.Dir = svc.Dir
 			delBrOut, err := cmdDelBr.CombinedOutput()
 			if err != nil {
-				send(fmt.Sprintf("[Git Reset %s] ❌ Failed to delete local '%s' branch: %v\n%s", resetBranch, resetBranch, delBrOut))
+				send(fmt.Sprintf("[Git Reset %s] ❌ Failed to delete local '%s' branch: %v\n%s", resetBranch, resetBranch, err, string(delBrOut)))
 				restoreGitState()
 				send("[EOF]")
 				return
@@ -577,7 +577,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 		cmdFetch.Dir = svc.Dir
 		fetchOut, err := cmdFetch.CombinedOutput()
 		if err != nil {
-			send(fmt.Sprintf("[Git Reset %s] ❌ Failed to fetch '%s' from origin: %v\n%s", resetBranch, resetBranch, fetchOut))
+			send(fmt.Sprintf("[Git Reset %s] ❌ Failed to fetch '%s' from origin: %v\n%s", resetBranch, resetBranch, err, string(fetchOut)))
 			restoreGitState()
 			send("[EOF]")
 			return
@@ -589,7 +589,7 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 		cmdCheckout.Dir = svc.Dir
 		checkoutOut, err := cmdCheckout.CombinedOutput()
 		if err != nil {
-			send(fmt.Sprintf("[Git Reset %s] ❌ Failed to checkout '%s' branch: %v\n%s", resetBranch, resetBranch, checkoutOut))
+			send(fmt.Sprintf("[Git Reset %s] ❌ Failed to checkout '%s' branch: %v\n%s", resetBranch, resetBranch, err, string(checkoutOut)))
 			restoreGitState()
 			send("[EOF]")
 			return
