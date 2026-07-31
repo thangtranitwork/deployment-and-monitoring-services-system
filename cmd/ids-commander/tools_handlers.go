@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -416,4 +418,499 @@ func fetchGeoIP(ip string) (*GeoIPInfo, error) {
 		Lat:         ipApiResp.Lat,
 		Lon:         ipApiResp.Lon,
 	}, nil
+}
+
+// SQL Preview & Schema Tool Handlers
+
+type SQLTableColumn struct {
+	Field   string  `json:"field"`
+	Type    string  `json:"type"`
+	Null    string  `json:"null"`
+	Key     string  `json:"key"`
+	Default *string `json:"default"`
+	Extra   string  `json:"extra"`
+}
+
+type SQLPreviewRequest struct {
+	SQL   string `json:"sql"`
+	Table string `json:"table,omitempty"`
+}
+
+type SQLRowDiff struct {
+	RowIndex int                    `json:"row_index"`
+	Before   map[string]interface{} `json:"before"`
+	After    map[string]interface{} `json:"after"`
+	Changed  map[string]bool        `json:"changed"`
+}
+
+type SQLPreviewResponse struct {
+	Success      bool                     `json:"success"`
+	Error        string                   `json:"error,omitempty"`
+	Operation    string                   `json:"operation"`
+	Table        string                   `json:"table,omitempty"`
+	TableEngine  string                   `json:"table_engine,omitempty"`
+	RowsAffected int64                    `json:"rows_affected"`
+	LastInsertID int64                    `json:"last_insert_id"`
+	TimeMs       int64                    `json:"time_ms"`
+	Columns      []string                 `json:"columns,omitempty"`
+	Schema       []SQLTableColumn         `json:"schema,omitempty"`
+	BeforeRows   []map[string]interface{} `json:"before_rows,omitempty"`
+	AfterRows    []map[string]interface{} `json:"after_rows,omitempty"`
+	SelectRows   []map[string]interface{} `json:"select_rows,omitempty"`
+	Diff         []SQLRowDiff             `json:"diff,omitempty"`
+}
+
+func sqlTablesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	db, err := getDB()
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to connect DB: " + err.Error()})
+		return
+	}
+
+	rows, err := db.Query("SHOW TABLES")
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to fetch tables: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	tables := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil {
+			tables = append(tables, name)
+		}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"tables": tables})
+}
+
+func sqlSchemaHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	tableName := strings.TrimSpace(r.URL.Query().Get("table"))
+	if tableName == "" {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Table parameter is required"})
+		return
+	}
+
+	db, err := getDB()
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to connect DB: " + err.Error()})
+		return
+	}
+
+	sanitizedTable := strings.ReplaceAll(tableName, "`", "")
+	schema, err := fetchTableSchema(db, sanitizedTable)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "Failed to fetch schema: " + err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"table": sanitizedTable, "schema": schema})
+}
+
+func fetchTableSchema(db *sql.DB, tableName string) ([]SQLTableColumn, error) {
+	rows, err := db.Query(fmt.Sprintf("DESCRIBE `%s`", tableName))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []SQLTableColumn
+	for rows.Next() {
+		var col SQLTableColumn
+		var defVal sql.NullString
+		if err := rows.Scan(&col.Field, &col.Type, &col.Null, &col.Key, &defVal, &col.Extra); err == nil {
+			if defVal.Valid {
+				str := defVal.String
+				col.Default = &str
+			}
+			columns = append(columns, col)
+		}
+	}
+	return columns, nil
+}
+
+func queryRowsToMap(rows *sql.Rows) ([]string, []map[string]interface{}, error) {
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+
+		if err := rows.Scan(columnPointers...); err != nil {
+			return nil, nil, err
+		}
+
+		m := make(map[string]interface{})
+		for i, colName := range cols {
+			val := columnPointers[i].(*interface{})
+			if *val == nil {
+				m[colName] = nil
+			} else if b, ok := (*val).([]byte); ok {
+				m[colName] = string(b)
+			} else {
+				m[colName] = *val
+			}
+		}
+		results = append(results, m)
+	}
+	return cols, results, nil
+}
+
+func extractTableName(sqlQuery string) (string, string) {
+	cleanSQL := strings.TrimSpace(sqlQuery)
+	upperSQL := strings.ToUpper(cleanSQL)
+
+	var re *regexp.Regexp
+	var op string
+
+	if strings.HasPrefix(upperSQL, "UPDATE") {
+		op = "UPDATE"
+		re = regexp.MustCompile("(?i)^\\s*UPDATE\\s+[`\"]?([a-zA-Z0-9_]+)")
+	} else if strings.HasPrefix(upperSQL, "INSERT") {
+		op = "INSERT"
+		re = regexp.MustCompile("(?i)^\\s*INSERT\\s+(?:INTO\\s+)?[`\"]?([a-zA-Z0-9_]+)")
+	} else if strings.HasPrefix(upperSQL, "DELETE") {
+		op = "DELETE"
+		re = regexp.MustCompile("(?i)^\\s*DELETE\\s+FROM\\s+[`\"]?([a-zA-Z0-9_]+)")
+	} else if strings.HasPrefix(upperSQL, "REPLACE") {
+		op = "REPLACE"
+		re = regexp.MustCompile("(?i)^\\s*REPLACE\\s+(?:INTO\\s+)?[`\"]?([a-zA-Z0-9_]+)")
+	} else if strings.HasPrefix(upperSQL, "SELECT") {
+		op = "SELECT"
+		re = regexp.MustCompile("(?i)\\bFROM\\s+[`\"]?([a-zA-Z0-9_]+)")
+	} else {
+		op = "UNKNOWN"
+	}
+
+	if re != nil {
+		matches := re.FindStringSubmatch(cleanSQL)
+		if len(matches) > 1 {
+			return op, matches[1]
+		}
+	}
+
+	return op, ""
+}
+
+func parseUpdateSetClause(sqlQuery string) map[string]interface{} {
+	updates := make(map[string]interface{})
+	reSet := regexp.MustCompile(`(?i)\bSET\s+(.*?)(?:\s+WHERE\b|$)`)
+	match := reSet.FindStringSubmatch(sqlQuery)
+	if len(match) < 2 {
+		return updates
+	}
+
+	setClause := strings.TrimSpace(match[1])
+
+	var pairs []string
+	var current strings.Builder
+	inQuote := false
+	quoteChar := byte(0)
+
+	for i := 0; i < len(setClause); i++ {
+		ch := setClause[i]
+		if (ch == '\'' || ch == '"' || ch == '`') && (i == 0 || setClause[i-1] != '\\') {
+			if !inQuote {
+				inQuote = true
+				quoteChar = ch
+			} else if quoteChar == ch {
+				inQuote = false
+				quoteChar = 0
+			}
+		}
+		if ch == ',' && !inQuote {
+			pairs = append(pairs, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(ch)
+		}
+	}
+	if current.Len() > 0 {
+		pairs = append(pairs, current.String())
+	}
+
+	for _, pair := range pairs {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) == 2 {
+			col := strings.Trim(strings.TrimSpace(parts[0]), "`\" ")
+			rawVal := strings.TrimSpace(parts[1])
+			valStr := strings.Trim(rawVal, "'\"`")
+			if strings.ToUpper(rawVal) == "NULL" {
+				updates[col] = nil
+			} else {
+				updates[col] = valStr
+			}
+		}
+	}
+	return updates
+}
+
+func parseInsertValues(sqlQuery string, schema []SQLTableColumn) map[string]interface{} {
+	row := make(map[string]interface{})
+	for _, col := range schema {
+		if col.Default != nil {
+			row[col.Field] = *col.Default
+		} else {
+			row[col.Field] = nil
+		}
+	}
+
+	reSet := regexp.MustCompile(`(?i)\bSET\s+(.*)`)
+	if match := reSet.FindStringSubmatch(sqlQuery); len(match) > 1 {
+		setUpdates := parseUpdateSetClause(sqlQuery)
+		for k, v := range setUpdates {
+			row[k] = v
+		}
+		return row
+	}
+
+	reCols := regexp.MustCompile(`(?i)\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)`)
+	match := reCols.FindStringSubmatch(sqlQuery)
+	if len(match) >= 3 {
+		cols := strings.Split(match[1], ",")
+		vals := strings.Split(match[2], ",")
+		if len(cols) == len(vals) {
+			for i := 0; i < len(cols); i++ {
+				c := strings.Trim(strings.TrimSpace(cols[i]), "`\" ")
+				vStr := strings.Trim(strings.TrimSpace(vals[i]), "'\"` ")
+				if strings.ToUpper(vStr) == "NULL" {
+					row[c] = nil
+				} else {
+					row[c] = vStr
+				}
+			}
+		}
+	}
+	return row
+}
+
+func sqlPreviewHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req SQLPreviewRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		json.NewEncoder(w).Encode(SQLPreviewResponse{Success: false, Error: "Invalid request body: " + err.Error()})
+		return
+	}
+
+	sqlQuery := strings.TrimRight(strings.TrimSpace(req.SQL), ";")
+	if sqlQuery == "" {
+		json.NewEncoder(w).Encode(SQLPreviewResponse{Success: false, Error: "SQL query cannot be empty"})
+		return
+	}
+
+	op, targetTable := extractTableName(sqlQuery)
+	if req.Table != "" {
+		targetTable = req.Table
+	}
+
+	db, err := getDB()
+	if err != nil {
+		json.NewEncoder(w).Encode(SQLPreviewResponse{Success: false, Error: "Database connection error: " + err.Error()})
+		return
+	}
+
+	resp := SQLPreviewResponse{
+		Operation: op,
+		Table:     targetTable,
+	}
+
+	if targetTable != "" {
+		if schema, err := fetchTableSchema(db, targetTable); err == nil {
+			resp.Schema = schema
+		}
+		var engine string
+		if err := db.QueryRow("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?", targetTable).Scan(&engine); err == nil {
+			resp.TableEngine = engine
+		}
+	}
+
+	start := time.Now()
+
+	// 100% Safe Read-Only Simulation Handler (No DML is executed on DB)
+	if op == "SELECT" {
+		rows, err := db.Query(sqlQuery)
+		resp.TimeMs = time.Since(start).Milliseconds()
+		if err != nil {
+			resp.Success = false
+			resp.Error = err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		defer rows.Close()
+
+		cols, selectRows, err := queryRowsToMap(rows)
+		if err != nil {
+			resp.Success = false
+			resp.Error = "Error reading rows: " + err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		resp.Success = true
+		resp.Columns = cols
+		resp.SelectRows = selectRows
+		resp.RowsAffected = int64(len(selectRows))
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	reWhere := regexp.MustCompile(`(?i)\s+WHERE\s+(.*)`)
+	whereMatch := reWhere.FindStringSubmatch(sqlQuery)
+	whereClause := ""
+	if len(whereMatch) > 1 {
+		whereClause = whereMatch[1]
+	}
+
+	if op == "UPDATE" {
+		if targetTable == "" {
+			resp.Success = false
+			resp.Error = "Could not identify target table name from UPDATE query."
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		var selectQuery string
+		if whereClause != "" {
+			selectQuery = fmt.Sprintf("SELECT * FROM `%s` WHERE %s LIMIT 100", targetTable, whereClause)
+		} else {
+			selectQuery = fmt.Sprintf("SELECT * FROM `%s` LIMIT 100", targetTable)
+		}
+
+		rows, err := db.Query(selectQuery)
+		resp.TimeMs = time.Since(start).Milliseconds()
+		if err != nil {
+			resp.Success = false
+			resp.Error = "Read-Only SELECT failed: " + err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		defer rows.Close()
+
+		cols, beforeRows, err := queryRowsToMap(rows)
+		if err != nil {
+			resp.Success = false
+			resp.Error = "Error reading rows: " + err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		resp.Columns = cols
+		resp.BeforeRows = beforeRows
+		resp.RowsAffected = int64(len(beforeRows))
+
+		updates := parseUpdateSetClause(sqlQuery)
+		var afterRows []map[string]interface{}
+		var diffs []SQLRowDiff
+
+		for idx, bRow := range beforeRows {
+			aRow := make(map[string]interface{})
+			for k, v := range bRow {
+				aRow[k] = v
+			}
+			changed := make(map[string]bool)
+			for col, newVal := range updates {
+				oldVal := aRow[col]
+				aRow[col] = newVal
+				if fmt.Sprintf("%v", oldVal) != fmt.Sprintf("%v", newVal) {
+					changed[col] = true
+				}
+			}
+			afterRows = append(afterRows, aRow)
+
+			diffs = append(diffs, SQLRowDiff{
+				RowIndex: idx,
+				Before:   bRow,
+				After:    aRow,
+				Changed:  changed,
+			})
+		}
+
+		resp.Success = true
+		resp.AfterRows = afterRows
+		resp.Diff = diffs
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	if op == "DELETE" {
+		if targetTable == "" {
+			resp.Success = false
+			resp.Error = "Could not identify target table name from DELETE query."
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		var selectQuery string
+		if whereClause != "" {
+			selectQuery = fmt.Sprintf("SELECT * FROM `%s` WHERE %s LIMIT 100", targetTable, whereClause)
+		} else {
+			selectQuery = fmt.Sprintf("SELECT * FROM `%s` LIMIT 100", targetTable)
+		}
+
+		rows, err := db.Query(selectQuery)
+		resp.TimeMs = time.Since(start).Milliseconds()
+		if err != nil {
+			resp.Success = false
+			resp.Error = "Read-Only SELECT failed: " + err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		defer rows.Close()
+
+		cols, beforeRows, err := queryRowsToMap(rows)
+		if err != nil {
+			resp.Success = false
+			resp.Error = "Error reading rows: " + err.Error()
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+
+		resp.Success = true
+		resp.Columns = cols
+		resp.BeforeRows = beforeRows
+		resp.RowsAffected = int64(len(beforeRows))
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	if op == "INSERT" || op == "REPLACE" {
+		simulatedRow := parseInsertValues(sqlQuery, resp.Schema)
+		var cols []string
+		if len(resp.Schema) > 0 {
+			for _, c := range resp.Schema {
+				cols = append(cols, c.Field)
+			}
+		} else {
+			for k := range simulatedRow {
+				cols = append(cols, k)
+			}
+		}
+
+		resp.TimeMs = time.Since(start).Milliseconds()
+		resp.Success = true
+		resp.Columns = cols
+		resp.AfterRows = []map[string]interface{}{simulatedRow}
+		resp.RowsAffected = 1
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
+
+	resp.TimeMs = time.Since(start).Milliseconds()
+	resp.Success = false
+	resp.Error = "Unsupported SQL operation. Supported: SELECT, UPDATE, INSERT, DELETE, REPLACE."
+	json.NewEncoder(w).Encode(resp)
 }

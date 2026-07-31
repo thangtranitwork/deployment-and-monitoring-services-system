@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.5
+# 🚀 Internal Deploy System (IDS) - v1.7.6
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -100,6 +100,7 @@ A comprehensive suite of local developer utility tools integrated into the works
 - **QR Code Gen/Reader**: Local QR Code generation with error correction control and download actions. Includes local QR file reading (drag-and-drop) and webcam scanning streams.
 - **DNS Dig / Whois / GeoIP**: Run DNS queries (A, AAAA, MX, CNAME, etc.) via custom resolvers, query domain registry WHOIS metadata directly over TCP socket port 43, and look up geographical server ISP info.
 - **WebSocket Client**: Interactive WebSocket connection testing client. Supports connecting to custom ws/wss URLs, filtering console message logs, sending custom payloads, subscribing to channels with quick presets, and collapsible JSON tree rendering for socket message payloads.
+- **SQL Preview & Schema**: Auto-fetch database table structure, column types, keys, and defaults. Features a **100% Read-Only Simulation Engine** powered by `SELECT` queries that parses `UPDATE`, `INSERT`, `DELETE`, and `REPLACE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data** (compatible with all storage engines like MyISAM, InnoDB, MEMORY). Includes text-overflow ellipsis protection and hover tooltips for long hash/token values.
 
 ## ⌨️ Keyboard Shortcuts
 
@@ -121,6 +122,24 @@ A comprehensive suite of local developer utility tools integrated into the works
 | **Toggle Theme / Help**        | `Alt + Shift + T / H`                           |
 | **Toggle VPN Card**            | `Alt + Shift + U`                               |
 | **Close Modal**                | `Esc`                                           |
+
+### 🛠️ Utility Tools Page (`/tools`)
+
+| Action                   | Shortcut                       |
+| :----------------------- | :----------------------------- |
+| **Markdown Preview**     | `Alt + Shift + 1`              |
+| **JSON Formatter**       | `Alt + Shift + 2`              |
+| **JWT Decoder**          | `Alt + Shift + 3`              |
+| **KV to JSON Parser**    | `Alt + Shift + 4`              |
+| **Text Diff Compare**    | `Alt + Shift + 5`              |
+| **Bcrypt Generator**     | `Alt + Shift + 6`              |
+| **Time Converter**       | `Alt + Shift + 7`              |
+| **Curl Online Runner**   | `Alt + Shift + 8`              |
+| **QR Code Gen/Reader**   | `Alt + Shift + 9`              |
+| **DNS Dig / Whois**      | `Alt + Shift + 0`              |
+| **WebSocket Client**     | `Alt + Shift + W`              |
+| **SQL Preview & Schema** | `Alt + Shift + S`              |
+| **Execute SQL Preview**  | `Ctrl + Enter` / `Cmd + Enter` |
 
 ## 📐 Usage: Sample Project Structure
 
