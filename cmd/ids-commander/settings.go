@@ -81,24 +81,10 @@ func loadSettings() Settings {
 		}
 	}
 
-	// Ensure ActiveWorkspaceID
-	if s.ActiveWorkspaceID == "" && len(s.Workspaces) > 0 {
-		found := false
-		for _, ws := range s.Workspaces {
-			if s.WorkspaceURL != "" && filepath.Clean(ws.Path) == filepath.Clean(s.WorkspaceURL) {
-				s.ActiveWorkspaceID = ws.ID
-				found = true
-				break
-			}
-		}
-		if !found {
-			s.ActiveWorkspaceID = s.Workspaces[0].ID
-		}
-	}
-
-	// Sync WorkspaceURL with active workspace path
+	// Ensure ActiveWorkspaceID and WorkspaceURL are in sync
 	activeWs := s.GetActiveWorkspace()
 	if activeWs != nil {
+		s.ActiveWorkspaceID = activeWs.ID
 		s.WorkspaceURL = activeWs.Path
 	}
 
@@ -170,16 +156,19 @@ func migrateFlatServicesToWorkspaces(s *Settings) {
 }
 
 func (s Settings) GetActiveWorkspace() *WorkspaceItem {
+	if s.WorkspaceURL != "" {
+		cleanURL := filepath.Clean(s.WorkspaceURL)
+		for i := range s.Workspaces {
+			if filepath.Clean(s.Workspaces[i].Path) == cleanURL {
+				return &s.Workspaces[i]
+			}
+		}
+	}
 	if s.ActiveWorkspaceID != "" {
 		for i := range s.Workspaces {
 			if s.Workspaces[i].ID == s.ActiveWorkspaceID {
 				return &s.Workspaces[i]
 			}
-		}
-	}
-	for i := range s.Workspaces {
-		if filepath.Clean(s.Workspaces[i].Path) == filepath.Clean(s.WorkspaceURL) {
-			return &s.Workspaces[i]
 		}
 	}
 	if len(s.Workspaces) > 0 {

@@ -1968,8 +1968,17 @@ function collectWorkspacesData() {
     });
 
     if (!activeId && workspaces.length > 0) {
-        activeId = workspaces[0].id;
-        activePath = workspaces[0].path;
+        const setWsVal = document.getElementById('set-ws') ? document.getElementById('set-ws').value.trim() : '';
+        const targetPath = setWsVal || (typeof settings !== 'undefined' && settings ? settings.workspace_url : '');
+        const targetId = (typeof settings !== 'undefined' && settings ? settings.active_workspace_id : '');
+        const matched = workspaces.find(w => (targetPath && w.path === targetPath) || (targetId && w.id === targetId));
+        if (matched) {
+            activeId = matched.id;
+            activePath = matched.path;
+        } else {
+            activeId = workspaces[0].id;
+            activePath = workspaces[0].path;
+        }
     }
 
     return { workspaces, activePath, activeId };

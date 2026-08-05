@@ -24,6 +24,9 @@ func scanWorkspaceServices(s Settings, wsID string) []Service {
 	var ws *WorkspaceItem
 	if wsID != "" {
 		ws = s.GetWorkspaceByID(wsID)
+		if ws == nil {
+			ws = s.GetWorkspaceByPath(wsID)
+		}
 	}
 	if ws == nil {
 		ws = s.GetActiveWorkspace()
