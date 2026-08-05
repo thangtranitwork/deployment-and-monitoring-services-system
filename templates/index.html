@@ -21,14 +21,11 @@
 <body>
     <header>
         <div class="logo"><img src="/favicon.ico" alt="Logo" style="width: 24px; height: 24px;"> <span>Internal</span>
-            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.7.6</span></div>
+            Deploy System <span style="font-size: 11px; opacity: 0.5; margin-left: 6px;">v1.9.0</span></div>
         <div class="header-actions">
-            <button onclick="location.href='/tools'" title="Open tools suite">🛠️
-                Tools</button>
-            <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️
-                Health Monitor</button>
-            <button onclick="openMultiDeployModal()" title="Deploy multiple services concurrently">⚡ Multi
-                Deploy</button>
+            <button onclick="location.href='/tools'" title="Open tools suite">🛠️ Tools</button>
+            <button onclick="location.href='/health-monitor'" title="View remote server health">🖥️ Health Monitor</button>
+            <button onclick="openMultiDeployModal()" title="Deploy multiple services concurrently">⚡ Multi Deploy</button>
             <button onclick="openCompareModal()" title="Compare all services branch difference">🔍 Compare Source</button>
             <button id="git-toggle" onclick="toggleGitManagement()" title="Shortcut: Alt+Shift+G">🌳 Git</button>
             <button id="vpn-toggle" onclick="toggleVPNManagement()" title="Shortcut: Alt+Shift+U">🔒 VPN</button>
@@ -53,8 +50,14 @@
 
         <div id="content">
             <div id="info-bar">
-                <span>Workspace: <strong id="info-ws">—</strong></span>
-                <span>User: <strong id="info-user">—</strong></span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 600; color: var(--text-dim);">Workspace:</span>
+                    <select id="info-ws-select" onchange="switchWorkspace(this.value)" class="ws-select-pill"></select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span>User:</span>
+                    <strong id="info-user" style="color: var(--text-main);">—</strong>
+                </div>
             </div>
 
             <div class="card">
@@ -724,8 +727,12 @@
                     <div
                         style="max-width: 680px; margin: 10px auto; display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
                         <div>
-                            <div class="label">Workspace Directory</div>
-                            <input type="text" id="set-ws" placeholder="Path to your projects...">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div class="label" style="margin: 0;">Workspaces</div>
+                                <button type="button" class="btn btn-sm" onclick="addWorkspaceRow()" style="padding: 3px 8px; font-size: 11px; cursor: pointer;">+ Add Workspace</button>
+                            </div>
+                            <input type="hidden" id="set-ws" value="">
+                            <div id="workspaces-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                         </div>
                         <div>
                             <div class="label">Git Bash Path (Windows)</div>
@@ -821,14 +828,14 @@
 
                 <!-- Deployment Tab Content -->
                 <div id="settings-tab-deployment" class="settings-tab-content">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 10px;">
-                        <div style="font-size: 12px; color: var(--text-dim); max-width: 75%;">Configure deployment
-                            commands
-                            for workspace folders manually. Only folders with commands will appear in the service list.
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 10px; gap: 16px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                            <span style="font-size: 12px; font-weight: 600; color: var(--text-dim);">Target Workspace:</span>
+                            <select id="deploy-tab-ws-select" class="ws-select-pill" onchange="onDeployTabWorkspaceChange(this.value)" style="max-width: 260px;"></select>
+                            <span id="deploy-tab-ws-path" style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 320px;"></span>
                         </div>
                         <button type="button" class="primary" onclick="addCustomServiceRow()"
-                            style="font-size: 11px; padding: 6px 12px;">➕ Add Custom Row</button>
+                            style="font-size: 11px; padding: 6px 12px; flex-shrink: 0;">➕ Add Custom Row</button>
                     </div>
                     <div
                         style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-body);">

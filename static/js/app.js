@@ -1449,13 +1449,229 @@ function resetColorsToDefault() {
     updateColorHex('accent'); updateColorHex('text'); updateColorHex('dim'); updateColorHex('terminal');
 }
 
+function renderWorkspaceSelector() {
+    const select = document.getElementById('info-ws-select');
+    if (!select) return;
+    select.innerHTML = '';
+
+    let list = settings.workspaces || [];
+    if (list.length === 0 && settings.workspace_url) {
+        list = [{ id: 'ws-default', name: 'Main Workspace', path: settings.workspace_url }];
+    }
+
+    if (list.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(no workspace)';
+        select.appendChild(opt);
+        return;
+    }
+
+    const activeId = settings.active_workspace_id;
+    const activePath = settings.workspace_url;
+
+    list.forEach(ws => {
+        const opt = document.createElement('option');
+        opt.value = ws.id || ws.path;
+        const displayName = ws.name || ws.path.split('/').filter(Boolean).pop() || ws.path;
+        opt.textContent = `📁 ${displayName}`;
+        opt.title = ws.path;
+        if ((activeId && ws.id === activeId) || (!activeId && ws.path === activePath)) {
+            opt.selected = true;
+        }
+        select.appendChild(opt);
+    });
+
+    const activeWs = list.find(w => (activeId && w.id === activeId) || w.path === activePath);
+    if (activeWs) {
+        select.title = `Active Workspace: ${activeWs.name || 'Workspace'} (${activeWs.path})`;
+    }
+}
+
+async function switchWorkspace(val) {
+    if (!val) return;
+    try {
+        let payload = {};
+        if (val.startsWith('ws-')) {
+            payload = { workspace_id: val };
+        } else {
+            payload = { workspace_url: val };
+        }
+        const res = await fetch('/api/workspaces/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            settings.active_workspace_id = data.active_workspace_id;
+            settings.workspace_url = data.workspace_url;
+            renderWorkspaceSelector();
+            
+            // Reload services without full page reload
+            if (typeof refreshServices === 'function') {
+                await refreshServices();
+            }
+        }
+    } catch (err) {
+        console.error('Failed to switch workspace:', err);
+    }
+}
+
+function renderWorkspacesList() {
+    const container = document.getElementById('workspaces-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    let list = settings.workspaces || [];
+    if (list.length === 0 && settings.workspace_url) {
+        list = [{ id: 'ws-default', name: 'Main Workspace', path: settings.workspace_url }];
+    }
+
+    const activeId = settings.active_workspace_id;
+    const activePath = settings.workspace_url;
+
+    list.forEach((ws, idx) => {
+        const isActive = (activeId && ws.id === activeId) || (!activeId && ws.path === activePath);
+        addWorkspaceRow(
+            ws.name,
+            ws.path,
+            isActive,
+            ws.id || `ws-${idx}`,
+            ws.dev_agent_url || '',
+            ws.stg_agent_url || '',
+            ws.prod_agent_url || '',
+            ws.pre_deploy_cmd || ''
+        );
+    });
+
+    if (list.length === 0) {
+        addWorkspaceRow('', '', true, 'ws-new');
+    }
+}
+
+function toggleWsExtra(id) {
+    const el = document.getElementById(`ws-extra-${id}`);
+    if (el) {
+        el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+    }
+}
+
+function addWorkspaceRow(name = '', path = '', isActive = false, id = '', devUrl = '', stgUrl = '', prodUrl = '', preDeploy = '') {
+    const container = document.getElementById('workspaces-list');
+    if (!container) return;
+
+    const rowId = id || 'ws-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+    const row = document.createElement('div');
+    row.className = 'workspace-row';
+    row.dataset.id = rowId;
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 8px; background: var(--bg-body); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 8px;';
+
+    row.innerHTML = `
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="radio" name="active_ws_radio" ${isActive ? 'checked' : ''} onchange="setActiveWorkspaceId('${rowId}', '${path}')" title="Set as active workspace" style="cursor: pointer;">
+            <input type="text" class="ws-name-input" value="${name}" placeholder="Workspace Name (e.g. Work System)" style="flex: 1; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; font-weight: 600;">
+            <input type="text" class="ws-path-input" value="${path}" placeholder="Root Path (/home/user/project)" style="flex: 2; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateRadioPath(this)">
+            <button type="button" class="btn btn-sm" onclick="toggleWsExtra('${rowId}')" style="padding: 3px 8px; font-size: 11px; cursor: pointer;" title="Toggle Agent URLs">⚙️ Config</button>
+            <button type="button" class="btn btn-sm" onclick="this.closest('.workspace-row').remove()" style="padding: 3px 8px; color: #e74c3c; font-weight: bold; background: transparent; border: none; cursor: pointer;" title="Remove workspace">✕</button>
+        </div>
+        <div id="ws-extra-${rowId}" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
+            <div>
+                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Dev Agent URL</span>
+                <input type="text" class="ws-dev-url-input" value="${devUrl}" placeholder="Fallback global URL" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+            </div>
+            <div>
+                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Staging Agent URL</span>
+                <input type="text" class="ws-stg-url-input" value="${stgUrl}" placeholder="Fallback global URL" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+            </div>
+            <div>
+                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Pre-deploy Cmd</span>
+                <input type="text" class="ws-pre-cmd-input" value="${preDeploy}" placeholder="e.g. go mod tidy" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
+            </div>
+        </div>
+    `;
+
+    container.appendChild(row);
+    if (isActive) {
+        document.getElementById('set-ws').value = path;
+        document.getElementById('set-ws').dataset.activeId = rowId;
+    }
+}
+
+function updateRadioPath(input) {
+    const row = input.closest('.workspace-row');
+    const radio = row.querySelector('input[type="radio"]');
+    if (radio && radio.checked) {
+        document.getElementById('set-ws').value = input.value;
+    }
+}
+
+function setActiveWorkspaceId(id, path) {
+    document.getElementById('set-ws').value = path;
+    document.getElementById('set-ws').dataset.activeId = id;
+}
+
+function collectWorkspacesData() {
+    const container = document.getElementById('workspaces-list');
+    if (!container) return { workspaces: [], activePath: '', activeId: '' };
+
+    const rows = container.querySelectorAll('.workspace-row');
+    const workspaces = [];
+    let activePath = '';
+    let activeId = '';
+
+    rows.forEach(row => {
+        const id = row.dataset.id || 'ws-' + Math.random().toString(36).substr(2, 6);
+        const nameInput = row.querySelector('.ws-name-input');
+        const pathInput = row.querySelector('.ws-path-input');
+        const devUrlInput = row.querySelector('.ws-dev-url-input');
+        const stgUrlInput = row.querySelector('.ws-stg-url-input');
+        const preCmdInput = row.querySelector('.ws-pre-cmd-input');
+        const radio = row.querySelector('input[type="radio"]');
+
+        const name = nameInput ? nameInput.value.trim() : '';
+        const path = pathInput ? pathInput.value.trim() : '';
+        const dev_agent_url = devUrlInput ? devUrlInput.value.trim() : '';
+        const stg_agent_url = stgUrlInput ? stgUrlInput.value.trim() : '';
+        const pre_deploy_cmd = preCmdInput ? preCmdInput.value.trim() : '';
+
+        // Preserve existing services array for this workspace
+        const existingWs = (settings.workspaces || []).find(w => w.id === id || w.path === path);
+        const services = existingWs ? (existingWs.services || []) : [];
+
+        if (path) {
+            workspaces.push({
+                id,
+                name: name || path.split('/').filter(Boolean).pop() || path,
+                path,
+                dev_agent_url,
+                stg_agent_url,
+                pre_deploy_cmd,
+                services
+            });
+            if (radio && radio.checked) {
+                activePath = path;
+                activeId = id;
+            }
+        }
+    });
+
+    if (!activeId && workspaces.length > 0) {
+        activeId = workspaces[0].id;
+        activePath = workspaces[0].path;
+    }
+
+    return { workspaces, activePath, activeId };
+}
+
 async function loadSettings() {
     const res = await fetch('/api/settings');
     settings = await res.json();
-    document.getElementById('info-ws').innerText = settings.workspace_url || '(not set)';
+    renderWorkspaceSelector();
     document.getElementById('info-user').innerText = settings.user_name || '(not set)';
 
     document.getElementById('set-ws').value = settings.workspace_url || '';
+    renderWorkspacesList();
     document.getElementById('set-git').value = settings.git_bash_path || '';
     document.getElementById('set-name').value = settings.user_name || '';
     document.getElementById('set-pre').value = settings.pre_deploy_cmd || '';
@@ -2275,18 +2491,95 @@ function switchSettingsTab(tabId) {
     }
 }
 
-async function loadDeploymentTab() {
+function renderDeployTabWorkspaceSelector(activeWsPath) {
+    const select = document.getElementById('deploy-tab-ws-select');
+    const pathSpan = document.getElementById('deploy-tab-ws-path');
+    if (!select) return;
+    select.innerHTML = '';
+
+    let list = settings.workspaces || [];
+    if (list.length === 0 && settings.workspace_url) {
+        list = [{ id: 'ws-default', name: 'Main Workspace', path: settings.workspace_url }];
+    }
+
+    list.forEach(ws => {
+        const opt = document.createElement('option');
+        opt.value = ws.path;
+        const displayName = ws.name || ws.path.split('/').filter(Boolean).pop() || ws.path;
+        opt.textContent = `📁 ${displayName}`;
+        if (ws.path === activeWsPath) {
+            opt.selected = true;
+        }
+        select.appendChild(opt);
+    });
+
+    if (pathSpan) {
+        pathSpan.textContent = `Path: ${activeWsPath}`;
+        pathSpan.title = activeWsPath;
+    }
+}
+
+function onDeployTabWorkspaceChange(newWsPath) {
+    saveCurrentDeploymentTabToMemory();
+    loadDeploymentTab(newWsPath);
+}
+
+function saveCurrentDeploymentTabToMemory() {
+    const select = document.getElementById('deploy-tab-ws-select');
+    if (!select) return;
+    const currentWsPath = select.value;
+    if (!currentWsPath) return;
+
     const tbody = document.getElementById('deployment-config-tbody');
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-dim);">Loading folders...</td></tr>';
+    if (!tbody || tbody.children.length === 0 || !tbody.querySelector('.row-folder')) return;
+
+    const activeServices = [];
+    document.querySelectorAll('.deployment-config-row').forEach(row => {
+        const enabled = row.querySelector('.row-enabled').checked;
+        const folder = row.querySelector('.row-folder').value.trim();
+        const name = row.querySelector('.row-name').value.trim();
+        const dev_cmd = row.querySelector('.row-dev-cmd').value.trim();
+        const stg_cmd = row.querySelector('.row-stg-cmd').value.trim();
+        const show_production = row.querySelector('.row-show-prod').checked;
+        const prod_cmd = row.querySelector('.row-prod-cmd').value.trim();
+        const prod_password_hash = row.querySelector('.row-prod-pwd').value;
+        const pre_deploy_cmd = row.querySelector('.row-pre-deploy-cmd').value.trim();
+
+        if (folder && name) {
+            activeServices.push({
+                workspace_url: currentWsPath,
+                enabled: enabled,
+                folder: folder,
+                name: name,
+                dev_cmd: dev_cmd,
+                stg_cmd: stg_cmd,
+                show_production: show_production,
+                prod_cmd: prod_cmd,
+                prod_password_hash: prod_password_hash,
+                pre_deploy_cmd: pre_deploy_cmd
+            });
+        }
+    });
+
+    const otherServices = (settings.services || []).filter(s => s.workspace_url && s.workspace_url !== currentWsPath);
+    settings.services = [...otherServices, ...activeServices];
+}
+
+async function loadDeploymentTab(targetWsUrl) {
+    const activeWsPath = targetWsUrl || document.getElementById('deploy-tab-ws-select')?.value || settings.workspace_url || '';
+    renderDeployTabWorkspaceSelector(activeWsPath);
+
+    const tbody = document.getElementById('deployment-config-tbody');
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-dim);">Loading workspace folders...</td></tr>';
     
     try {
-        const foldersRes = await fetch('/api/workspace-folders');
+        const foldersRes = await fetch(`/api/workspace-folders?workspace_url=${encodeURIComponent(activeWsPath)}`);
         const workspaceFolders = foldersRes.ok ? await foldersRes.json() : [];
         
         tbody.innerHTML = '';
         
         const renderedIndices = new Set();
-        const configuredServices = settings.services || [];
+        const configuredServices = (settings.services || []).filter(cfg => cfg.workspace_url === activeWsPath);
         
         // 1. Group/render configs that match workspace folders
         workspaceFolders.forEach(folder => {
@@ -2307,7 +2600,6 @@ async function loadDeploymentTab() {
                 if (settings.folder_aliases && settings.folder_aliases[folder]) {
                     suggestedName = settings.folder_aliases[folder];
                 }
-                // New folders are enabled by default
                 createDeploymentRow(tbody, folder, suggestedName, '', '', '', '', '', true, false);
             }
         });
@@ -2402,6 +2694,7 @@ async function openSettings() {
         const setProdUrl = document.getElementById('set-prod-url');
 
         if (setWs) setWs.value = settings.workspace_url;
+        renderWorkspacesList();
         if (setGit) setGit.value = settings.git_bash_path;
         if (setName) setName.value = settings.user_name;
         if (setPre) setPre.value = settings.pre_deploy_cmd;
@@ -2419,46 +2712,21 @@ async function openSettings() {
 function closeSettings() { document.getElementById('modal-overlay').style.display = 'none'; }
 
 async function saveSettings() {
-    let services = settings.services || [];
-    const tbody = document.getElementById('deployment-config-tbody');
-    if (tbody && tbody.children.length > 0 && tbody.querySelector('.row-folder')) {
-        services = [];
-        document.querySelectorAll('.deployment-config-row').forEach(row => {
-            const enabled = row.querySelector('.row-enabled').checked;
-            const folder = row.querySelector('.row-folder').value.trim();
-            const name = row.querySelector('.row-name').value.trim();
-            const dev_cmd = row.querySelector('.row-dev-cmd').value.trim();
-            const stg_cmd = row.querySelector('.row-stg-cmd').value.trim();
-            const show_production = row.querySelector('.row-show-prod').checked;
-            const prod_cmd = row.querySelector('.row-prod-cmd').value.trim();
-            const prod_password_hash = row.querySelector('.row-prod-pwd').value;
-            const pre_deploy_cmd = row.querySelector('.row-pre-deploy-cmd').value.trim();
-            
-            if (folder && name) {
-                services.push({
-                    enabled: enabled,
-                    folder: folder,
-                    name: name,
-                    dev_cmd: dev_cmd,
-                    stg_cmd: stg_cmd,
-                    show_production: show_production,
-                    prod_cmd: prod_cmd,
-                    prod_password_hash: prod_password_hash,
-                    pre_deploy_cmd: pre_deploy_cmd
-                });
-            }
-        });
-    }
+    saveCurrentDeploymentTabToMemory();
+
+    const wsData = collectWorkspacesData();
+    const activeWsPath = wsData.activePath || document.getElementById('set-ws').value;
 
     const updated = {
-        workspace_url: document.getElementById('set-ws').value,
+        active_workspace_id: wsData.activeId || settings.active_workspace_id,
+        workspace_url: activeWsPath,
+        workspaces: wsData.workspaces,
         git_bash_path: document.getElementById('set-git').value,
         user_name: document.getElementById('set-name').value,
         pre_deploy_cmd: document.getElementById('set-pre').value,
         dev_agent_url: document.getElementById('set-dev-url').value,
         stg_agent_url: document.getElementById('set-stg-url').value,
         prod_agent_url: document.getElementById('set-prod-url').value,
-        services: services,
         custom_cmds: {},
         dark_theme: {
             accent: colorState.dark.accent,
@@ -2480,7 +2748,12 @@ async function saveSettings() {
         body: JSON.stringify(updated)
     });
     closeSettings();
-    location.reload();
+
+    // Reload settings & refresh services dynamically without page refresh
+    await loadSettings();
+    if (typeof refreshServices === 'function') {
+        await refreshServices();
+    }
 }
 
 let charts = {};

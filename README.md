@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.7.6
+# 🚀 Internal Deploy System (IDS) - v1.9.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -18,6 +18,13 @@ deploy-tool/
 ```
 
 ## 🛠 Features
+
+### 📁 Multi-Workspace Management
+
+- **Nested Workspace Data Architecture**: Services are grouped neatly per workspace in `settings.json`, preventing flat array clutter and eliminating global state pollution.
+- **Instant SPA Workspace Switcher**: Switch active workspaces in ~100ms directly from the top header bar without full page reloads (`location.reload()`), preserving active UI states and WebSocket terminals.
+- **Per-Workspace Agent & Pre-Deploy Configuration**: Configure independent `DevAgentURL`, `StgAgentURL`, `ProdAgentURL`, and `PreDeployCmd` for each workspace, with fallback to global environment settings.
+- **Automatic Service Rescan**: Dynamically scans microservice directories and deployment scripts scoped strictly to the active workspace path.
 
 ### 🖥️ Monitoring & Health
 

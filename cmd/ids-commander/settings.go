@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"fmt"
+	"time"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -16,17 +18,19 @@ func getSettingsPath() string {
 
 func loadSettings() Settings {
 	s := Settings{
-		UserName:      "",
-		GitBashPath:   "",
-		WorkspaceURL:  "",
-		PreDeployCmd:  "",
-		GoPrivate:     "",
-		DevAgentURL:   os.Getenv("DEV_AGENT_URL"),
-		StgAgentURL:   os.Getenv("STG_AGENT_URL"),
-		ProdAgentURL:  os.Getenv("PROD_AGENT_URL"),
-		ShowProduction: false,
-		CustomCmds:    make(map[string]string),
-		Services:      make([]ServiceConfig, 0),
+		UserName:          "",
+		GitBashPath:       "",
+		ActiveWorkspaceID: "",
+		WorkspaceURL:      "",
+		PreDeployCmd:      "",
+		GoPrivate:         "",
+		DevAgentURL:       os.Getenv("DEV_AGENT_URL"),
+		StgAgentURL:       os.Getenv("STG_AGENT_URL"),
+		ProdAgentURL:      os.Getenv("PROD_AGENT_URL"),
+		ShowProduction:    false,
+		CustomCmds:        make(map[string]string),
+		Services:          make([]ServiceConfig, 0),
+		Workspaces:        make([]WorkspaceItem, 0),
 		DarkTheme: ThemeColors{
 			Accent:       "#f85149",
 			TextMain:     "#e6edf3",
@@ -50,8 +54,57 @@ func loadSettings() Settings {
 	if s.CustomCmds == nil {
 		s.CustomCmds = make(map[string]string)
 	}
-	if s.Services == nil {
-		s.Services = make([]ServiceConfig, 0)
+	if s.Workspaces == nil {
+		s.Workspaces = make([]WorkspaceItem, 0)
+	}
+
+	// Auto-migrate single workspace_url into workspaces array if empty
+	if len(s.Workspaces) == 0 && s.WorkspaceURL != "" {
+		wsName := filepath.Base(s.WorkspaceURL)
+		if wsName == "." || wsName == "/" {
+			wsName = "Main Workspace"
+		}
+		s.Workspaces = append(s.Workspaces, WorkspaceItem{
+			ID:   "ws-default",
+			Name: wsName,
+			Path: s.WorkspaceURL,
+		})
+	}
+
+	// Ensure all workspaces have valid IDs and initialized Services slice
+	for i := range s.Workspaces {
+		if s.Workspaces[i].ID == "" {
+			s.Workspaces[i].ID = fmt.Sprintf("ws-%d", i+1)
+		}
+		if s.Workspaces[i].Services == nil {
+			s.Workspaces[i].Services = make([]ServiceConfig, 0)
+		}
+	}
+
+	// Ensure ActiveWorkspaceID
+	if s.ActiveWorkspaceID == "" && len(s.Workspaces) > 0 {
+		found := false
+		for _, ws := range s.Workspaces {
+			if s.WorkspaceURL != "" && filepath.Clean(ws.Path) == filepath.Clean(s.WorkspaceURL) {
+				s.ActiveWorkspaceID = ws.ID
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.ActiveWorkspaceID = s.Workspaces[0].ID
+		}
+	}
+
+	// Sync WorkspaceURL with active workspace path
+	activeWs := s.GetActiveWorkspace()
+	if activeWs != nil {
+		s.WorkspaceURL = activeWs.Path
+	}
+
+	// Migrate flat s.Services into respective s.Workspaces[i].Services if flat Services exist
+	if len(s.Services) > 0 {
+		migrateFlatServicesToWorkspaces(&s)
 	}
 
 	// Always fallback to ENV if JSON has empty strings
@@ -64,6 +117,123 @@ func loadSettings() Settings {
 
 	settings = s
 	return s
+}
+
+func migrateFlatServicesToWorkspaces(s *Settings) {
+	log.Printf("[Settings] Migrating flat services array (%d items) into nested Workspaces...", len(s.Services))
+	for _, svc := range s.Services {
+		targetWsPath := svc.WorkspaceURL
+		if targetWsPath == "" {
+			targetWsPath = s.WorkspaceURL
+		}
+
+		var targetWs *WorkspaceItem
+		for i := range s.Workspaces {
+			if filepath.Clean(s.Workspaces[i].Path) == filepath.Clean(targetWsPath) {
+				targetWs = &s.Workspaces[i]
+				break
+			}
+		}
+
+		if targetWs == nil {
+			// Create a new workspace for this unassigned path
+			wsName := filepath.Base(targetWsPath)
+			if wsName == "." || wsName == "/" {
+				wsName = "Workspace " + targetWsPath
+			}
+			newWs := WorkspaceItem{
+				ID:       fmt.Sprintf("ws-%d", time.Now().UnixNano()),
+				Name:     wsName,
+				Path:     targetWsPath,
+				Services: []ServiceConfig{svc},
+			}
+			s.Workspaces = append(s.Workspaces, newWs)
+		} else {
+			// Check if service already exists in workspace
+			exists := false
+			for _, existingSvc := range targetWs.Services {
+				if existingSvc.Name == svc.Name || existingSvc.Folder == svc.Folder {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				targetWs.Services = append(targetWs.Services, svc)
+			}
+		}
+	}
+
+	// Clear flat services array after migration
+	s.Services = nil
+	_ = saveSettings(*s)
+	log.Printf("[Settings] Nested workspace migration completed successfully!")
+}
+
+func (s Settings) GetActiveWorkspace() *WorkspaceItem {
+	if s.ActiveWorkspaceID != "" {
+		for i := range s.Workspaces {
+			if s.Workspaces[i].ID == s.ActiveWorkspaceID {
+				return &s.Workspaces[i]
+			}
+		}
+	}
+	for i := range s.Workspaces {
+		if filepath.Clean(s.Workspaces[i].Path) == filepath.Clean(s.WorkspaceURL) {
+			return &s.Workspaces[i]
+		}
+	}
+	if len(s.Workspaces) > 0 {
+		return &s.Workspaces[0]
+	}
+	return nil
+}
+
+func (s Settings) GetWorkspaceByID(id string) *WorkspaceItem {
+	for i := range s.Workspaces {
+		if s.Workspaces[i].ID == id {
+			return &s.Workspaces[i]
+		}
+	}
+	return nil
+}
+
+func (s Settings) GetWorkspaceByPath(path string) *WorkspaceItem {
+	clean := filepath.Clean(path)
+	for i := range s.Workspaces {
+		if filepath.Clean(s.Workspaces[i].Path) == clean {
+			return &s.Workspaces[i]
+		}
+	}
+	return nil
+}
+
+func (s Settings) GetAgentURLs(ws *WorkspaceItem) (devURL, stgURL, prodURL string) {
+	devURL = s.DevAgentURL
+	stgURL = s.StgAgentURL
+	prodURL = s.ProdAgentURL
+
+	if ws != nil {
+		if ws.DevAgentURL != "" {
+			devURL = ws.DevAgentURL
+		}
+		if ws.StgAgentURL != "" {
+			stgURL = ws.StgAgentURL
+		}
+		if ws.ProdAgentURL != "" {
+			prodURL = ws.ProdAgentURL
+		}
+	}
+
+	if devURL == "" {
+		devURL = os.Getenv("DEV_AGENT_URL")
+	}
+	if stgURL == "" {
+		stgURL = os.Getenv("STG_AGENT_URL")
+	}
+	if prodURL == "" {
+		prodURL = os.Getenv("PROD_AGENT_URL")
+	}
+	return
 }
 
 func saveSettings(s Settings) error {
@@ -82,8 +252,12 @@ func saveSettings(s Settings) error {
 }
 
 func migrateSettings(s *Settings) {
-	if len(s.Services) > 0 {
-		return
+	if len(s.Workspaces) > 0 {
+		for _, ws := range s.Workspaces {
+			if len(ws.Services) > 0 {
+				return
+			}
+		}
 	}
 
 	// 1. Migrate from custom_cmds map

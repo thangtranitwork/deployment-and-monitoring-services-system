@@ -35,15 +35,42 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		oldSettings := loadSettings()
+		// Process password hashes inside nested workspace services
+		for wsIdx := range s.Workspaces {
+			ws := &s.Workspaces[wsIdx]
+			var oldWs *WorkspaceItem
+			for _, oWs := range oldSettings.Workspaces {
+				if oWs.ID == ws.ID || (ws.ID == "" && oWs.Path == ws.Path) {
+					oldWs = &oWs
+					break
+				}
+			}
+
+			for i, svc := range ws.Services {
+				if svc.ProdPasswordHash != "" && svc.ProdPasswordHash != "********" {
+					hash, err := bcrypt.GenerateFromPassword([]byte(svc.ProdPasswordHash), bcrypt.DefaultCost)
+					if err == nil {
+						ws.Services[i].ProdPasswordHash = string(hash)
+					}
+				} else if svc.ProdPasswordHash == "********" && oldWs != nil {
+					for _, oldSvc := range oldWs.Services {
+						if oldSvc.Folder == svc.Folder && oldSvc.Name == svc.Name {
+							ws.Services[i].ProdPasswordHash = oldSvc.ProdPasswordHash
+							break
+						}
+					}
+				}
+			}
+		}
+
+		// Also handle legacy s.Services if any present
 		for i, svc := range s.Services {
-			// If password is changed (not the placeholder)
 			if svc.ProdPasswordHash != "" && svc.ProdPasswordHash != "********" {
 				hash, err := bcrypt.GenerateFromPassword([]byte(svc.ProdPasswordHash), bcrypt.DefaultCost)
 				if err == nil {
 					s.Services[i].ProdPasswordHash = string(hash)
 				}
 			} else if svc.ProdPasswordHash == "********" {
-				// Keep old hash
 				for _, oldSvc := range oldSettings.Services {
 					if oldSvc.Folder == svc.Folder && oldSvc.Name == svc.Name {
 						s.Services[i].ProdPasswordHash = oldSvc.ProdPasswordHash
@@ -64,7 +91,14 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s := loadSettings()
-	// Hide real hashes from frontend
+	// Hide real hashes from frontend for nested workspace services
+	for wsIdx := range s.Workspaces {
+		for i := range s.Workspaces[wsIdx].Services {
+			if s.Workspaces[wsIdx].Services[i].ProdPasswordHash != "" {
+				s.Workspaces[wsIdx].Services[i].ProdPasswordHash = "********"
+			}
+		}
+	}
 	for i := range s.Services {
 		if s.Services[i].ProdPasswordHash != "" {
 			s.Services[i].ProdPasswordHash = "********"
@@ -76,9 +110,28 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 
 func workspaceFoldersHandler(w http.ResponseWriter, r *http.Request) {
 	s := loadSettings()
-	entries, err := os.ReadDir(s.WorkspaceURL)
+	wsID := r.URL.Query().Get("workspace_id")
+	targetURL := r.URL.Query().Get("workspace_url")
+
+	var ws *WorkspaceItem
+	if wsID != "" {
+		ws = s.GetWorkspaceByID(wsID)
+	} else if targetURL != "" {
+		ws = s.GetWorkspaceByPath(targetURL)
+	}
+	if ws == nil {
+		ws = s.GetActiveWorkspace()
+	}
+
+	dirPath := targetURL
+	if targetURL == "" && ws != nil {
+		dirPath = ws.Path
+	}
+
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]string{})
 		return
 	}
 
@@ -96,7 +149,12 @@ func workspaceFoldersHandler(w http.ResponseWriter, r *http.Request) {
 
 func servicesHandler(w http.ResponseWriter, r *http.Request) {
 	s := loadSettings()
-	services := scanServices(s)
+	wsID := r.URL.Query().Get("workspace_id")
+	if wsID == "" {
+		wsID = r.URL.Query().Get("workspace_url")
+	}
+
+	services := scanWorkspaceServices(s, wsID)
 
 	results := make([]Service, 0)
 	for _, svc := range services {
@@ -131,7 +189,20 @@ func serviceHandler(w http.ResponseWriter, r *http.Request) {
 
 	s := loadSettings()
 	gitPath := getGitPath(s)
-	svc := getServiceInfo(s.WorkspaceURL, serviceName, gitPath)
+
+	wsID := r.URL.Query().Get("workspace_id")
+	wsURL := r.URL.Query().Get("workspace_url")
+	var ws *WorkspaceItem
+	if wsID != "" {
+		ws = s.GetWorkspaceByID(wsID)
+	} else if wsURL != "" {
+		ws = s.GetWorkspaceByPath(wsURL)
+	}
+	if ws == nil {
+		ws = s.GetActiveWorkspace()
+	}
+
+	svc := getServiceInfoForWorkspace(ws, serviceName, gitPath)
 	if svc == nil {
 		http.Error(w, "Service not found", http.StatusNotFound)
 		return
@@ -758,3 +829,48 @@ func deployHandler(w http.ResponseWriter, r *http.Request) {
 
 	send("[EOF]")
 }
+
+func workspaceSwitchHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		WorkspaceID  string `json:"workspace_id"`
+		WorkspaceURL string `json:"workspace_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := loadSettings()
+	var targetWs *WorkspaceItem
+	if req.WorkspaceID != "" {
+		targetWs = s.GetWorkspaceByID(req.WorkspaceID)
+	} else if req.WorkspaceURL != "" {
+		targetWs = s.GetWorkspaceByPath(req.WorkspaceURL)
+	}
+
+	if targetWs == nil {
+		http.Error(w, "Workspace not found", http.StatusNotFound)
+		return
+	}
+
+	s.ActiveWorkspaceID = targetWs.ID
+	s.WorkspaceURL = targetWs.Path
+	if err := saveSettings(s); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":              "ok",
+		"active_workspace_id": targetWs.ID,
+		"workspace_url":       targetWs.Path,
+		"workspace_name":      targetWs.Name,
+	})
+}
+

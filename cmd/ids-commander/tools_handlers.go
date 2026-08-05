@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -131,6 +135,88 @@ func bcryptVerifyHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(BcryptVerifyResponse{Valid: true})
 }
+
+type HmacGeneratorRequest struct {
+	ClientID  string `json:"client_id"`
+	SecretKey string `json:"secret_key"`
+	Timestamp string `json:"timestamp"`
+	Method    string `json:"method"`
+	URL       string `json:"url"`
+	Body      string `json:"body"`
+}
+
+type HmacGeneratorResponse struct {
+	Timestamp  string            `json:"timestamp"`
+	Signature  string            `json:"signature"`
+	SigningStr string            `json:"signing_string"`
+	Headers    map[string]string `json:"headers"`
+	CurlCmd    string            `json:"curl_cmd"`
+	Error      string            `json:"error,omitempty"`
+}
+
+func hmacHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req HmacGeneratorRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		json.NewEncoder(w).Encode(HmacGeneratorResponse{Error: "Invalid request body: " + err.Error()})
+		return
+	}
+
+	if req.SecretKey == "" {
+		json.NewEncoder(w).Encode(HmacGeneratorResponse{Error: "Secret Key is required"})
+		return
+	}
+
+	tsStr := req.Timestamp
+	if tsStr == "" {
+		tsStr = strconv.FormatInt(time.Now().Unix(), 10)
+	}
+
+	signingString := tsStr + "\n" + req.Body
+	h := hmac.New(sha256.New, []byte(req.SecretKey))
+	h.Write([]byte(signingString))
+	sig := hex.EncodeToString(h.Sum(nil))
+
+	headers := map[string]string{
+		"X-Client-Id": req.ClientID,
+		"X-Timestamp": tsStr,
+		"X-Signature": sig,
+	}
+	if req.Body != "" {
+		headers["Content-Type"] = "application/json"
+	}
+
+	var curlBuilder strings.Builder
+	method := strings.ToUpper(req.Method)
+	if method == "" {
+		method = "GET"
+	}
+	curlBuilder.WriteString(fmt.Sprintf("curl -X %s '%s'", method, req.URL))
+	if req.ClientID != "" {
+		curlBuilder.WriteString(fmt.Sprintf(" \\\n  -H 'X-Client-Id: %s'", req.ClientID))
+	}
+	curlBuilder.WriteString(fmt.Sprintf(" \\\n  -H 'X-Timestamp: %s'", tsStr))
+	curlBuilder.WriteString(fmt.Sprintf(" \\\n  -H 'X-Signature: %s'", sig))
+
+	if req.Body != "" {
+		curlBuilder.WriteString(" \\\n  -H 'Content-Type: application/json'")
+		curlBuilder.WriteString(fmt.Sprintf(" \\\n  -d '%s'", req.Body))
+	}
+
+	json.NewEncoder(w).Encode(HmacGeneratorResponse{
+		Timestamp:  tsStr,
+		Signature:  sig,
+		SigningStr: signingString,
+		Headers:    headers,
+		CurlCmd:    curlBuilder.String(),
+	})
+}
+
 
 func curlProxyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

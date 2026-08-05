@@ -470,6 +470,9 @@
             <div class="tool-nav-item" data-tool="bcrypt" onclick="selectTool('bcrypt')" title="Shortcut: Alt + Shift + 6">
                 <span>🔒</span> Bcrypt Generator <span class="shortcut-badge">Alt+Shift+6</span>
             </div>
+            <div class="tool-nav-item" data-tool="hmac" onclick="selectTool('hmac')">
+                <span>🔑</span> HMAC Generator
+            </div>
             <div class="tool-nav-item" data-tool="time" onclick="selectTool('time')" title="Shortcut: Alt + Shift + 7">
                 <span>🕒</span> Time Converter <span class="shortcut-badge">Alt+Shift+7</span>
             </div>
@@ -780,6 +783,91 @@
 
                             <div id="bcrypt-verify-result-card" style="display: none; margin-top: 12px; border-radius: 6px; padding: 12px; text-align: center; font-weight: 700; font-size: 13.5px;">
                                 <span id="bcrypt-verify-text">UNKNOWN</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HMAC SHA256 Generator Tool (BShip Open API) -->
+            <div id="hmac-tool" class="tool-content" style="display: none;">
+                <div class="tool-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">🔑 HMAC-SHA256 Signature Generator (BShip Open API)</span>
+                    </div>
+                </div>
+
+                <div class="split-workspace" style="padding: 24px; gap: 24px; overflow-y: auto;">
+                    <!-- Left Column: Inputs -->
+                    <div class="tool-panel-card" style="flex: 1;">
+                        <h3 style="margin-top: 0; color: var(--accent); font-size: 15px; margin-bottom: 16px;">📝 Input Parameters</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">X-Client-Id</label>
+                                    <input type="text" id="hmac-client-id" placeholder="1" value="1"
+                                        style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                </div>
+                                <div style="flex: 2;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Secret Key</label>
+                                    <input type="text" id="hmac-secret-key" placeholder="Enter partner secret key..."
+                                        style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);">
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                <div style="flex: 1;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">HTTP Method</label>
+                                    <select id="hmac-method" style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                        <option value="GET">GET</option>
+                                        <option value="POST" selected>POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                </div>
+                                <div style="flex: 3;">
+                                    <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Target URL</label>
+                                    <input type="text" id="hmac-url" placeholder="http://localhost:8082/v1/bookings/TRIP_1234/status" value="http://localhost:8082/v1/bookings/TRIP_1234/status"
+                                        style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Timestamp (Epoch seconds, leave empty for current time)</label>
+                                <input type="text" id="hmac-timestamp" placeholder="Auto (now)"
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main);">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">Request Body (JSON string or raw text)</label>
+                                <textarea id="hmac-body" rows="4" placeholder='{"order_code":"ORD_123"}'
+                                    style="width: 100%; font-size: 13px; padding: 8px 12px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-family: var(--font-mono);"></textarea>
+                            </div>
+                            <button onclick="generateHmac()" class="primary" style="align-self: flex-start; height: 32px; padding: 0 16px; font-size: 12px;">Generate Signature & cURL</button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Output -->
+                    <div class="tool-panel-card" style="flex: 1;">
+                        <h3 style="margin-top: 0; color: var(--accent); font-size: 15px; margin-bottom: 16px;">🚀 Generated Signature & cURL</h3>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <label style="font-size: 12px; color: var(--text-dim);">X-Signature (HMAC-SHA256)</label>
+                                    <button onclick="copyToClipboard('hmac-signature-out')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy</button>
+                                </div>
+                                <pre style="margin: 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border);"><code id="hmac-signature-out" style="font-size: 12px; font-family: var(--font-mono); color: #4ec9b0; word-break: break-all; white-space: pre-wrap;">-</code></pre>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <label style="font-size: 12px; color: var(--text-dim);">X-Timestamp</label>
+                                    <button onclick="copyToClipboard('hmac-timestamp-out')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy</button>
+                                </div>
+                                <pre style="margin: 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--border);"><code id="hmac-timestamp-out" style="font-size: 12px; font-family: var(--font-mono); color: var(--text-main);">-</code></pre>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <label style="font-size: 12px; color: var(--text-dim);">Ready-to-run cURL Command</label>
+                                    <button onclick="copyToClipboard('hmac-curl-out')" style="font-size: 10px; background: transparent; border: none; color: var(--text-dim); cursor: pointer;">Copy cURL</button>
+                                </div>
+                                <pre style="margin: 0; padding: 12px; background: rgba(0,0,0,0.4); border-radius: 6px; border: 1px solid var(--border); overflow-x: auto;"><code id="hmac-curl-out" style="font-size: 12px; font-family: var(--font-mono); color: #ce9178; white-space: pre-wrap;">-</code></pre>
                             </div>
                         </div>
                     </div>
@@ -1972,6 +2060,55 @@ async function checkServiceHealth(port) {
             }
         }
 
+        async function generateHmac() {
+            const clientId = document.getElementById('hmac-client-id').value;
+            const secretKey = document.getElementById('hmac-secret-key').value;
+            const timestamp = document.getElementById('hmac-timestamp').value;
+            const method = document.getElementById('hmac-method').value;
+            const url = document.getElementById('hmac-url').value;
+            const body = document.getElementById('hmac-body').value;
+
+            const sigOut = document.getElementById('hmac-signature-out');
+            const tsOut = document.getElementById('hmac-timestamp-out');
+            const curlOut = document.getElementById('hmac-curl-out');
+
+            if (!secretKey) {
+                alert('Please enter a Secret Key');
+                return;
+            }
+
+            sigOut.innerText = 'Calculating...';
+            tsOut.innerText = '...';
+            curlOut.innerText = '...';
+
+            try {
+                const res = await fetch('/api/tools/hmac', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: clientId,
+                        secret_key: secretKey,
+                        timestamp: timestamp,
+                        method: method,
+                        url: url,
+                        body: body
+                    })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    sigOut.innerText = 'Error: ' + data.error;
+                    tsOut.innerText = '-';
+                    curlOut.innerText = '-';
+                } else {
+                    sigOut.innerText = data.signature;
+                    tsOut.innerText = data.timestamp;
+                    curlOut.innerText = data.curl_cmd;
+                }
+            } catch (err) {
+                sigOut.innerText = 'Network error: ' + err.message;
+            }
+        }
+
         async function verifyBcrypt() {
             const password = bcryptTestPass.value;
             const hash = bcryptTestHash.value;
@@ -2735,6 +2872,7 @@ async function checkServiceHealth(port) {
             document.getElementById('kv-tool').style.display = toolName === 'kv' ? 'flex' : 'none';
             document.getElementById('diff-tool').style.display = toolName === 'diff' ? 'flex' : 'none';
             document.getElementById('bcrypt-tool').style.display = toolName === 'bcrypt' ? 'flex' : 'none';
+            document.getElementById('hmac-tool').style.display = toolName === 'hmac' ? 'flex' : 'none';
             document.getElementById('time-tool').style.display = toolName === 'time' ? 'flex' : 'none';
             document.getElementById('curl-tool').style.display = toolName === 'curl' ? 'flex' : 'none';
             document.getElementById('qr-tool').style.display = toolName === 'qr' ? 'flex' : 'none';

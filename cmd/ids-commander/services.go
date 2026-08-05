@@ -14,31 +14,44 @@ import (
 )
 
 func scanServices(s Settings) []Service {
+	return scanWorkspaceServices(s, "")
+}
+
+func scanWorkspaceServices(s Settings, wsID string) []Service {
 	gitPath := getGitPath(s)
 	var services []Service
 
-	// 1. Get all folders in workspace
-	entries, err := os.ReadDir(s.WorkspaceURL)
-	if err != nil {
-		log.Printf("[Scan] Error reading workspace: %v", err)
+	var ws *WorkspaceItem
+	if wsID != "" {
+		ws = s.GetWorkspaceByID(wsID)
+	}
+	if ws == nil {
+		ws = s.GetActiveWorkspace()
+	}
+	if ws == nil || ws.Path == "" {
 		return services
 	}
 
-	// Track folders that are explicitly configured
+	entries, err := os.ReadDir(ws.Path)
+	if err != nil {
+		log.Printf("[Scan] Error reading workspace path '%s': %v", ws.Path, err)
+		return services
+	}
+
 	configuredFolders := make(map[string]bool)
 
-	// 2. Process all explicitly configured services
-	for _, cfg := range s.Services {
+	// 1. Process explicitly configured services for this workspace
+	for _, cfg := range ws.Services {
 		configuredFolders[cfg.Folder] = true
 		if !cfg.Enabled {
 			continue
 		}
-		if svc := getServiceInfo(s.WorkspaceURL, cfg.Name, gitPath); svc != nil {
+		if svc := getServiceInfoForWorkspace(ws, cfg.Name, gitPath); svc != nil {
 			services = append(services, *svc)
 		}
 	}
 
-	// 3. Scan workspace for any new/unconfigured folders
+	// 2. Scan workspace directory for unconfigured folders
 	for _, entry := range entries {
 		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
 			continue
@@ -46,7 +59,7 @@ func scanServices(s Settings) []Service {
 
 		folderName := entry.Name()
 		if !configuredFolders[folderName] {
-			if svc := getServiceInfo(s.WorkspaceURL, folderName, gitPath); svc != nil {
+			if svc := getServiceInfoForWorkspace(ws, folderName, gitPath); svc != nil {
 				services = append(services, *svc)
 			}
 		}
@@ -60,27 +73,51 @@ func scanServices(s Settings) []Service {
 }
 
 func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
+	s := loadSettings()
+	var ws *WorkspaceItem
+	if workspaceURL != "" {
+		ws = s.GetWorkspaceByPath(workspaceURL)
+	}
+	if ws == nil {
+		ws = s.GetActiveWorkspace()
+	}
+	if ws == nil {
+		if workspaceURL == "" {
+			return nil
+		}
+		ws = &WorkspaceItem{ID: "ws-tmp", Name: "Tmp", Path: workspaceURL}
+	}
+	return getServiceInfoForWorkspace(ws, serviceName, gitPath)
+}
+
+func getServiceInfoForWorkspace(ws *WorkspaceItem, serviceName, gitPath string) *Service {
+	if ws == nil || ws.Path == "" {
+		return nil
+	}
+
 	var targetCfg *ServiceConfig
-	
-	// 1. Search by service name in the configured services first
-	for i := range settings.Services {
-		if settings.Services[i].Name == serviceName {
-			targetCfg = &settings.Services[i]
+
+	// 1. Search in ws.Services by name
+	for i := range ws.Services {
+		cfg := &ws.Services[i]
+		if cfg.Name == serviceName {
+			targetCfg = cfg
 			break
 		}
 	}
 
-	// 2. Search by folder if no config name matches
+	// 2. Search in ws.Services by folder
 	if targetCfg == nil {
-		for i := range settings.Services {
-			if settings.Services[i].Folder == serviceName {
-				targetCfg = &settings.Services[i]
+		for i := range ws.Services {
+			cfg := &ws.Services[i]
+			if cfg.Folder == serviceName {
+				targetCfg = cfg
 				break
 			}
 		}
 	}
 
-	// 3. Create a default config if still not found
+	// 3. Fallback default config
 	if targetCfg == nil {
 		targetCfg = &ServiceConfig{
 			Enabled: true,
@@ -89,7 +126,7 @@ func getServiceInfo(workspaceURL, serviceName, gitPath string) *Service {
 		}
 	}
 
-	folderPath := filepath.Join(workspaceURL, targetCfg.Folder)
+	folderPath := filepath.Join(ws.Path, targetCfg.Folder)
 	if _, err := os.Stat(folderPath); err != nil {
 		return nil
 	}

@@ -13,6 +13,7 @@ type ThemeColors struct {
 }
 
 type ServiceConfig struct {
+	WorkspaceURL     string `json:"workspace_url,omitempty"`
 	Enabled          bool   `json:"enabled"`
 	Folder           string `json:"folder"`
 	Name             string `json:"name"`
@@ -24,21 +25,34 @@ type ServiceConfig struct {
 	ShowProduction   bool   `json:"show_production"`
 }
 
+type WorkspaceItem struct {
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Path         string          `json:"path"`
+	DevAgentURL  string          `json:"dev_agent_url,omitempty"`
+	StgAgentURL  string          `json:"stg_agent_url,omitempty"`
+	ProdAgentURL string          `json:"prod_agent_url,omitempty"`
+	PreDeployCmd string          `json:"pre_deploy_cmd,omitempty"`
+	Services     []ServiceConfig `json:"services,omitempty"`
+}
+
 type Settings struct {
-	UserName       string            `json:"user_name"`
-	GitBashPath    string            `json:"git_bash_path"`
-	WorkspaceURL   string            `json:"workspace_url"`
-	PreDeployCmd   string            `json:"pre_deploy_cmd"`
-	GoPrivate      string            `json:"go_private"`
-	DevAgentURL    string            `json:"dev_agent_url"`
-	StgAgentURL    string            `json:"stg_agent_url"`
-	ProdAgentURL   string            `json:"prod_agent_url"`
-	ShowProduction bool              `json:"show_production"`
-	DarkTheme      ThemeColors       `json:"dark_theme"`
-	LightTheme     ThemeColors       `json:"light_theme"`
-	CustomCmds       map[string]string `json:"custom_cmds"`
-	TerminalSnippets []string          `json:"terminal_snippets"`
-	Services         []ServiceConfig   `json:"services"`
+	UserName          string            `json:"user_name"`
+	GitBashPath       string            `json:"git_bash_path"`
+	ActiveWorkspaceID string            `json:"active_workspace_id"`
+	WorkspaceURL      string            `json:"workspace_url"`
+	Workspaces        []WorkspaceItem   `json:"workspaces"`
+	PreDeployCmd      string            `json:"pre_deploy_cmd"`
+	GoPrivate         string            `json:"go_private"`
+	DevAgentURL       string            `json:"dev_agent_url"`
+	StgAgentURL       string            `json:"stg_agent_url"`
+	ProdAgentURL      string            `json:"prod_agent_url"`
+	ShowProduction    bool              `json:"show_production"`
+	DarkTheme         ThemeColors       `json:"dark_theme"`
+	LightTheme        ThemeColors       `json:"light_theme"`
+	CustomCmds        map[string]string `json:"custom_cmds"`
+	TerminalSnippets  []string          `json:"terminal_snippets"`
+	Services          []ServiceConfig   `json:"services,omitempty"`
 }
 
 type Service struct {
