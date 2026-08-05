@@ -5,13 +5,6 @@ let settings = {};
 
 let currentBranches = []; // New: store current branches for filtering
 
-// Color customization state
-let configTheme = 'dark'; // 'dark' or 'light'
-let colorState = {
-    dark: { accent: '', text: '', dim: '', terminal: '' },
-    light: { accent: '', text: '', dim: '', terminal: '' }
-};
-
 let currentGitTab = 'branches';
 
 let commitMessages = [];
@@ -791,8 +784,329 @@ function executeDeployFromModal(svc, env, message, password = '', resetStaging =
 }
 
 
+function initPixelStars() {
+    const canvas = document.getElementById('bg-pixel-stars');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const STAR_COLORS = [
+        "#FFFFFF", // White
+        "#FFFFAA", // Light yellow
+        "#AAAAFF", // Light blue
+        "#FFAAAA", // Light red
+        "#AAFFAA", // Light green
+        "#FFAAFF", // Light purple
+        "#AAFFFF", // Light cyan
+    ];
+
+    const LIGHT_METEOR_COLORS = [
+        "#2563eb", // Royal blue
+        "#7c3aed", // Vivid purple
+        "#10b981", // Emerald green
+        "#06b6d4", // Cyan
+        "#4f46e5", // Indigo
+        "#3b82f6"  // Bright blue
+    ];
+
+    const starDensity = 0.00004;
+    const twinkleProbability = 0.7;
+    const minTwinkleSpeed = 2;
+    const maxTwinkleSpeed = 4;
+    const pixelSize = 5;
+    const starRegenerationInterval = 5000;
+    const percentToRegenerate = 0.15;
+    const shootingStarPixelSize = 2;
+    const targetFps = 16;
+    const frameInterval = 1000 / targetFps;
+
+    let backgroundStars = [];
+    let shootingStars = [];
+    let lightMeteors = [];
+    let lastRenderTime = 0;
+
+    function hexToRgba(hex, alpha) {
+        if (hex.startsWith('#')) hex = hex.slice(1);
+        if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function getRandomStartPoint() {
+        const x = Math.random() * window.innerWidth;
+        const angle = 45 + Math.random() * 90;
+        return { x, y: 0, angle };
+    }
+
+    function createNewShootingStar() {
+        const { x, y, angle } = getRandomStartPoint();
+        return {
+            id: Date.now(),
+            x,
+            y,
+            angle,
+            scale: 1,
+            speed: Math.random() * 5 + 8,
+            distance: 0,
+            trail: []
+        };
+    }
+
+    function initLightMeteors() {
+        lightMeteors = [];
+        const count = Math.floor(window.innerWidth / 40);
+        for (let i = 0; i < count; i++) {
+            lightMeteors.push({
+                x: Math.random() * (canvas.width + 400) - 200,
+                y: Math.random() * (canvas.height + 400) - 200,
+                length: 80 + Math.random() * 160,
+                speed: 4 + Math.random() * 8,
+                thickness: 1.5 + Math.random() * 2.5,
+                color: LIGHT_METEOR_COLORS[Math.floor(Math.random() * LIGHT_METEOR_COLORS.length)],
+                opacity: 0.35 + Math.random() * 0.5
+            });
+        }
+    }
+
+    function initBackgroundStars() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        backgroundStars = [];
+
+        const area = canvas.width * canvas.height;
+        const numStars = Math.floor(area * starDensity);
+
+        for (let i = 0; i < numStars; i++) {
+            const shouldTwinkle = Math.random() < twinkleProbability;
+            const gridX = Math.floor(Math.random() * (canvas.width / pixelSize)) * pixelSize;
+            const gridY = Math.floor(Math.random() * (canvas.height / pixelSize)) * pixelSize;
+            const colorIndex = Math.floor(Math.random() * STAR_COLORS.length);
+            const baseOpacity = Math.random() * 0.5 + 0.5;
+
+            backgroundStars.push({
+                x: gridX,
+                y: gridY,
+                color: STAR_COLORS[colorIndex],
+                baseOpacity,
+                currentOpacity: baseOpacity,
+                twinkle: shouldTwinkle,
+                twinkleSpeed: minTwinkleSpeed + Math.random() * (maxTwinkleSpeed - minTwinkleSpeed),
+                twinkleDirection: -1,
+                twinkleTimer: 0
+            });
+        }
+        initLightMeteors();
+    }
+
+    function regenerateBackgroundStars() {
+        if (backgroundStars.length === 0) return;
+        const numToRegenerate = Math.max(1, Math.floor(backgroundStars.length * percentToRegenerate));
+
+        for (let i = 0; i < numToRegenerate; i++) {
+            const randomIndex = Math.floor(Math.random() * backgroundStars.length);
+            const shouldTwinkle = Math.random() < twinkleProbability;
+            const gridX = Math.floor(Math.random() * (canvas.width / pixelSize)) * pixelSize;
+            const gridY = Math.floor(Math.random() * (canvas.height / pixelSize)) * pixelSize;
+            const colorIndex = Math.floor(Math.random() * STAR_COLORS.length);
+            const baseOpacity = Math.random() * 0.5 + 0.5;
+
+            backgroundStars[randomIndex] = {
+                x: gridX,
+                y: gridY,
+                color: STAR_COLORS[colorIndex],
+                baseOpacity,
+                currentOpacity: baseOpacity,
+                twinkle: shouldTwinkle,
+                twinkleSpeed: minTwinkleSpeed + Math.random() * (maxTwinkleSpeed - minTwinkleSpeed),
+                twinkleDirection: -1,
+                twinkleTimer: 0
+            };
+        }
+    }
+
+    function animateCanvas(timestamp) {
+        if (timestamp - lastRenderTime < frameInterval) {
+            requestAnimationFrame(animateCanvas);
+            return;
+        }
+        lastRenderTime = timestamp;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Light Theme: Smooth vibrant diagonal meteor trails
+        if (document.body.classList.contains('light-theme')) {
+            const cos45 = 0.7071;
+            const sin45 = 0.7071;
+
+            lightMeteors.forEach((m) => {
+                const tailX = m.x - m.length * cos45;
+                const tailY = m.y - m.length * sin45;
+
+                const grad = ctx.createLinearGradient(tailX, tailY, m.x, m.y);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+                grad.addColorStop(0.6, hexToRgba(m.color, m.opacity * 0.35));
+                grad.addColorStop(1, hexToRgba(m.color, m.opacity));
+
+                ctx.beginPath();
+                ctx.moveTo(tailX, tailY);
+                ctx.lineTo(m.x, m.y);
+                ctx.lineWidth = m.thickness;
+                ctx.strokeStyle = grad;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                ctx.fillStyle = m.color;
+                ctx.globalAlpha = m.opacity;
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, m.thickness * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+
+                m.x += m.speed * cos45;
+                m.y += m.speed * sin45;
+
+                if (m.x > canvas.width + 200 || m.y > canvas.height + 200) {
+                    if (Math.random() < 0.5) {
+                        m.x = Math.random() * (canvas.width + 200) - 200;
+                        m.y = -60;
+                    } else {
+                        m.x = -60;
+                        m.y = Math.random() * (canvas.height + 200) - 200;
+                    }
+                    m.color = LIGHT_METEOR_COLORS[Math.floor(Math.random() * LIGHT_METEOR_COLORS.length)];
+                }
+            });
+
+            requestAnimationFrame(animateCanvas);
+            return;
+        }
+
+        // Dark Theme: Pixel stars & shooting stars
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Draw & update background stars
+        backgroundStars.forEach((star) => {
+            ctx.fillStyle = star.color;
+            ctx.globalAlpha = star.currentOpacity;
+            ctx.fillRect(star.x, star.y, pixelSize, pixelSize);
+
+            if (star.twinkle) {
+                star.twinkleTimer += 1 / targetFps;
+                if (star.twinkleTimer >= star.twinkleSpeed) {
+                    star.twinkleTimer = 0;
+                    star.twinkleDirection *= -1;
+                }
+                const progress = star.twinkleTimer / star.twinkleSpeed;
+                if (progress < 0.5) {
+                    star.currentOpacity = star.twinkleDirection < 0 ? star.baseOpacity : star.baseOpacity * 0.3;
+                } else {
+                    star.currentOpacity = star.twinkleDirection < 0 ? star.baseOpacity * 0.3 : star.baseOpacity;
+                }
+            }
+        });
+
+        // 2. Update shooting stars
+        if (shootingStars.length) {
+            shootingStars = shootingStars
+                .map((star) => {
+                    const newX = star.x + star.speed * Math.cos((star.angle * Math.PI) / 180);
+                    const newY = star.y + star.speed * Math.sin((star.angle * Math.PI) / 180);
+                    const newDistance = star.distance + star.speed;
+
+                    const newTrail = [...star.trail];
+                    if (newDistance % 8 < star.speed) {
+                        newTrail.push({ x: star.x, y: star.y, opacity: 1.0 });
+                    }
+
+                    const updatedTrail = newTrail
+                        .map((point) => ({ ...point, opacity: point.opacity - 0.1 }))
+                        .filter((point) => point.opacity > 0);
+
+                    return {
+                        ...star,
+                        x: newX,
+                        y: newY,
+                        distance: newDistance,
+                        trail: updatedTrail
+                    };
+                })
+                .filter(
+                    (star) =>
+                        star.x >= -30 &&
+                        star.x <= window.innerWidth + 30 &&
+                        star.y >= -30 &&
+                        star.y <= window.innerHeight + 30
+                );
+
+            // 3. Draw shooting stars
+            shootingStars.forEach((star) => {
+                star.trail.forEach((point) => {
+                    ctx.save();
+                    ctx.translate(point.x, point.y);
+                    ctx.rotate((star.angle * Math.PI) / 180);
+                    ctx.translate(-point.x, -point.y);
+
+                    ctx.fillStyle = `rgba(180, 242, 255, ${point.opacity})`;
+                    ctx.fillRect(point.x, point.y, shootingStarPixelSize, shootingStarPixelSize);
+                    ctx.restore();
+                });
+
+                const starWidth = 4;
+                const starHeight = 2;
+
+                ctx.save();
+                ctx.translate(star.x, star.y);
+                ctx.rotate((star.angle * Math.PI) / 180);
+                ctx.translate(-star.x, -star.y);
+
+                ctx.fillStyle = "#ffffff";
+                ctx.globalAlpha = 1.0;
+
+                for (let y = 0; y < starHeight; y++) {
+                    for (let x = 0; x < starWidth; x++) {
+                        if ((x === 0 && y === 1) || (x === 3 && y === 0)) continue;
+                        ctx.fillRect(
+                            star.x + x * shootingStarPixelSize,
+                            star.y + y * shootingStarPixelSize,
+                            shootingStarPixelSize,
+                            shootingStarPixelSize
+                        );
+                    }
+                }
+
+                ctx.restore();
+            });
+        }
+
+        requestAnimationFrame(animateCanvas);
+    }
+
+    initBackgroundStars();
+    requestAnimationFrame(animateCanvas);
+
+    function scheduleShootingStar() {
+        if (!document.body.classList.contains('light-theme')) {
+            shootingStars.push(createNewShootingStar());
+        }
+        const randomDelay = Math.random() * 4000 + 2000;
+        setTimeout(scheduleShootingStar, randomDelay);
+    }
+    scheduleShootingStar();
+
+    setInterval(regenerateBackgroundStars, starRegenerationInterval);
+
+    window.addEventListener("resize", () => {
+        initBackgroundStars();
+    });
+}
+
 async function init() {
     initTheme();
+    initPixelStars();
     await loadSettings();
     await refreshServices();
     setInterval(refreshServices, 5000); // Tăng tần suất từ 60s lên 5s
@@ -833,11 +1147,15 @@ function matchSearchQuery(text, query) {
 }
 
 function filterServices() {
-    const query = document.getElementById('svc-search').value.trim();
+    const searchInput = document.getElementById('svc-search');
+    const query = searchInput ? searchInput.value.trim() : '';
     const items = document.querySelectorAll('.service-item');
     items.forEach(item => {
-        const name = item.querySelector('.service-name').innerText;
-        item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
+        const nameEl = item.querySelector('.service-name');
+        if (nameEl) {
+            const name = nameEl.innerText;
+            item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
+        }
     });
 }
 
@@ -846,17 +1164,22 @@ function handleSearchKey(e) {
         const firstVisible = Array.from(document.querySelectorAll('.service-item')).find(i => i.style.display !== 'none');
         if (firstVisible) {
             firstVisible.click();
-            document.getElementById('svc-search').blur();
+            const searchInput = document.getElementById('svc-search');
+            if (searchInput) searchInput.blur();
         }
     }
 }
 
 function filterBranches() {
-    const query = document.getElementById('branch-search').value.trim();
+    const searchInput = document.getElementById('branch-search');
+    const query = searchInput ? searchInput.value.trim() : '';
     const items = document.querySelectorAll('#branches-list > div');
     items.forEach(item => {
-        const name = item.querySelector('span').innerText;
-        item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
+        const nameEl = item.querySelector('span');
+        if (nameEl) {
+            const name = nameEl.innerText;
+            item.style.display = matchSearchQuery(name, query) ? 'flex' : 'none';
+        }
     });
 }
 
@@ -1343,110 +1666,6 @@ function toggleTheme() {
     document.body.classList.toggle('light-theme');
     const isLight = document.body.classList.contains('light-theme');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    // Re-apply colors for the new theme
-    applyThemeSettings(settings);
-}
-
-function switchConfigTheme(theme) {
-    // Save current UI state to state object before switching
-    saveUIColorsToState();
-
-    configTheme = theme;
-    document.getElementById('config-dark-btn').classList.toggle('active', theme === 'dark');
-    document.getElementById('config-light-btn').classList.toggle('active', theme === 'light');
-    document.getElementById('copy-theme-btn').innerText = theme === 'dark' ? '📋 Copy from Light' : '📋 Copy from Dark';
-
-    // Load state to UI
-    loadStateToUI(theme);
-}
-
-function saveUIColorsToState() {
-    colorState[configTheme] = {
-        accent: document.getElementById('set-accent').value,
-        text: document.getElementById('set-text-color').value,
-        dim: document.getElementById('set-text-dim').value,
-        terminal: document.getElementById('set-terminal-color').value
-    };
-}
-
-// Fixed loadSettings to loadSettingsGlobal to avoid conflict or reuse
-function loadStateToUI(theme) {
-    const colors = colorState[theme];
-    document.getElementById('set-accent').value = colors.accent;
-    document.getElementById('accent-hex').innerText = colors.accent.toUpperCase();
-    document.getElementById('set-text-color').value = colors.text;
-    document.getElementById('text-hex').innerText = colors.text.toUpperCase();
-    document.getElementById('set-text-dim').value = colors.dim;
-    document.getElementById('text-dim-hex').innerText = colors.dim.toUpperCase();
-    document.getElementById('set-terminal-color').value = colors.terminal;
-    document.getElementById('terminal-hex').innerText = colors.terminal.toUpperCase();
-}
-
-function copyOtherThemeColors() {
-    const other = configTheme === 'dark' ? 'light' : 'dark';
-    colorState[configTheme] = JSON.parse(JSON.stringify(colorState[other]));
-    loadStateToUI(configTheme);
-}
-
-function updateColorHex(type) {
-    const inputMap = {
-        'accent': 'accent-hex',
-        'text': 'text-hex',
-        'dim': 'text-dim-hex',
-        'terminal': 'terminal-hex'
-    };
-    const idMap = {
-        'accent': 'set-accent',
-        'text': 'set-text-color',
-        'dim': 'set-text-dim',
-        'terminal': 'set-terminal-color'
-    };
-    const val = document.getElementById(idMap[type]).value;
-    document.getElementById(inputMap[type]).innerText = val.toUpperCase();
-
-    // Preview immediately if this matches current site theme
-    const isSiteLight = document.body.classList.contains('light-theme');
-    if ((isSiteLight && configTheme === 'light') || (!isSiteLight && configTheme === 'dark')) {
-        saveUIColorsToState();
-        applyThemeSettings({
-            dark_theme: {
-                accent: colorState.dark.accent,
-                text_main: colorState.dark.text,
-                text_dim: colorState.dark.dim,
-                terminal_text: colorState.dark.terminal
-            },
-            light_theme: {
-                accent: colorState.light.accent,
-                text_main: colorState.light.text,
-                text_dim: colorState.light.dim,
-                terminal_text: colorState.light.terminal
-            }
-        });
-    }
-}
-
-function resetColorsToDefault() {
-    const isLight = configTheme === 'light';
-    const defaults = isLight ? {
-        accent: '#d73a49',
-        text: '#24292e',
-        dim: '#6a737d',
-        terminal: '#22863a'
-    } : {
-        accent: '#f85149',
-        text: '#e6edf3',
-        dim: '#7d8590',
-        terminal: '#3fb950'
-    };
-
-    colorState[configTheme] = {
-        accent: defaults.accent,
-        text: defaults.text,
-        dim: defaults.dim,
-        terminal: defaults.terminal
-    };
-    loadStateToUI(configTheme);
-    updateColorHex('accent'); updateColorHex('text'); updateColorHex('dim'); updateColorHex('terminal');
 }
 
 function renderWorkspaceSelector() {
@@ -1550,11 +1769,61 @@ function renderWorkspacesList() {
     }
 }
 
-function toggleWsExtra(id) {
-    const el = document.getElementById(`ws-extra-${id}`);
-    if (el) {
-        el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+let activeEditingRowId = null;
+
+function selectWsRowForEditing(row) {
+    if (!row) return;
+    
+    // Save current field values to previous active row dataset
+    if (activeEditingRowId) {
+        const prevRow = document.querySelector(`.workspace-row[data-id="${activeEditingRowId}"]`);
+        if (prevRow) {
+            const devIn = document.getElementById('set-dev-url');
+            const stgIn = document.getElementById('set-stg-url');
+            const prodIn = document.getElementById('set-prod-url');
+            if (devIn) prevRow.dataset.devUrl = devIn.value.trim();
+            if (stgIn) prevRow.dataset.stgUrl = stgIn.value.trim();
+            if (prodIn) prevRow.dataset.prodUrl = prodIn.value.trim();
+        }
     }
+
+    // Update active highlight
+    document.querySelectorAll('.workspace-row').forEach(r => {
+        r.style.borderColor = 'var(--border)';
+        r.style.background = 'var(--bg-body)';
+    });
+    row.style.borderColor = 'var(--accent)';
+    row.style.background = 'var(--bg-hover)';
+
+    activeEditingRowId = row.dataset.id;
+
+    // Update title
+    const nameInput = row.querySelector('.ws-name-input');
+    const pathInput = row.querySelector('.ws-path-input');
+    const name = (nameInput && nameInput.value.trim()) || (pathInput && pathInput.value.trim()) || 'Workspace';
+    const titleLabel = document.getElementById('ws-agent-title');
+    if (titleLabel) titleLabel.innerText = name;
+
+    // Load dataset to inputs
+    const setDev = document.getElementById('set-dev-url');
+    const setStg = document.getElementById('set-stg-url');
+    const setProd = document.getElementById('set-prod-url');
+    if (setDev) setDev.value = row.dataset.devUrl || '';
+    if (setStg) setStg.value = row.dataset.stgUrl || '';
+    if (setProd) setProd.value = row.dataset.prodUrl || '';
+}
+
+function saveSelectedWsAgentUrls() {
+    if (!activeEditingRowId) return;
+    const row = document.querySelector(`.workspace-row[data-id="${activeEditingRowId}"]`);
+    if (!row) return;
+    
+    const setDev = document.getElementById('set-dev-url');
+    const setStg = document.getElementById('set-stg-url');
+    const setProd = document.getElementById('set-prod-url');
+    if (setDev) row.dataset.devUrl = setDev.value.trim();
+    if (setStg) row.dataset.stgUrl = setStg.value.trim();
+    if (setProd) row.dataset.prodUrl = setProd.value.trim();
 }
 
 function addWorkspaceRow(name = '', path = '', isActive = false, id = '', devUrl = '', stgUrl = '', prodUrl = '', preDeploy = '') {
@@ -1565,36 +1834,60 @@ function addWorkspaceRow(name = '', path = '', isActive = false, id = '', devUrl
     const row = document.createElement('div');
     row.className = 'workspace-row';
     row.dataset.id = rowId;
-    row.style.cssText = 'display: flex; flex-direction: column; gap: 8px; background: var(--bg-body); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 8px;';
+    row.dataset.devUrl = devUrl || '';
+    row.dataset.stgUrl = stgUrl || '';
+    row.dataset.prodUrl = prodUrl || '';
+    row.dataset.preDeploy = preDeploy || '';
+    row.style.cssText = 'display: flex; gap: 8px; align-items: center; background: var(--bg-body); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: border-color 0.2s, background 0.2s;';
+
+    row.onclick = (e) => {
+        if (e.target.tagName !== 'BUTTON' && !e.target.classList.contains('remove-ws-btn')) {
+            selectWsRowForEditing(row);
+        }
+    };
 
     row.innerHTML = `
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="radio" name="active_ws_radio" ${isActive ? 'checked' : ''} onchange="setActiveWorkspaceId('${rowId}', '${path}')" title="Set as active workspace" style="cursor: pointer;">
-            <input type="text" class="ws-name-input" value="${name}" placeholder="Workspace Name (e.g. Work System)" style="flex: 1; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px; font-weight: 600;">
-            <input type="text" class="ws-path-input" value="${path}" placeholder="Root Path (/home/user/project)" style="flex: 2; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;" onchange="updateRadioPath(this)">
-            <button type="button" class="btn btn-sm" onclick="toggleWsExtra('${rowId}')" style="padding: 3px 8px; font-size: 11px; cursor: pointer;" title="Toggle Agent URLs">⚙️ Config</button>
-            <button type="button" class="btn btn-sm" onclick="this.closest('.workspace-row').remove()" style="padding: 3px 8px; color: #e74c3c; font-weight: bold; background: transparent; border: none; cursor: pointer;" title="Remove workspace">✕</button>
-        </div>
-        <div id="ws-extra-${rowId}" style="display: none; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding-top: 6px; border-top: 1px dashed var(--border-color);">
-            <div>
-                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Dev Agent URL</span>
-                <input type="text" class="ws-dev-url-input" value="${devUrl}" placeholder="Fallback global URL" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
-            </div>
-            <div>
-                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Staging Agent URL</span>
-                <input type="text" class="ws-stg-url-input" value="${stgUrl}" placeholder="Fallback global URL" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
-            </div>
-            <div>
-                <span class="label" style="font-size: 10px; margin-bottom: 2px;">Pre-deploy Cmd</span>
-                <input type="text" class="ws-pre-cmd-input" value="${preDeploy}" placeholder="e.g. go mod tidy" style="width: 100%; padding: 4px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 4px;">
-            </div>
-        </div>
+        <input type="radio" name="active_ws_radio" ${isActive ? 'checked' : ''} onchange="setActiveWorkspaceId('${rowId}', '${path}')" title="Set as active workspace" style="cursor: pointer;">
+        <input type="text" class="ws-name-input" value="${name}" placeholder="Workspace Name (e.g. Work System)" style="flex: 1; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 4px; font-weight: 600;" onfocus="selectWsRowForEditing(this.closest('.workspace-row'))" oninput="updateWsNameLabel(this)">
+        <input type="text" class="ws-path-input" value="${path}" placeholder="Root Path (/home/user/project)" style="flex: 2; padding: 5px 8px; font-size: 12px; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 4px;" onfocus="selectWsRowForEditing(this.closest('.workspace-row'))" onchange="updateRadioPath(this)">
+        <button type="button" class="btn btn-sm remove-ws-btn" onclick="removeWorkspaceRow(this)" style="padding: 3px 8px; color: #ef4444; font-weight: bold; background: transparent; border: none; cursor: pointer;" title="Remove workspace">✕</button>
     `;
 
     container.appendChild(row);
-    if (isActive) {
-        document.getElementById('set-ws').value = path;
-        document.getElementById('set-ws').dataset.activeId = rowId;
+
+    if (isActive || !activeEditingRowId) {
+        const setWs = document.getElementById('set-ws');
+        if (setWs) {
+            setWs.value = path;
+            setWs.dataset.activeId = rowId;
+        }
+        selectWsRowForEditing(row);
+    }
+}
+
+function updateWsNameLabel(input) {
+    const row = input.closest('.workspace-row');
+    if (row && row.dataset.id === activeEditingRowId) {
+        const titleLabel = document.getElementById('ws-agent-title');
+        if (titleLabel) titleLabel.innerText = input.value.trim() || 'Workspace';
+    }
+}
+
+function removeWorkspaceRow(btn) {
+    const row = btn.closest('.workspace-row');
+    if (!row) return;
+    const isCurrentActive = row.dataset.id === activeEditingRowId;
+    row.remove();
+
+    if (isCurrentActive) {
+        activeEditingRowId = null;
+        const firstRemaining = document.querySelector('.workspace-row');
+        if (firstRemaining) {
+            selectWsRowForEditing(firstRemaining);
+        } else {
+            const titleLabel = document.getElementById('ws-agent-title');
+            if (titleLabel) titleLabel.innerText = '(select a workspace above)';
+        }
     }
 }
 
@@ -1602,16 +1895,35 @@ function updateRadioPath(input) {
     const row = input.closest('.workspace-row');
     const radio = row.querySelector('input[type="radio"]');
     if (radio && radio.checked) {
-        document.getElementById('set-ws').value = input.value;
+        const setWs = document.getElementById('set-ws');
+        if (setWs) setWs.value = input.value;
     }
 }
 
 function setActiveWorkspaceId(id, path) {
-    document.getElementById('set-ws').value = path;
-    document.getElementById('set-ws').dataset.activeId = id;
+    const setWs = document.getElementById('set-ws');
+    if (setWs) {
+        setWs.value = path;
+        setWs.dataset.activeId = id;
+    }
+    const row = document.querySelector(`.workspace-row[data-id="${id}"]`);
+    if (row) selectWsRowForEditing(row);
 }
 
 function collectWorkspacesData() {
+    // Make sure current inputs are saved to active workspace dataset
+    if (activeEditingRowId) {
+        const activeRow = document.querySelector(`.workspace-row[data-id="${activeEditingRowId}"]`);
+        if (activeRow) {
+            const devIn = document.getElementById('set-dev-url');
+            const stgIn = document.getElementById('set-stg-url');
+            const prodIn = document.getElementById('set-prod-url');
+            if (devIn) activeRow.dataset.devUrl = devIn.value.trim();
+            if (stgIn) activeRow.dataset.stgUrl = stgIn.value.trim();
+            if (prodIn) activeRow.dataset.prodUrl = prodIn.value.trim();
+        }
+    }
+
     const container = document.getElementById('workspaces-list');
     if (!container) return { workspaces: [], activePath: '', activeId: '' };
 
@@ -1624,16 +1936,14 @@ function collectWorkspacesData() {
         const id = row.dataset.id || 'ws-' + Math.random().toString(36).substr(2, 6);
         const nameInput = row.querySelector('.ws-name-input');
         const pathInput = row.querySelector('.ws-path-input');
-        const devUrlInput = row.querySelector('.ws-dev-url-input');
-        const stgUrlInput = row.querySelector('.ws-stg-url-input');
-        const preCmdInput = row.querySelector('.ws-pre-cmd-input');
         const radio = row.querySelector('input[type="radio"]');
 
         const name = nameInput ? nameInput.value.trim() : '';
         const path = pathInput ? pathInput.value.trim() : '';
-        const dev_agent_url = devUrlInput ? devUrlInput.value.trim() : '';
-        const stg_agent_url = stgUrlInput ? stgUrlInput.value.trim() : '';
-        const pre_deploy_cmd = preCmdInput ? preCmdInput.value.trim() : '';
+        const dev_agent_url = row.dataset.devUrl || '';
+        const stg_agent_url = row.dataset.stgUrl || '';
+        const prod_agent_url = row.dataset.prodUrl || '';
+        const pre_deploy_cmd = row.dataset.preDeploy || '';
 
         // Preserve existing services array for this workspace
         const existingWs = (settings.workspaces || []).find(w => w.id === id || w.path === path);
@@ -1646,6 +1956,7 @@ function collectWorkspacesData() {
                 path,
                 dev_agent_url,
                 stg_agent_url,
+                prod_agent_url,
                 pre_deploy_cmd,
                 services
             });
@@ -1665,61 +1976,50 @@ function collectWorkspacesData() {
 }
 
 async function loadSettings() {
-    const res = await fetch('/api/settings');
-    settings = await res.json();
-    renderWorkspaceSelector();
-    document.getElementById('info-user').innerText = settings.user_name || '(not set)';
+    try {
+        const res = await fetch('/api/settings');
+        settings = await res.json();
+        renderWorkspaceSelector();
 
-    document.getElementById('set-ws').value = settings.workspace_url || '';
-    renderWorkspacesList();
-    document.getElementById('set-git').value = settings.git_bash_path || '';
-    document.getElementById('set-name').value = settings.user_name || '';
-    document.getElementById('set-pre').value = settings.pre_deploy_cmd || '';
-    document.getElementById('set-dev-url').value = settings.dev_agent_url || '';
-    document.getElementById('set-stg-url').value = settings.stg_agent_url || '';
-    document.getElementById('set-prod-url').value = settings.prod_agent_url || '';
+        const infoUser = document.getElementById('info-user');
+        if (infoUser) infoUser.innerText = settings.user_name || '(not set)';
 
-    // Map settings to state
-    colorState.dark = {
-        accent: settings.dark_theme.accent,
-        text: settings.dark_theme.text_main,
-        dim: settings.dark_theme.text_dim,
-        terminal: settings.dark_theme.terminal_text
-    };
-    colorState.light = {
-        accent: settings.light_theme.accent,
-        text: settings.light_theme.text_main,
-        dim: settings.light_theme.text_dim,
-        terminal: settings.light_theme.terminal_text
-    };
+        const setWs = document.getElementById('set-ws');
+        if (setWs) setWs.value = settings.workspace_url || '';
 
-    // Set UI to match current editing theme (default to dark in modal)
-    loadStateToUI(configTheme);
-    applyThemeSettings(settings);
+        renderWorkspacesList();
+
+        const setGit = document.getElementById('set-git');
+        if (setGit) setGit.value = settings.git_bash_path || '';
+
+        const setName = document.getElementById('set-name');
+        if (setName) setName.value = settings.user_name || '';
+
+        const setPre = document.getElementById('set-pre');
+        if (setPre) setPre.value = settings.pre_deploy_cmd || '';
+
+        const setDevUrl = document.getElementById('set-dev-url');
+        if (setDevUrl) setDevUrl.value = settings.dev_agent_url || '';
+
+        const setStgUrl = document.getElementById('set-stg-url');
+        if (setStgUrl) setStgUrl.value = settings.stg_agent_url || '';
+
+        const setProdUrl = document.getElementById('set-prod-url');
+        if (setProdUrl) setProdUrl.value = settings.prod_agent_url || '';
+
+        applyThemeSettings(settings);
+    } catch (err) {
+        console.error('Failed to load settings:', err);
+    }
 }
 
 function applyThemeSettings(s) {
-    const isLight = document.body.classList.contains('light-theme');
-    const themeData = isLight ? s.light_theme : s.dark_theme;
-    const target = document.body;
-
     if (selectedService && selectedService.show_production === true) {
         document.getElementById('env-prod-btn').style.display = 'inline-block';
     } else {
         document.getElementById('env-prod-btn').style.display = 'none';
         if (currentEnv === 'Production') setEnv('Development');
     }
-
-    if (themeData.accent) {
-        target.style.setProperty('--accent', themeData.accent);
-        const r = parseInt(themeData.accent.slice(1, 3), 16);
-        const g = parseInt(themeData.accent.slice(3, 5), 16);
-        const b = parseInt(themeData.accent.slice(5, 7), 16);
-        target.style.setProperty('--accent-glow', `rgba(${r}, ${g}, ${b}, 0.3)`);
-    }
-    if (themeData.text_main) target.style.setProperty('--text-main', themeData.text_main);
-    if (themeData.text_dim) target.style.setProperty('--text-dim', themeData.text_dim);
-    if (themeData.terminal_text) target.style.setProperty('--terminal-text', themeData.terminal_text);
 }
 
 async function refreshServices() {
@@ -1869,44 +2169,56 @@ async function selectSvc(svc, element, skipTerminalReset = false) {
             }
         }
     } catch (err) { }
-    document.getElementById('deploy-msg').value = svc.last_commit;
+    const deployMsgInput = document.getElementById('deploy-msg');
+    if (deployMsgInput) deployMsgInput.value = svc.last_commit || '';
+
     if (!skipTerminalReset && !activeTerminalTab) {
         connectTerminalWS(svc.name);
     }
     const terminalContainer = document.querySelector('.terminal-container');
     const resizer = document.getElementById('resizer');
+    const gitCard = document.getElementById('git-card');
+    const gitToggle = document.getElementById('git-toggle');
+
     if (!gitHiddenManually) {
-        document.getElementById('git-card').style.display = 'flex';
-        document.getElementById('git-toggle').classList.add('active');
-        terminalContainer.style.display = 'none';
-        resizer.style.display = 'none';
+        if (gitCard) gitCard.style.display = 'flex';
+        if (gitToggle) gitToggle.classList.add('active');
+        if (terminalContainer) terminalContainer.style.display = 'none';
+        if (resizer) resizer.style.display = 'none';
     } else {
-        document.getElementById('git-card').style.display = 'none';
-        document.getElementById('git-toggle').classList.remove('active');
-        terminalContainer.style.display = 'flex';
-        terminalContainer.style.flex = '1 1 100%';
-        resizer.style.display = 'none';
+        if (gitCard) gitCard.style.display = 'none';
+        if (gitToggle) gitToggle.classList.remove('active');
+        if (terminalContainer) {
+            terminalContainer.style.display = 'flex';
+            terminalContainer.style.flex = '1 1 100%';
+        }
+        if (resizer) resizer.style.display = 'none';
     }
 
     // Render header actions
     const headerActions = document.getElementById('git-actions-header');
-    headerActions.innerHTML = '';
+    if (headerActions) {
+        headerActions.innerHTML = '';
 
-    const isDetached = svc.branch.includes('detached') || /^[0-9a-f]{7,40}$/i.test(svc.branch);
-    if (isDetached) {
-        const jumpBtn = document.createElement('button');
-        jumpBtn.className = 'primary';
-        jumpBtn.style.cssText = 'font-size: 11px; padding: 4px 12px; height: 28px;';
-        jumpBtn.innerText = '↺ Jump to Main';
-        jumpBtn.onclick = () => checkoutBranch('main');
-        headerActions.appendChild(jumpBtn);
+        const isDetached = svc.branch && (svc.branch.includes('detached') || /^[0-9a-f]{7,40}$/i.test(svc.branch));
+        if (isDetached) {
+            const jumpBtn = document.createElement('button');
+            jumpBtn.className = 'primary';
+            jumpBtn.style.cssText = 'font-size: 11px; padding: 4px 12px; height: 28px;';
+            jumpBtn.innerText = '↺ Jump to Main';
+            jumpBtn.onclick = () => checkoutBranch('main');
+            headerActions.appendChild(jumpBtn);
+        }
     }
 
-    if (svc.show_production === true) {
-        document.getElementById('env-prod-btn').style.display = 'inline-block';
-    } else {
-        document.getElementById('env-prod-btn').style.display = 'none';
-        if (currentEnv === 'Production') setEnv('Development');
+    const envProdBtn = document.getElementById('env-prod-btn');
+    if (envProdBtn) {
+        if (svc.show_production === true) {
+            envProdBtn.style.display = 'inline-block';
+        } else {
+            envProdBtn.style.display = 'none';
+            if (currentEnv === 'Production') setEnv('Development');
+        }
     }
 
     loadGitTabContent(currentGitTab);
@@ -2423,9 +2735,11 @@ function setEnv(env) {
 }
 function validateForm() {
     const btn = document.getElementById('btn-run');
+    if (!btn) return;
     if (!selectedService) { 
         btn.disabled = true; 
-        btn.innerText = 'Select a service'; 
+        btn.innerHTML = '<span class="deploy-rocket-icon">🚀</span> <span class="deploy-text">Select a service</span>'; 
+        btn.classList.remove('deploying');
         const btnCompare = document.getElementById('btn-compare');
         if (btnCompare) btnCompare.style.display = 'none';
         return; 
@@ -2438,7 +2752,13 @@ function validateForm() {
 
     const isDeploying = activeDeployments[selectedService.name] && activeDeployments[selectedService.name].status === 'running';
     btn.disabled = !hasScript || isDeploying; 
-    btn.innerText = isDeploying ? 'Deploying...' : '🚀 Run Deploy';
+    if (isDeploying) {
+        btn.classList.add('deploying');
+        btn.innerHTML = '<span class="deploy-rocket-icon">🚀</span> <span class="deploy-text">Deploying...</span>';
+    } else {
+        btn.classList.remove('deploying');
+        btn.innerHTML = '<span class="deploy-rocket-icon">🚀</span> <span class="deploy-text">Run Deploy</span>';
+    }
 
     const btnCompare = document.getElementById('btn-compare');
     if (btnCompare) {
@@ -2519,15 +2839,18 @@ function renderDeployTabWorkspaceSelector(activeWsPath) {
     }
 }
 
+let lastSelectedDeploymentWsPath = null;
+
 function onDeployTabWorkspaceChange(newWsPath) {
-    saveCurrentDeploymentTabToMemory();
+    if (lastSelectedDeploymentWsPath && lastSelectedDeploymentWsPath !== newWsPath) {
+        saveCurrentDeploymentTabToMemory(lastSelectedDeploymentWsPath);
+    }
     loadDeploymentTab(newWsPath);
 }
 
-function saveCurrentDeploymentTabToMemory() {
+function saveCurrentDeploymentTabToMemory(wsPathToSave) {
     const select = document.getElementById('deploy-tab-ws-select');
-    if (!select) return;
-    const currentWsPath = select.value;
+    const currentWsPath = wsPathToSave || (select ? select.value : '') || lastSelectedDeploymentWsPath;
     if (!currentWsPath) return;
 
     const tbody = document.getElementById('deployment-config-tbody');
@@ -2547,7 +2870,6 @@ function saveCurrentDeploymentTabToMemory() {
 
         if (folder && name) {
             activeServices.push({
-                workspace_url: currentWsPath,
                 enabled: enabled,
                 folder: folder,
                 name: name,
@@ -2561,15 +2883,21 @@ function saveCurrentDeploymentTabToMemory() {
         }
     });
 
-    const otherServices = (settings.services || []).filter(s => s.workspace_url && s.workspace_url !== currentWsPath);
-    settings.services = [...otherServices, ...activeServices];
+    if (settings.workspaces) {
+        const ws = settings.workspaces.find(w => w.path === currentWsPath);
+        if (ws) {
+            ws.services = activeServices;
+        }
+    }
 }
 
 async function loadDeploymentTab(targetWsUrl) {
     const activeWsPath = targetWsUrl || document.getElementById('deploy-tab-ws-select')?.value || settings.workspace_url || '';
+    lastSelectedDeploymentWsPath = activeWsPath;
     renderDeployTabWorkspaceSelector(activeWsPath);
 
     const tbody = document.getElementById('deployment-config-tbody');
+    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 20px; color: var(--text-dim);">Loading workspace folders...</td></tr>';
     
     try {
@@ -2579,7 +2907,8 @@ async function loadDeploymentTab(targetWsUrl) {
         tbody.innerHTML = '';
         
         const renderedIndices = new Set();
-        const configuredServices = (settings.services || []).filter(cfg => cfg.workspace_url === activeWsPath);
+        const wsObj = (settings.workspaces || []).find(w => w.path === activeWsPath);
+        const configuredServices = wsObj ? (wsObj.services || []) : [];
         
         // 1. Group/render configs that match workspace folders
         workspaceFolders.forEach(folder => {
@@ -2604,9 +2933,9 @@ async function loadDeploymentTab(targetWsUrl) {
             }
         });
         
-        // 2. Render any remaining custom service configs that did not match a folder
+        // 2. Render any remaining custom service configs belonging strictly to this workspace
         configuredServices.forEach((cfg, idx) => {
-            if (!renderedIndices.has(idx)) {
+            if (!renderedIndices.has(idx) && cfg.folder) {
                 createDeploymentRow(tbody, cfg.folder, cfg.name, cfg.dev_cmd, cfg.stg_cmd, cfg.prod_cmd, cfg.prod_password_hash, cfg.pre_deploy_cmd, cfg.enabled !== false, cfg.show_production === true);
             }
         });
@@ -2702,7 +3031,6 @@ async function openSettings() {
         if (setStgUrl) setStgUrl.value = settings.stg_agent_url || '';
         if (setProdUrl) setProdUrl.value = settings.prod_agent_url || '';
 
-        switchConfigTheme(document.body.classList.contains('light-theme') ? 'light' : 'dark');
         switchSettingsTab('core');
     } catch (err) {
         console.error("Failed to load settings:", err);
@@ -2721,25 +3049,13 @@ async function saveSettings() {
         active_workspace_id: wsData.activeId || settings.active_workspace_id,
         workspace_url: activeWsPath,
         workspaces: wsData.workspaces,
-        git_bash_path: document.getElementById('set-git').value,
-        user_name: document.getElementById('set-name').value,
-        pre_deploy_cmd: document.getElementById('set-pre').value,
-        dev_agent_url: document.getElementById('set-dev-url').value,
-        stg_agent_url: document.getElementById('set-stg-url').value,
-        prod_agent_url: document.getElementById('set-prod-url').value,
-        custom_cmds: {},
-        dark_theme: {
-            accent: colorState.dark.accent,
-            text_main: colorState.dark.text,
-            text_dim: colorState.dark.dim,
-            terminal_text: colorState.dark.terminal
-        },
-        light_theme: {
-            accent: colorState.light.accent,
-            text_main: colorState.light.text,
-            text_dim: colorState.light.dim,
-            terminal_text: colorState.light.terminal
-        }
+        git_bash_path: document.getElementById('set-git') ? document.getElementById('set-git').value : (settings.git_bash_path || ''),
+        user_name: document.getElementById('set-name') ? document.getElementById('set-name').value : (settings.user_name || ''),
+        pre_deploy_cmd: document.getElementById('set-pre') ? document.getElementById('set-pre').value : (settings.pre_deploy_cmd || ''),
+        dev_agent_url: document.getElementById('set-dev-url') ? document.getElementById('set-dev-url').value : (settings.dev_agent_url || ''),
+        stg_agent_url: document.getElementById('set-stg-url') ? document.getElementById('set-stg-url').value : (settings.stg_agent_url || ''),
+        prod_agent_url: document.getElementById('set-prod-url') ? document.getElementById('set-prod-url').value : (settings.prod_agent_url || ''),
+        custom_cmds: {}
     };
 
     await fetch('/api/settings', {

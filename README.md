@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v1.9.0
+# 🚀 Internal Deploy System (IDS) - v2.0.0
 
 A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
 
@@ -23,7 +23,7 @@ deploy-tool/
 
 - **Nested Workspace Data Architecture**: Services are grouped neatly per workspace in `settings.json`, preventing flat array clutter and eliminating global state pollution.
 - **Instant SPA Workspace Switcher**: Switch active workspaces in ~100ms directly from the top header bar without full page reloads (`location.reload()`), preserving active UI states and WebSocket terminals.
-- **Per-Workspace Agent & Pre-Deploy Configuration**: Configure independent `DevAgentURL`, `StgAgentURL`, `ProdAgentURL`, and `PreDeployCmd` for each workspace, with fallback to global environment settings.
+- **Dynamic Workspace Selection in Settings**: Single-click workspace table selector in settings. Dynamic binding of `DevAgentURL`, `StgAgentURL`, and `ProdAgentURL` inputs per selected workspace with strict memory isolation.
 - **Automatic Service Rescan**: Dynamically scans microservice directories and deployment scripts scoped strictly to the active workspace path.
 
 ### 🖥️ Monitoring & Health
@@ -46,17 +46,19 @@ deploy-tool/
 - **Conflicts & Rollback Manager**: When checkouts or branches conflict with local changes, an interactive modal displays conflicting files, letting users selectively revert/delete untracked files or perform an auto-stash with custom messages.
 - **Git Staging & Commit (Source Control)**: A VS-Code-like staging panel that lists staged/unstaged changes, displays file diffs, allows discarding changes, staging/unstaging individual or all files, and committing directly from the UI.
 
-### 🚀 Deployment Workflow
+### 🚀 Deployment Workflow & Interactive Animations
 
-- **Multi-Environment**: Seamlessly switch between Development, Staging, and Production targets.
+- **Multi-Environment**: Seamlessly switch between Development, Staging, and Production targets with active pill indicators.
 - **Per-Service Production**: Toggle the Production environment visibility individually for each service.
 - **Production Protection**: Secure modal password verification before triggering any single or multi-service deployment to Production.
+- **Animated Run Deploy Button**: High-prominence Emerald Green gradient with idle breathing aura (`deployIdleBreath`), smooth 3D spring transition on hover (`transform: translateY(-3.5px) scale(1.05)`), tilted rocket `🚀` ignition angle, light sheen sweep, and active launch pulsing state (`.deploying`).
 - **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
 - **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
 
 ### 💻 Interactive Terminal & Command Shell
 
 - **Real PTY Integration**: Full interactive terminal session in the browser using WebSocket and `creack/pty`, supporting interactive CLI tools (vim, nano, htop).
+- **Clean Container View**: Seamless xterm.js integration with zero duplicate container scrollbars.
 - **Persistent Working Directory**: Automatically tracks and maintains your current working directory (`cd` command) across the entire session using real-time `/proc/<pid>/cwd` monitoring.
 - **Quick Command Snippets**: Save, manage, and instantly execute frequently used terminal snippets for rapid operations.
 - **Dual Tabs View**: Seamlessly switch between the `💻 Interactive Terminal` and the `🚀 Deploy Logs` views without losing state.
@@ -83,10 +85,14 @@ deploy-tool/
   - Automatically loads last saved credentials or persistent profiles.
 - **Passwordless Integration**: Seamlessly integrates with system OpenVPN using passwordless sudoers configuration.
 
-### 🎨 User Experience & Theme Customization
+### 🎨 User Experience, Themes & Dual Canvas Backgrounds
 
-- **Premium UI**: Modern dark/light modes with glassmorphism, harmony color palettes, and smooth transitions.
-- **Theme Factory**: Deep customization of accent colors, terminal text, background theme variables, and text dimensions.
+- **Dual-Canvas Animated Backgrounds**:
+  - **Dark Mode**: Retro 16-bit **Background Pixel Stars** with dynamic twinkling, periodic shooting stars with pixelated trails, and universe star regeneration.
+  - **Light Mode**: Pure white glassmorphic backdrop (`#ffffff`) with **Meteor Shower** (vibrant diagonal neon light speed meteor trails in Royal Blue, Purple, Emerald Green, Cyan, and Indigo).
+- **Vibrant Emerald Green Color System**: Fresh, modern Bright Emerald Green (`#10b981` / `#34d399`) theme across buttons, indicators, active tabs, and badges.
+- **Glassmorphism Transparency**: Semi-transparent card panels and sidebar (`backdrop-filter: blur(12px)`) letting animated canvas stars and meteors softly shine through.
+- **Micro-Animations**: Smooth spring transitions for header action buttons, environment pills, and sidebar service selection cards (`translateX(4px)` slide).
 - **Advanced Search**: Filter services and branches with smart query parsing (comma-separated list for **OR** matches, space-separated words for **AND** matches).
 - **Formatted Dialogs**: System alerts, confirms, and prompts support HTML formatting natively (e.g., highlighting key names in bold) for a cleaner UX.
 - **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
