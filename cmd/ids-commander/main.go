@@ -70,9 +70,6 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", indexHandler)
-	mux.HandleFunc("/health-monitor", healthMonitorHandler)
-	mux.HandleFunc("/tools", toolsHandler)
 	mux.HandleFunc("/api/tools/bcrypt/hash", bcryptHashHandler)
 	mux.HandleFunc("/api/tools/bcrypt/verify", bcryptVerifyHandler)
 	mux.HandleFunc("/api/tools/hmac", hmacHandler)
@@ -129,7 +126,30 @@ func main() {
 	mux.HandleFunc("/api/accounts", handleAccounts)
 	mux.HandleFunc("/api/accounts/delete", handleDeleteAccount)
 
-	// Static files
+	// React SPA dist static fallback
+	distPath := filepath.Join(basePath, "frontend", "dist")
+	if _, err := os.Stat(distPath); err == nil {
+		log.Printf("[Init] Serving React SPA Frontend from: %s", distPath)
+		fileServer := http.FileServer(http.Dir(distPath))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				http.NotFound(w, r)
+				return
+			}
+			path := filepath.Join(distPath, r.URL.Path)
+			if _, err := os.Stat(path); os.IsNotExist(err) || r.URL.Path == "/" {
+				http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+				return
+			}
+			fileServer.ServeHTTP(w, r)
+		})
+	} else {
+		mux.HandleFunc("/", indexHandler)
+		mux.HandleFunc("/health-monitor", healthMonitorHandler)
+		mux.HandleFunc("/tools", toolsHandler)
+	}
+
+	// Legacy Static assets fallback
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(basePath, "static")))))
 	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(basePath, "static", "favicon.ico"))
