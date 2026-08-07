@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, GitCompare, GitBranch } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, GitCompare, GitBranch, RefreshCw } from 'lucide-react';
 import { Service } from '../../types';
 
 interface CompareModalProps {
@@ -15,6 +15,29 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 }) => {
   const [baseBranch, setBaseBranch] = useState('master');
   const [targetBranch, setTargetBranch] = useState('staging');
+  const [compareResults, setCompareResults] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(false);
+
+  const fetchComparison = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/git/compare-all?base=${encodeURIComponent(baseBranch)}&target=${encodeURIComponent(targetBranch)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompareResults(data.results || data || {});
+      }
+    } catch (e) {
+      // fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchComparison();
+    }
+  }, [isOpen, baseBranch, targetBranch]);
 
   if (!isOpen) return null;
 
@@ -35,28 +58,38 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         </div>
 
         {/* Filters */}
-        <div className="p-6 border-b border-[#232a3f]/75 bg-[#0a0d14]/70 flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#94a3b8] uppercase">Base:</span>
-            <input
-              type="text"
-              value={baseBranch}
-              onChange={(e) => setBaseBranch(e.target.value)}
-              className="text-xs py-1.5 px-3 bg-[#111520] border border-[#232a3f]/75 rounded-lg text-white font-mono focus:outline-none focus:border-[#10b981]"
-            />
+        <div className="p-6 border-b border-[#232a3f]/75 bg-[#0a0d14]/70 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#94a3b8] uppercase">Base:</span>
+              <input
+                type="text"
+                value={baseBranch}
+                onChange={(e) => setBaseBranch(e.target.value)}
+                className="text-xs py-1.5 px-3 bg-[#111520] border border-[#232a3f]/75 rounded-lg text-white font-mono focus:outline-none focus:border-[#10b981]"
+              />
+            </div>
+
+            <GitCompare className="w-4 h-4 text-[#10b981]" />
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#94a3b8] uppercase">Compare Target:</span>
+              <input
+                type="text"
+                value={targetBranch}
+                onChange={(e) => setTargetBranch(e.target.value)}
+                className="text-xs py-1.5 px-3 bg-[#111520] border border-[#232a3f]/75 rounded-lg text-white font-mono focus:outline-none focus:border-[#10b981]"
+              />
+            </div>
           </div>
 
-          <GitCompare className="w-4 h-4 text-[#10b981]" />
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-[#94a3b8] uppercase">Compare Target:</span>
-            <input
-              type="text"
-              value={targetBranch}
-              onChange={(e) => setTargetBranch(e.target.value)}
-              className="text-xs py-1.5 px-3 bg-[#111520] border border-[#232a3f]/75 rounded-lg text-white font-mono focus:outline-none focus:border-[#10b981]"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={fetchComparison}
+            className="px-3 py-1.5 text-xs bg-white/5 border border-[#232a3f]/75 hover:bg-white/10 text-white rounded-lg flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
         </div>
 
         {/* Table List */}
@@ -71,19 +104,30 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {services.map((svc) => (
-                  <tr key={svc.name} className="border-b border-[#232a3f]/75/40 hover:bg-white/5">
-                    <td className="p-3 font-bold text-white">{svc.name}</td>
-                    <td className="p-3 font-mono text-[#10b981] flex items-center gap-1.5">
-                      <GitBranch className="w-3.5 h-3.5" /> {svc.branch}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className="px-2.5 py-1 rounded-md text-[11px] font-mono bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                        Up to date
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {services.map((svc) => {
+                  const res = compareResults[svc.name] || {};
+                  const ahead = res.ahead || 0;
+                  const behind = res.behind || 0;
+                  const statusLabel = ahead === 0 && behind === 0 ? 'Up to date' : `Ahead ↑${ahead} / Behind ↓${behind}`;
+
+                  return (
+                    <tr key={svc.name} className="border-b border-[#232a3f]/75/40 hover:bg-white/5">
+                      <td className="p-3 font-bold text-white">{svc.name}</td>
+                      <td className="p-3 font-mono text-[#10b981] flex items-center gap-1.5">
+                        <GitBranch className="w-3.5 h-3.5" /> {svc.branch}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold border ${
+                          ahead === 0 && behind === 0
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

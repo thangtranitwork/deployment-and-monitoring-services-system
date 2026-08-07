@@ -8,6 +8,9 @@ interface HeaderBarProps {
   onOpenCompare: () => void;
   onToggleGit: () => void;
   onToggleVPN: () => void;
+  onOpenTools: () => void;
+  onOpenHealth: () => void;
+  onOpenShortcuts: () => void;
   onRefresh: () => void;
 }
 
@@ -19,6 +22,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenCompare,
   onToggleGit,
   onToggleVPN,
+  onOpenTools,
+  onOpenHealth,
+  onOpenShortcuts,
   onRefresh
 }) => {
   return (
@@ -29,15 +35,15 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <span className="text-[#10b981]">Internal</span> Deploy System
         </span>
         <span className="text-[11px] opacity-50 font-normal ml-1.5 px-2 py-0.5 rounded bg-white/5 border border-[#232a3f]/75">
-          v2.0.0
+          v2.0.0 (React SPA)
         </span>
       </div>
 
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => window.location.href = '/tools'}
-          title="Open tools suite"
+          onClick={onOpenTools}
+          title="Open Developer Tools Suite"
           className="px-4 py-2 text-xs font-semibold rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
         >
           🛠️ Tools
@@ -45,8 +51,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
         <button
           type="button"
-          onClick={() => window.location.href = '/health-monitor'}
-          title="View remote server health"
+          onClick={onOpenHealth}
+          title="View Remote Server Health Metrics"
           className="px-4 py-2 text-xs font-semibold rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
         >
           🖥️ Health Monitor
@@ -55,7 +61,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         <button
           type="button"
           onClick={onOpenMultiDeploy}
-          title="Deploy multiple services concurrently"
+          title="Deploy Multiple Services Concurrently"
           className="px-4 py-2 text-xs font-semibold rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
         >
           ⚡ Multi Deploy
@@ -64,7 +70,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         <button
           type="button"
           onClick={onOpenCompare}
-          title="Compare all services branch difference"
+          title="Compare Branch Difference Across Services"
           className="px-4 py-2 text-xs font-semibold rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
         >
           🔍 Compare Source
@@ -86,6 +92,15 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           className="px-4 py-2 text-xs font-semibold rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 flex items-center gap-2 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
         >
           🔒 VPN
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenShortcuts}
+          title="Shortcut: Alt+Shift+H"
+          className="p-2 rounded-md border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] transition-all duration-200 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
+        >
+          ⌨️
         </button>
 
         <button

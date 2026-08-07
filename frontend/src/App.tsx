@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { HeaderBar } from './components/HeaderBar';
 import { ServiceSidebar } from './components/ServiceSidebar';
@@ -9,9 +10,15 @@ import { MultiDeployModal } from './components/modals/MultiDeployModal';
 import { CompareModal } from './components/modals/CompareModal';
 import { GitModal } from './components/modals/GitModal';
 import { VPNModal } from './components/modals/VPNModal';
+import { HealthMonitorModal } from './components/modals/HealthMonitorModal';
+import { ProdPasswordModal } from './components/modals/ProdPasswordModal';
+import { ShortcutsModal } from './components/modals/ShortcutsModal';
+import { ToolsPage } from './pages/ToolsPage';
 import { Service, Settings } from './types';
 
 export const App: React.FC = () => {
+  const navigate = useNavigate();
+
   const [isLightMode, setIsLightMode] = useState<boolean>(() => {
     return localStorage.getItem('ids_theme') === 'light';
   });
@@ -24,16 +31,16 @@ export const App: React.FC = () => {
         id: 'default',
         name: 'deploy-tool',
         path: '/home/thang/work/deploy-tool',
-        dev_agent_url: 'http://localhost:8081',
-        stg_agent_url: 'http://localhost:8081',
-        prod_agent_url: 'http://localhost:8081'
+        dev_agent_url: 'http://localhost:8555',
+        stg_agent_url: 'http://localhost:8555',
+        prod_agent_url: 'http://localhost:8555'
       }
     ],
     user_name: 'thang',
     git_bash_path: '',
-    dev_agent_url: 'http://localhost:8081',
-    stg_agent_url: 'http://localhost:8081',
-    prod_agent_url: 'http://localhost:8081',
+    dev_agent_url: 'http://localhost:8555',
+    stg_agent_url: 'http://localhost:8555',
+    prod_agent_url: 'http://localhost:8555',
     pre_deploy_cmd: '',
     services: []
   });
@@ -53,6 +60,10 @@ export const App: React.FC = () => {
   const [isCompareOpen, setIsCompareOpen] = useState<boolean>(false);
   const [isGitOpen, setIsGitOpen] = useState<boolean>(false);
   const [isVPNOpen, setIsVPNOpen] = useState<boolean>(false);
+  const [isHealthOpen, setIsHealthOpen] = useState<boolean>(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+  const [isProdPassOpen, setIsProdPassOpen] = useState<boolean>(false);
+  const [pendingDeployMsg, setPendingDeployMsg] = useState<string>('');
 
   useEffect(() => {
     if (isLightMode) {
@@ -64,20 +75,24 @@ export const App: React.FC = () => {
     }
   }, [isLightMode]);
 
-  const fetchServicesForWorkspace = async (wsId: string) => {
+  const handleToggleTheme = () => {
+    setIsLightMode(prev => !prev);
+  };
+
+  const fetchServicesForWorkspace = async (wsId?: string) => {
+    const targetId = wsId || activeWorkspaceId;
     try {
-      const res = await fetch(`/api/services?workspace_id=${encodeURIComponent(wsId)}`);
+      const res = await fetch(`/api/services?workspace_id=${targetId}`);
       if (res.ok) {
-        const data: Service[] = await res.json();
-        setServices(data || []);
-        if (data && data.length > 0) {
-          setSelectedService(data[0]);
-        } else {
-          setSelectedService(null);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.services || [];
+        setServices(list);
+        if (list.length > 0 && !selectedService) {
+          setSelectedService(list[0]);
         }
       }
     } catch (e) {
-      // ignore
+      setServices([]);
     }
   };
 
@@ -95,7 +110,7 @@ export const App: React.FC = () => {
       }
       await fetchServicesForWorkspace(targetWsId);
     } catch (e) {
-      // Fallback
+      await fetchServicesForWorkspace();
     }
   };
 
@@ -103,29 +118,75 @@ export const App: React.FC = () => {
     loadSettingsAndServices();
   }, []);
 
+  // Global Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey) {
+        switch (e.key.toUpperCase()) {
+          case 'M':
+            e.preventDefault();
+            setIsMultiDeployOpen(prev => !prev);
+            break;
+          case 'G':
+            e.preventDefault();
+            setIsGitOpen(prev => !prev);
+            break;
+          case 'U':
+            e.preventDefault();
+            setIsVPNOpen(prev => !prev);
+            break;
+          case 'T':
+            e.preventDefault();
+            navigate('/tools');
+            break;
+          case 'I':
+            e.preventDefault();
+            setIsSettingsOpen(prev => !prev);
+            break;
+          case 'R':
+            e.preventDefault();
+            loadSettingsAndServices();
+            break;
+          case 'H':
+            e.preventDefault();
+            setIsShortcutsOpen(prev => !prev);
+            break;
+        }
+      } else if (e.key === 'Escape') {
+        setIsSettingsOpen(false);
+        setIsMultiDeployOpen(false);
+        setIsCompareOpen(false);
+        setIsGitOpen(false);
+        setIsVPNOpen(false);
+        setIsHealthOpen(false);
+        setIsShortcutsOpen(false);
+        setIsProdPassOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
+
   const handleWorkspaceChange = async (wsId: string) => {
     setActiveWorkspaceId(wsId);
     setSelectedService(null);
     try {
-      await fetch('/api/switch_workspace', {
+      await fetch('/api/workspaces/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_id: wsId })
+        body: JSON.stringify({ active_workspace_id: wsId })
       });
+      await fetchServicesForWorkspace(wsId);
     } catch (e) {
-      // ignore
+      await fetchServicesForWorkspace(wsId);
     }
-    await fetchServicesForWorkspace(wsId);
   };
 
-  const handleToggleTheme = () => {
-    setIsLightMode(prev => !prev);
-  };
-
-  const handleTriggerDeploy = async (msg: string) => {
+  const executeRealDeploy = async (msg: string, prodPassword?: string) => {
     if (!selectedService) return;
     setIsDeploying(true);
-    setDeployLogs(`🚀 [${new Date().toLocaleTimeString()}] Initiating real deployment for [${selectedService.name}] on ${currentEnv}...\nMessage: ${msg || 'Routine deployment'}\nWorkspace: ${activeWorkspaceId}\n\n`);
+    setDeployLogs(`🚀 [${new Date().toLocaleTimeString()}] Starting deployment for [${selectedService.name}] on ${currentEnv}...\nCommit Message: ${msg || 'None'}\n\n`);
 
     try {
       const res = await fetch('/api/deploy', {
@@ -135,13 +196,14 @@ export const App: React.FC = () => {
           service_name: selectedService.name,
           environment: currentEnv,
           message: msg,
+          prod_password: prodPassword,
           workspace_id: activeWorkspaceId
         })
       });
 
       if (res.ok) {
         const result = await res.json();
-        setDeployLogs(prev => prev + `[Output]: ${result.output || 'Deployment script executed successfully.'}\n✅ Status: Success`);
+        setDeployLogs(prev => prev + `[Output]: ${result.output || 'Deployment completed successfully.'}\n✅ Status: Success`);
       } else {
         const errText = await res.text();
         setDeployLogs(prev => prev + `❌ [Error]: ${errText || 'Deployment failed.'}`);
@@ -153,12 +215,26 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleTriggerDeploy = (msg: string) => {
+    if (currentEnv === 'Production') {
+      setPendingDeployMsg(msg);
+      setIsProdPassOpen(true);
+    } else {
+      executeRealDeploy(msg);
+    }
+  };
+
+  const handleConfirmProdPassword = (password: string) => {
+    setIsProdPassOpen(false);
+    executeRealDeploy(pendingDeployMsg, password);
+  };
+
   const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string) => {
     setIsDeploying(true);
     setDeployLogs(`⚡ [${new Date().toLocaleTimeString()}] Initiating parallel multi-deploy for (${selectedNames.length}) services on ${env}...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
 
     try {
-      const res = await fetch('/api/multi_deploy', {
+      const res = await fetch('/api/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -177,7 +253,7 @@ export const App: React.FC = () => {
         setDeployLogs(prev => prev + `❌ Multi-Deploy Error: ${errText}`);
       }
     } catch (err: any) {
-      setDeployLogs(prev => prev + `❌ Multi-Deploy Network Exception: ${err.message}`);
+      setDeployLogs(prev => prev + `❌ Multi-Deploy Exception: ${err.message}`);
     } finally {
       setIsDeploying(false);
     }
@@ -198,82 +274,118 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden text-[#f1f5f9] font-sans antialiased">
-      <BackgroundCanvas isLightMode={isLightMode} />
-
-      <HeaderBar
-        isLightMode={isLightMode}
-        onToggleTheme={handleToggleTheme}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenMultiDeploy={() => setIsMultiDeployOpen(true)}
-        onOpenCompare={() => setIsCompareOpen(true)}
-        onToggleGit={() => setIsGitOpen(prev => !prev)}
-        onToggleVPN={() => setIsVPNOpen(prev => !prev)}
-        onRefresh={loadSettingsAndServices}
+    <Routes>
+      {/* Route 1: Dedicated React SPA Tools Page */}
+      <Route
+        path="/tools"
+        element={<ToolsPage onBackToDashboard={() => navigate('/')} />}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <ServiceSidebar
-          services={services}
-          selectedService={selectedService}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onSelectService={setSelectedService}
-        />
+      {/* Route 2: Main Deploy System Dashboard */}
+      <Route
+        path="*"
+        element={
+          <div className="flex flex-col h-screen w-screen overflow-hidden text-[#f1f5f9] font-sans antialiased">
+            <BackgroundCanvas isLightMode={isLightMode} />
 
-        <main className="flex-1 p-6 flex flex-col gap-5 overflow-hidden">
-          <DeploymentPanel
-            selectedService={selectedService}
-            workspaces={settings.workspaces || []}
-            activeWorkspaceId={activeWorkspaceId}
-            userName={settings.user_name}
-            currentEnv={currentEnv}
-            onEnvChange={setCurrentEnv}
-            onWorkspaceChange={handleWorkspaceChange}
-            onTriggerDeploy={handleTriggerDeploy}
-            isDeploying={isDeploying}
-          />
+            <HeaderBar
+              isLightMode={isLightMode}
+              onToggleTheme={handleToggleTheme}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenMultiDeploy={() => setIsMultiDeployOpen(true)}
+              onOpenCompare={() => setIsCompareOpen(true)}
+              onToggleGit={() => setIsGitOpen(prev => !prev)}
+              onToggleVPN={() => setIsVPNOpen(prev => !prev)}
+              onOpenTools={() => navigate('/tools')}
+              onOpenHealth={() => setIsHealthOpen(true)}
+              onOpenShortcuts={() => setIsShortcutsOpen(true)}
+              onRefresh={loadSettingsAndServices}
+            />
 
-          <TerminalView
-            selectedServiceName={selectedService?.name}
-            pwdPath={pwdPath}
-            deployLogs={deployLogs}
-          />
-        </main>
-      </div>
+            <div className="flex flex-1 overflow-hidden">
+              <ServiceSidebar
+                services={services}
+                selectedService={selectedService}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onSelectService={setSelectedService}
+              />
 
-      {/* Modals */}
-      <GlobalSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={settings}
-        onSaveSettings={handleSaveSettings}
+              <main className="flex-1 p-6 flex flex-col gap-5 overflow-hidden">
+                <DeploymentPanel
+                  selectedService={selectedService}
+                  workspaces={settings.workspaces || []}
+                  activeWorkspaceId={activeWorkspaceId}
+                  userName={settings.user_name}
+                  currentEnv={currentEnv}
+                  onEnvChange={setCurrentEnv}
+                  onWorkspaceChange={handleWorkspaceChange}
+                  onTriggerDeploy={handleTriggerDeploy}
+                  isDeploying={isDeploying}
+                />
+
+                <TerminalView
+                  selectedServiceName={selectedService?.name}
+                  pwdPath={pwdPath}
+                  deployLogs={deployLogs}
+                />
+              </main>
+            </div>
+
+            {/* Modals */}
+            <GlobalSettingsModal
+              isOpen={isSettingsOpen}
+              onClose={() => setIsSettingsOpen(false)}
+              settings={settings}
+              onSaveSettings={handleSaveSettings}
+            />
+
+            <MultiDeployModal
+              isOpen={isMultiDeployOpen}
+              onClose={() => setIsMultiDeployOpen(false)}
+              services={services}
+              onTriggerMultiDeploy={handleTriggerMultiDeploy}
+            />
+
+            <CompareModal
+              isOpen={isCompareOpen}
+              onClose={() => setIsCompareOpen(false)}
+              services={services}
+            />
+
+            <GitModal
+              isOpen={isGitOpen}
+              onClose={() => setIsGitOpen(false)}
+              selectedService={selectedService}
+              services={services}
+              onSelectService={setSelectedService}
+            />
+
+            <VPNModal
+              isOpen={isVPNOpen}
+              onClose={() => setIsVPNOpen(false)}
+            />
+
+            <HealthMonitorModal
+              isOpen={isHealthOpen}
+              onClose={() => setIsHealthOpen(false)}
+            />
+
+            <ShortcutsModal
+              isOpen={isShortcutsOpen}
+              onClose={() => setIsShortcutsOpen(false)}
+            />
+
+            <ProdPasswordModal
+              isOpen={isProdPassOpen}
+              onClose={() => setIsProdPassOpen(false)}
+              onConfirm={handleConfirmProdPassword}
+              targetAction={selectedService?.name || 'Service'}
+            />
+          </div>
+        }
       />
-
-      <MultiDeployModal
-        isOpen={isMultiDeployOpen}
-        onClose={() => setIsMultiDeployOpen(false)}
-        services={services}
-        onTriggerMultiDeploy={handleTriggerMultiDeploy}
-      />
-
-      <CompareModal
-        isOpen={isCompareOpen}
-        onClose={() => setIsCompareOpen(false)}
-        services={services}
-      />
-
-      <GitModal
-        isOpen={isGitOpen}
-        onClose={() => setIsGitOpen(false)}
-        selectedService={selectedService}
-      />
-
-      <VPNModal
-        isOpen={isVPNOpen}
-        onClose={() => setIsVPNOpen(false)}
-      />
-    </div>
+    </Routes>
   );
 };
 

@@ -46,6 +46,11 @@ export interface Service {
   tags?: string[];
   ahead?: number;
   behind?: number;
+  ahead_staging?: number;
+  behind_staging?: number;
+  has_stash?: boolean;
+  staged_changes?: number;
+  has_staging?: boolean;
   unpushed?: boolean;
   path?: string;
 }

@@ -34,7 +34,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
   const loadVPNData = async () => {
     try {
       // 1. Load OVPN Configs
-      const cfgRes = await fetch(`/api/vpn/configs${customDir ? `?custom_dir=${encodeURIComponent(customDir)}` : ''}`);
+      const cfgRes = await fetch(`/api/configs${customDir ? `?custom_dir=${encodeURIComponent(customDir)}` : ''}`);
       if (cfgRes.ok) {
         const cfgData: OVPNConfig[] = await cfgRes.json();
         setConfigs(cfgData || []);
@@ -44,7 +44,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
       }
 
       // 2. Load Saved Accounts from accounts.json
-      const accRes = await fetch('/api/vpn/accounts');
+      const accRes = await fetch('/api/accounts');
       if (accRes.ok) {
         const accData: VPNAccount[] = await accRes.json();
         setAccounts(accData || []);
@@ -56,7 +56,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
       }
 
       // 3. Load Current VPN Status
-      const statusRes = await fetch('/api/vpn/status');
+      const statusRes = await fetch('/api/status');
       if (statusRes.ok) {
         const statusData = await statusRes.json();
         if (statusData.status) {
@@ -71,6 +71,17 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       loadVPNData();
+
+      // SSE connection for VPN logs
+      const evtSource = new EventSource('/api/logs');
+      evtSource.onmessage = (e) => {
+        if (e.data) {
+          setLogs(prev => prev + '\n' + e.data);
+        }
+      };
+      return () => {
+        evtSource.close();
+      };
     }
   }, [isOpen, customDir]);
 
@@ -95,7 +106,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
     setLogs(`[${new Date().toLocaleTimeString()}] Initializing OpenVPN process with profile [${selectedProfile}] for account [${username}]...\n`);
 
     try {
-      const res = await fetch('/api/vpn/connect', {
+      const res = await fetch('/api/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -122,7 +133,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose }) => {
 
   const handleDisconnect = async () => {
     try {
-      await fetch('/api/vpn/disconnect', { method: 'POST' });
+      await fetch('/api/disconnect', { method: 'POST' });
       setVpnState('disconnected');
       setLogs(prev => prev + `\n[${new Date().toLocaleTimeString()}] Disconnected VPN tunnel.`);
     } catch (e) {

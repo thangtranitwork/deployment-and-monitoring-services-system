@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Service, WorkspaceItem } from '../types';
 
 interface DeploymentPanelProps {
@@ -24,12 +24,37 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
   onTriggerDeploy,
   isDeploying
 }) => {
-  const [deployMsg, setDeployMsg] = useState('');
+  const [deployMsg, setDeployMsg] = useState<string>('');
+  const [msgIndex, setMsgIndex] = useState<number>(-1);
 
   const hasScript = selectedService ? (
     currentEnv === 'Development' ? selectedService.has_dev :
     currentEnv === 'Staging' ? selectedService.has_stg : selectedService.has_prod
   ) : false;
+
+  // Extract commit suggestions from selected service or general services
+  const commitSuggestions = useMemo(() => {
+    const list: string[] = [];
+    if (selectedService?.last_commit) list.push(selectedService.last_commit);
+    workspaces.forEach(w => w.services?.forEach(s => {
+      if (s.name && !list.includes(s.name)) list.push(`Deploy ${s.name}`);
+    }));
+    return list;
+  }, [selectedService, workspaces]);
+
+  const handlePrevMsg = () => {
+    if (commitSuggestions.length === 0) return;
+    const nextIdx = (msgIndex + 1) % commitSuggestions.length;
+    setMsgIndex(nextIdx);
+    setDeployMsg(commitSuggestions[nextIdx]);
+  };
+
+  const handleNextMsg = () => {
+    if (commitSuggestions.length === 0) return;
+    const prevIdx = (msgIndex - 1 + commitSuggestions.length) % commitSuggestions.length;
+    setMsgIndex(prevIdx);
+    setDeployMsg(commitSuggestions[prevIdx]);
+  };
 
   return (
     <div className="space-y-5 shrink-0">
@@ -105,14 +130,24 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
 
           {/* Deploy Message Input */}
           <div className="flex-[3] w-full">
-            <div className="text-[11px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2">
-              Deploy Message
+            <div className="text-[11px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2 flex justify-between items-center">
+              <span>Deploy Message</span>
+              {selectedService?.last_commit && (
+                <button
+                  type="button"
+                  onClick={() => setDeployMsg(selectedService.last_commit)}
+                  className="text-[10px] text-[#10b981] hover:underline font-mono cursor-pointer"
+                >
+                  ⚡ Use Last Commit
+                </button>
+              )}
             </div>
             <div className="flex gap-1 items-center">
               <button
                 type="button"
+                onClick={handleNextMsg}
                 className="px-3 h-10 border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] rounded-md text-xs cursor-pointer transition-all"
-                title="Newer Commit Message"
+                title="Newer Commit Suggestion"
               >
                 ←
               </button>
@@ -125,8 +160,9 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
               />
               <button
                 type="button"
+                onClick={handlePrevMsg}
                 className="px-3 h-10 border border-[#232a3f]/75 bg-[#1b2132]/75 hover:bg-[#232a3f]/75 hover:border-[#10b981] text-[#f1f5f9] hover:text-[#10b981] rounded-md text-xs cursor-pointer transition-all"
-                title="Older Commit Message"
+                title="Older Commit Suggestion"
               >
                 →
               </button>

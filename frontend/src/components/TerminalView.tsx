@@ -41,26 +41,32 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ selectedServiceName,
     term.loadAddon(fitAddon);
 
     term.open(terminalRef.current);
-    try {
-      fitAddon.fit();
-    } catch (e) {
-      // ignore
-    }
+    
+    const safeFit = () => {
+      try {
+        if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+          fitAddon.fit();
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    setTimeout(safeFit, 100);
 
     const targetService = selectedServiceName || 'default';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws/${encodeURIComponent(targetService)}`;
 
     setTermStatus('connecting');
-    term.writeln(`\x1b[1;32mConnecting to PTY terminal session [${targetService}]...\x1b[0m`);
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
       setTermStatus('connected');
-      term.writeln('\x1b[1;32m✅ Interactive Terminal Connected!\x1b[0m\r\n');
       try {
+        safeFit();
         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
       } catch (e) {
         // ignore
@@ -97,7 +103,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ selectedServiceName,
 
     const handleResize = () => {
       try {
-        fitAddon.fit();
+        safeFit();
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
         }
