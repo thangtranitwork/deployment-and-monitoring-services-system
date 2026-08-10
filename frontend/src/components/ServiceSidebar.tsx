@@ -21,10 +21,10 @@ export const ServiceSidebar: React.FC<ServiceSidebarProps> = ({
     const q = query.toLowerCase().trim();
     if (q.includes(',')) {
       const parts = q.split(',').map(s => s.trim()).filter(Boolean);
-      return list.filter(s => parts.some(p => s.name.toLowerCase().includes(p) || s.branch.toLowerCase().includes(p)));
+      return list.filter(s => parts.some(p => s.name.toLowerCase().includes(p)));
     }
     const terms = q.split(/\s+/).filter(Boolean);
-    return list.filter(s => terms.every(t => s.name.toLowerCase().includes(t) || s.branch.toLowerCase().includes(t)));
+    return list.filter(s => terms.every(t => s.name.toLowerCase().includes(t)));
   };
 
   const filtered = filterServices(services, searchQuery);

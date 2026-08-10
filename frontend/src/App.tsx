@@ -161,14 +161,35 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Global Keyboard Shortcuts
+  // Global Keyboard Shortcuts (Capture Phase)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputFocused = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        (activeEl as HTMLElement).isContentEditable ||
+        activeEl.classList.contains('xterm-helper-textarea')
+      );
+
+      // Fast Multi Deploy: Ctrl + Alt + Shift + M
+      if (e.ctrlKey && e.altKey && e.shiftKey && (e.code === 'KeyM' || e.key.toUpperCase() === 'M')) {
+        e.preventDefault();
+        setIsMultiDeployOpen(true);
+        return;
+      }
+
+      // Alt + Shift shortcuts
       if (e.altKey && e.shiftKey) {
-        switch (e.key.toUpperCase()) {
+        const key = (e.code ? e.code.replace('Key', '').replace('Digit', '') : e.key).toUpperCase();
+        switch (key) {
           case 'M':
             e.preventDefault();
             setIsMultiDeployOpen(prev => !prev);
+            break;
+          case 'C':
+            e.preventDefault();
+            setIsCompareOpen(prev => !prev);
             break;
           case 'G':
             e.preventDefault();
@@ -177,6 +198,10 @@ export const App: React.FC = () => {
           case 'U':
             e.preventDefault();
             setIsVPNOpen(prev => !prev);
+            break;
+          case 'S':
+            e.preventDefault();
+            setIsHealthOpen(prev => !prev);
             break;
           case 'T':
             e.preventDefault();
@@ -194,8 +219,56 @@ export const App: React.FC = () => {
             e.preventDefault();
             setIsShortcutsOpen(prev => !prev);
             break;
+          case '1':
+            e.preventDefault();
+            setCurrentEnv('Development');
+            break;
+          case '2':
+            e.preventDefault();
+            setCurrentEnv('Staging');
+            break;
         }
-      } else if (e.key === 'Escape') {
+        return;
+      }
+
+      // Alt + ArrowUp / ArrowDown: Service navigation
+      if (e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        if (!isInputFocused && services.length > 0) {
+          e.preventDefault();
+          const currentIdx = services.findIndex(s => s.name === selectedService?.name);
+          if (e.code === 'ArrowUp' || e.key === 'ArrowUp') {
+            const prevIdx = currentIdx > 0 ? currentIdx - 1 : services.length - 1;
+            setSelectedService(services[prevIdx]);
+          } else {
+            const nextIdx = currentIdx < services.length - 1 ? currentIdx + 1 : 0;
+            setSelectedService(services[nextIdx]);
+          }
+        }
+        return;
+      }
+
+      // '/' to focus Search input
+      if ((e.key === '/' || e.code === 'Slash') && !isInputFocused) {
+        const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+        }
+        return;
+      }
+
+      // Ctrl + Enter to run single deploy
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'Enter' || e.key === 'Enter')) {
+        if (!isInputFocused) {
+          e.preventDefault();
+          const deployBtn = document.querySelector('button.deployIdleBreath') as HTMLButtonElement;
+          if (deployBtn) deployBtn.click();
+        }
+        return;
+      }
+
+      // Escape to close all modals
+      if (e.key === 'Escape' || e.code === 'Escape') {
         setIsSettingsOpen(false);
         setIsMultiDeployOpen(false);
         setIsCompareOpen(false);
@@ -207,9 +280,9 @@ export const App: React.FC = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [navigate, services, selectedService, currentEnv]);
 
   const handleWorkspaceChange = async (wsId: string) => {
     setIsSwitchingWorkspace(true);
