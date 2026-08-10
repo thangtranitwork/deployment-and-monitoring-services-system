@@ -6,3 +6,10 @@ ids.service
 credentials.json
 accounts.json
 .idea/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Go build artifacts
+*.log

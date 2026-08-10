@@ -261,26 +261,29 @@ func startMetricsCollector() {
 	ticker := time.NewTicker(5 * time.Second)
 	go func() {
 		for range ticker.C {
-			envs := []string{"Development", "Staging", "Production"}
-			for _, env := range envs {
-				url := ""
-				if env == "Development" && settings.DevAgentURL != "" {
-					url = settings.DevAgentURL + "/health"
-				} else if env == "Staging" && settings.StgAgentURL != "" {
-					url = settings.StgAgentURL + "/health"
-				} else if env == "Production" && settings.ProdAgentURL != "" {
-					url = settings.ProdAgentURL + "/health"
-				}
+			s := loadSettings()
+			ws := s.GetActiveWorkspace()
+			devURL, stgURL, prodURL := s.GetAgentURLs(ws)
 
-				if url == "" {
+			envs := []struct {
+				name string
+				url  string
+			}{
+				{"Development", devURL},
+				{"Staging", stgURL},
+				{"Production", prodURL},
+			}
+
+			for _, e := range envs {
+				if e.url == "" {
 					continue
 				}
 
-				log.Printf("[Metrics] Connecting to %s agent at: %s", env, url)
+				targetURL := strings.TrimRight(e.url, "/") + "/health"
 
-				go func(e, u string) {
+				go func(envName, url string) {
 					client := http.Client{Timeout: 3 * time.Second}
-					resp, err := client.Get(u)
+					resp, err := client.Get(url)
 					if err != nil {
 						return
 					}
@@ -289,17 +292,17 @@ func startMetricsCollector() {
 					var metrics []ServiceMetrics
 					if err := json.NewDecoder(resp.Body).Decode(&metrics); err == nil {
 						metricsMu.Lock()
-						if globalMetrics[e] == nil {
-							globalMetrics[e] = make(map[string]ServiceMetrics)
+						if globalMetrics[envName] == nil {
+							globalMetrics[envName] = make(map[string]ServiceMetrics)
 						}
 						newMap := make(map[string]ServiceMetrics)
 						for _, m := range metrics {
 							newMap[m.Service] = m
 						}
-						globalMetrics[e] = newMap
+						globalMetrics[envName] = newMap
 						metricsMu.Unlock()
 					}
-				}(env, url)
+				}(e.name, targetURL)
 			}
 		}
 	}()
