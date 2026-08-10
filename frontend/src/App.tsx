@@ -14,6 +14,7 @@ import { HealthMonitorModal } from './components/modals/HealthMonitorModal';
 import { ProdPasswordModal } from './components/modals/ProdPasswordModal';
 import { ShortcutsModal } from './components/modals/ShortcutsModal';
 import { ToolsPage } from './pages/ToolsPage';
+import { CyberLoader } from './components/CyberLoader';
 import { Service, Settings } from './types';
 
 export const App: React.FC = () => {
@@ -53,6 +54,8 @@ export const App: React.FC = () => {
   const [deployLogs, setDeployLogs] = useState<string>('No deployment logs available.');
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
   const [pwdPath, setPwdPath] = useState<string>('~');
+  const [isSwitchingWorkspace, setIsSwitchingWorkspace] = useState<boolean>(false);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
 
   // Modals visibility
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -112,7 +115,7 @@ export const App: React.FC = () => {
           setSelectedService(prev => {
             if (!prev) return list[0];
             const updated = list.find(s => s.name === prev.name);
-            return updated || prev;
+            return updated || list[0];
           });
         }
       }
@@ -121,33 +124,44 @@ export const App: React.FC = () => {
     }
   };
 
-  const loadSettingsAndServices = async () => {
-    try {
-      const setRes = await fetch('/api/settings');
-      let targetWsId = activeWorkspaceId;
-      if (setRes.ok) {
-        const data: Settings = await setRes.json();
-        setSettings(data);
-        if (data.workspaces && data.workspaces.length > 0) {
-          targetWsId = data.active_workspace_id || data.workspaces[0].id;
-          setActiveWorkspaceId(targetWsId);
+  // Initial load ONCE on mount
+  useEffect(() => {
+    let isMounted = true;
+    const initApp = async () => {
+      try {
+        const setRes = await fetch('/api/settings');
+        let targetWsId = 'default';
+        if (setRes.ok) {
+          const data: Settings = await setRes.json();
+          if (isMounted) setSettings(data);
+          if (data.workspaces && data.workspaces.length > 0) {
+            targetWsId = data.active_workspace_id || data.workspaces[0].id;
+            if (isMounted) setActiveWorkspaceId(targetWsId);
+          }
+        }
+        await fetchServicesForWorkspace(targetWsId);
+      } catch (e) {
+        await fetchServicesForWorkspace();
+      } finally {
+        if (isMounted) {
+          setTimeout(() => setIsInitialLoading(false), 400);
         }
       }
-      await fetchServicesForWorkspace(targetWsId);
-    } catch (e) {
-      await fetchServicesForWorkspace();
-    }
-  };
+    };
 
-  useEffect(() => {
-    loadSettingsAndServices();
+    initApp();
+
     const interval = setInterval(() => {
       fetchServicesForWorkspace();
     }, 5000);
-    return () => clearInterval(interval);
-  }, [activeWorkspaceId]);
 
-  // Global Shortcuts
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.shiftKey) {
@@ -174,7 +188,7 @@ export const App: React.FC = () => {
             break;
           case 'R':
             e.preventDefault();
-            loadSettingsAndServices();
+            fetchServicesForWorkspace();
             break;
           case 'H':
             e.preventDefault();
@@ -198,17 +212,27 @@ export const App: React.FC = () => {
   }, [navigate]);
 
   const handleWorkspaceChange = async (wsId: string) => {
+    setIsSwitchingWorkspace(true);
     setActiveWorkspaceId(wsId);
     setSelectedService(null);
     try {
-      await fetch('/api/workspaces/switch', {
+      const res = await fetch('/api/workspaces/switch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active_workspace_id: wsId })
+        body: JSON.stringify({ workspace_id: wsId })
       });
+      if (res.ok) {
+        const setRes = await fetch('/api/settings');
+        if (setRes.ok) {
+          const data: Settings = await setRes.json();
+          setSettings(data);
+        }
+      }
       await fetchServicesForWorkspace(wsId);
     } catch (e) {
       await fetchServicesForWorkspace(wsId);
+    } finally {
+      setTimeout(() => setIsSwitchingWorkspace(false), 400);
     }
   };
 
@@ -354,7 +378,7 @@ export const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
       });
-      await loadSettingsAndServices();
+      await fetchServicesForWorkspace();
     } catch (e) {
       // ignore
     }
@@ -406,7 +430,7 @@ export const App: React.FC = () => {
               onOpenTools={() => navigate('/tools')}
               onOpenHealth={() => setIsHealthOpen(true)}
               onOpenShortcuts={() => setIsShortcutsOpen(true)}
-              onRefresh={loadSettingsAndServices}
+              onRefresh={fetchServicesForWorkspace}
             />
 
             <div className="flex flex-1 overflow-hidden">
@@ -429,7 +453,7 @@ export const App: React.FC = () => {
                   onWorkspaceChange={handleWorkspaceChange}
                   onTriggerDeploy={handleTriggerDeploy}
                   isDeploying={isDeploying}
-                  onRefresh={loadSettingsAndServices}
+                  onRefresh={fetchServicesForWorkspace}
                   onOpenLogs={handleOpenLogs}
                 />
 
@@ -495,6 +519,15 @@ export const App: React.FC = () => {
               onConfirm={handleConfirmProdPassword}
               targetAction={selectedService?.name || 'Service'}
             />
+
+            {(isInitialLoading || isSwitchingWorkspace) && (
+              <CyberLoader
+                fullScreen
+                size="xl"
+                title={isInitialLoading ? "INITIALIZING INTERNAL DEPLOY SYSTEM..." : "SWITCHING WORKSPACE ENGINE..."}
+                subtitle="Loading microservices, workspace settings & server telemetry"
+              />
+            )}
           </div>
         }
       />

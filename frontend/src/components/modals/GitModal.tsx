@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Download, Upload, Search, X, FolderGit2, Plus, Minus, RotateCcw, Copy, Check, FileCode, ChevronDown } from 'lucide-react';
 import { Service } from '../../types';
+import { CyberLoader } from '../CyberLoader';
 
 interface GitModalProps {
   isOpen: boolean;
@@ -499,7 +500,9 @@ export const GitModal: React.FC<GitModalProps> = ({
           {activeTab === 'branches' && (
             <div className="space-y-2.5">
               {loading ? (
-                <div className="p-8 text-center text-xs font-mono text-[#94a3b8]">Loading branches...</div>
+                <div className="py-12 flex justify-center items-center">
+                  <CyberLoader size="lg" title="FETCHING GIT REPOSITORY DATA..." subtitle={`Reading ${activeTab} info for ${serviceName}`} />
+                </div>
               ) : filteredBranches.length === 0 ? (
                 <div className="p-8 text-center text-xs font-mono text-[#94a3b8]">No branches found.</div>
               ) : (

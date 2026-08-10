@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, ExternalLink, Activity } from 'lucide-react';
+import { CyberLoader } from '../CyberLoader';
 
 interface HealthMonitorModalProps {
   isOpen: boolean;
@@ -244,8 +245,8 @@ export const HealthMonitorModal: React.FC<HealthMonitorModalProps> = ({ isOpen, 
                 })}
                 {sortedMetrics.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-6 text-center text-xs text-[#94a3b8]">
-                      No metrics available from remote [{env}] health agent.
+                    <td colSpan={8} className="p-8 text-center text-xs text-[#94a3b8]">
+                      <CyberLoader size="md" title={`SCANNING REMOTE [${env}] HEALTH AGENT...`} subtitle="Connecting to agent SSE metrics stream" />
                     </td>
                   </tr>
                 )}

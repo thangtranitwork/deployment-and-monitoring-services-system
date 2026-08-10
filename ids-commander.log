@@ -1,0 +1,10 @@
+2026/08/10 14:43:41 [Init] Loaded .env file successfully
+2026/08/10 14:43:41 [Init] DEV_AGENT_URL: http://14.225.249.148:55555
+2026/08/10 14:43:41 [Init] STG_AGENT_URL: http://171.244.204.148:55555
+2026/08/10 14:43:41 [Init] Running as user: thang (UID: 1000), Home: /home/thang
+2026/08/10 14:43:41 [DB] Config: APP_ENV=, USE_SSH=false (effective useSSH=true)
+2026/08/10 14:43:41 [DB] Connecting directly to 14.225.249.148:3306...
+2026/08/10 14:43:41 [Init] APP_MODE: BOTH (Run HTML: true on port 5555, Run React: true on port 55555)
+2026/08/10 14:43:41 [Init] Serving React SPA Frontend from: /home/thang/work/deploy-tool/frontend/dist on port 55555
+HTML Server starting on http://localhost:5555
+React SPA Server starting on http://localhost:55555

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Zap, ChevronDown, ChevronRight, Search, GitBranch, AlertTriangle, CheckCircle2, FileText, GitCommit, RotateCcw } from 'lucide-react';
 import { Service } from '../../types';
+import { CyberLoader } from '../CyberLoader';
 
 interface CompareModalProps {
   isOpen: boolean;
@@ -315,9 +316,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         {/* Services Comparison Accordion List */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#05070d]">
           {loading && results.length === 0 ? (
-            <div className="p-12 text-center text-xs font-mono text-[#94a3b8] flex flex-col items-center gap-3">
-              <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-              Comparing branch differences across workspace...
+            <div className="py-12 flex justify-center items-center">
+              <CyberLoader size="lg" title="COMPARING WORKSPACE BRANCHES..." subtitle="Scanning git diffs and un-deployed commit logs across microservices" />
             </div>
           ) : filteredResults.length === 0 ? (
             <div className="p-12 text-center text-xs font-mono text-[#94a3b8]">

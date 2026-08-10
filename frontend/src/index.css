@@ -526,6 +526,57 @@ body.light-theme div.h-screen.w-screen button.bg-emerald-500 {
     font-weight: 700 !important;
 }
 
+/* ==========================================================================
+   CYBERLOADER ANIMATIONS & LIGHT THEME OVERRIDES
+   ========================================================================== */
+
+div.fixed.z-\[9999\] {
+    background-color: rgba(3, 5, 8, 0.78) !important;
+    backdrop-filter: blur(36px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
+}
+
+body.light-theme div.fixed.z-\[9999\] {
+    background-color: rgba(255, 255, 255, 0.78) !important;
+    backdrop-filter: blur(36px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
+    color: #111827 !important;
+}
+
+body.light-theme div.fixed.z-\[9999\] .text-\[\#94a3b8\] {
+    color: #4b5563 !important;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.cyber-skeleton-card {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.75rem;
+}
+
+body.light-theme .cyber-skeleton-card {
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.cyber-skeleton-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.25), transparent);
+    animation: shimmer 1.5s infinite;
+}
+
 body.light-theme div.fixed button.bg-white\/5,
 body.light-theme div.fixed button.bg-\[\#1b2132\] {
     background-color: #ffffff !important;
