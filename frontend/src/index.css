@@ -39,6 +39,18 @@ body.light-theme {
     --modal-overlay: rgba(15, 23, 42, 0.5);
 }
 
+/* Global Reset for Input, Select, Textarea */
+input, select, textarea, button {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

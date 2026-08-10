@@ -1,4 +1,5 @@
 export interface ServiceConfig {
+  show?: boolean;
   enabled?: boolean;
   folder?: string;
   name: string;
@@ -6,6 +7,10 @@ export interface ServiceConfig {
   stg_cmd?: string;
   show_production?: boolean;
   prod_cmd?: string;
+  prod_pwd?: string;
+  prod_password?: string;
+  pre_deploy?: string;
+  pre_deploy_cmd?: string;
   dev_script?: string;
   stg_script?: string;
   prod_script?: string;
@@ -13,7 +18,6 @@ export interface ServiceConfig {
   has_stg?: boolean;
   has_prod?: boolean;
   prod_password_hash?: string;
-  pre_deploy_cmd?: string;
 }
 
 export interface WorkspaceItem {
@@ -53,6 +57,7 @@ export interface Service {
   has_staging?: boolean;
   unpushed?: boolean;
   path?: string;
+  show_production?: boolean;
 }
 
 export interface Settings {

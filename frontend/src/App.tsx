@@ -64,6 +64,27 @@ export const App: React.FC = () => {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
   const [isProdPassOpen, setIsProdPassOpen] = useState<boolean>(false);
   const [pendingDeployMsg, setPendingDeployMsg] = useState<string>('');
+  const [vpnState, setVpnState] = useState<string>('disconnected');
+
+  const checkVPNStatus = async () => {
+    try {
+      const res = await fetch('/api/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.status) {
+          setVpnState(data.status);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    checkVPNStatus();
+    const interval = setInterval(checkVPNStatus, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (isLightMode) {
@@ -290,6 +311,7 @@ export const App: React.FC = () => {
 
             <HeaderBar
               isLightMode={isLightMode}
+              vpnState={vpnState}
               onToggleTheme={handleToggleTheme}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onOpenMultiDeploy={() => setIsMultiDeployOpen(true)}
@@ -364,6 +386,7 @@ export const App: React.FC = () => {
             <VPNModal
               isOpen={isVPNOpen}
               onClose={() => setIsVPNOpen(false)}
+              onStateChange={setVpnState}
             />
 
             <HealthMonitorModal
