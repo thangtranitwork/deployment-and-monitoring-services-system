@@ -15,6 +15,7 @@ import { ProdPasswordModal } from './components/modals/ProdPasswordModal';
 import { ShortcutsModal } from './components/modals/ShortcutsModal';
 import { ToolsPage } from './pages/ToolsPage';
 import { CyberLoader } from './components/CyberLoader';
+import { BunnyMascot } from './components/BunnyMascot';
 import { Service, Settings } from './types';
 
 export const App: React.FC = () => {
@@ -528,6 +529,11 @@ export const App: React.FC = () => {
                   isDeploying={isDeploying}
                   onRefresh={fetchServicesForWorkspace}
                   onOpenLogs={handleOpenLogs}
+                />
+
+                <BunnyMascot
+                  isDeploying={isDeploying}
+                  selectedService={selectedService?.name}
                 />
 
                 <TerminalView

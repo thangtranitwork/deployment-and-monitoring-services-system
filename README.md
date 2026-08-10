@@ -1,4 +1,4 @@
-# 🚀 Internal Deploy System (IDS) - v2.0.0
+# 🚀 Internal Deploy System (IDS) - v2.1.0
 
 A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Manage your microservices, Git operations, multi-service parallel deployments, OpenVPN connections, and developer tools with a state-of-the-art dual-architecture web system.
 
@@ -104,6 +104,32 @@ A comprehensive suite of 13 local developer utility tools:
 - **DNS Dig / Whois / GeoIP**: Run DNS record queries (A, AAAA, MX, CNAME), TCP WHOIS port 43 lookup, and GeoIP location checks.
 - **WebSocket Client**: Test ws/wss connections, filter console message logs, and send custom payloads.
 - **SQL Preview & Schema**: Auto-fetch database table schema with a **100% Read-Only Simulation Engine** that parses `UPDATE`, `INSERT`, `DELETE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data**.
+
+---
+
+## 🌟 What's New in v2.1.0
+
+### 🐰 Thỏ Tiên Mascot — Tu Tiên Cultivation System
+
+The corner mascot has been upgraded into a full **Tu Tiên (Cultivation) progression system** with 17 cultivation realms spanning the mortal world (`Luyện Khí` → `Độ Kiếp`) and the immortal realm (`Chân Tiên` → `Tiên Đế`).
+
+**Realm Progression:**
+- **17 Cảnh Giới** from Phàm Nhân to Tiên Đế, each with unique skins and lore
+- **Độ Kiếp (天劫)**: Manual tribulation button with procedural full-screen lightning canvas animation
+- **Dynamic failure rate**: Success rate decreases per realm (85% → 20%); failure penalizes XP by 10% of the gap
+
+**Item System (Túi Trữ Vật):**
+| Item | Effect | How to Earn |
+|---|---|---|
+| 💊 **Tụ Linh Đan** | +8 XP | 1/minute on page, every 5 drags |
+| 🍃 **Hồi Phục Đan** | +20 XP | Each successful deploy, re-open after 4h idle |
+| 🌸 **Đại Hoàn Đan** | +50 XP | Tribulation success, 100-min & 50-deploy milestones |
+| 🔱 **Hộ Kiếp Phù** | +25% tribulation rate for 5 min | Deploy milestones 10/25/50, 500-min milestone |
+
+- **30-second cooldown** between pill consumption
+- **Max 999 per item** type
+- **Inventory popup** renders above the mascot bubble in-context
+- Full **dark/light mode** compatibility via inline styles
 
 ---
 
