@@ -18,16 +18,19 @@ interface LevelInfo {
 }
 
 // ─── Item System ───────────────────────────────────────────────────────────────
-type ItemId = 'basic' | 'recover' | 'great';
+type ItemId = 'basic' | 'recover' | 'great' | 'talisman';
 
 interface ItemConfig {
   id: ItemId;
   name: string;
   emoji: string;
-  xpValue: number;
+  xpValue: number;        // 0 means no XP (e.g. talisman)
   maxStack: number;
-  rarity: 'common' | 'uncommon' | 'rare';
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
   description: string;
+  isBuff?: boolean;       // true = active buff, not consumed for XP
+  buffDurationMs?: number;
+  buffSuccessBonus?: number; // flat bonus to success rate (0.0 - 1.0)
 }
 
 export const ITEM_CONFIG: ItemConfig[] = [
@@ -57,13 +60,26 @@ export const ITEM_CONFIG: ItemConfig[] = [
     maxStack: 999,
     rarity: 'rare',
     description: '+50 Linh Lực • Nhận: Độ Kiếp thành công, mốc deploy & thời gian đặc biệt'
+  },
+  {
+    id: 'talisman',
+    name: 'Hộ Kiếp Phù',
+    emoji: '🔱',
+    xpValue: 0,
+    maxStack: 99,
+    rarity: 'legendary',
+    isBuff: true,
+    buffDurationMs: 5 * 60 * 1000,   // 5 minutes active
+    buffSuccessBonus: 0.25,           // +25% success rate
+    description: '+25% tỉ lệ Độ Kiếp trong 5 phút • Nhận: mốc 10/25/50 lần deploy, mốc 500 phút tọa thiền'
   }
 ];
 
 const RARITY_COLORS: Record<string, string> = {
-  common: '#93c5fd',      // blue-300
-  uncommon: '#86efac',    // green-300
-  rare: '#f9a8d4',        // pink-300
+  common:    '#93c5fd',   // blue-300
+  uncommon:  '#86efac',   // green-300
+  rare:      '#f9a8d4',   // pink-300
+  legendary: '#fde047',   // yellow-300 (golden)
 };
 
 const PILL_COOLDOWN_MS = 30_000; // 30 seconds between pills
@@ -178,11 +194,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
 
   const [xp, setXp]                     = useState<number>(() => loadSaved().xp ?? 0);
   const [activeSkin, setActiveSkin]     = useState<string>(() => loadSaved().activeSkin ?? 'none');
-  const [inventory, setInventory]       = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 0, great: loadSaved().inventory?.great ?? 0 }));
+  const [inventory, setInventory]       = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 0, great: loadSaved().inventory?.great ?? 0, talisman: loadSaved().inventory?.talisman ?? 1 }));
   const [totalMinutes, setTotalMinutes] = useState<number>(() => loadSaved().totalMinutes ?? 0);
   const [totalDrags, setTotalDrags]     = useState<number>(() => loadSaved().totalDrags ?? 0);
   const [totalDeploys, setTotalDeploys] = useState<number>(() => loadSaved().totalDeploys ?? 0);
-  const [lastPillTime, setLastPillTime] = useState<number>(() => loadSaved().lastPillTime ?? 0);
+  const [lastPillTime, setLastPillTime]             = useState<number>(() => loadSaved().lastPillTime ?? 0);
+  const [talismanBuffExpiry, setTalismanBuffExpiry] = useState<number>(() => loadSaved().talismanBuffExpiry ?? 0);
+  const [talismanCountdown, setTalismanCountdown]   = useState<number>(0);
   const [lastSessionTime]               = useState<number>(() => {
     const saved = loadSaved().lastSessionTime ?? 0;
     const now = Date.now();
@@ -207,7 +225,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
   const [bubbleText, setBubbleText]           = useState('Bổn Thỏ xin chào Chân Tiên! 🐰');
   const [isDismissed, setIsDismissed]         = useState(false);
   const [isDragging, setIsDragging]           = useState(false);
-  const [cooldownRemain, setCooldownRemain]   = useState(0);
+  const [cooldownRemain, setCooldownRemain]     = useState(0);
 
   const directionRef = useRef<'left' | 'right'>('left');
   directionRef.current = direction;
@@ -220,7 +238,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
   const nextLevelInfo    = LEVEL_CONFIG.find(l => l.level === currentLevel + 1);
   const isReadyToBreakthrough = Boolean(nextLevelInfo && xp >= nextLevelInfo.reqXp - 1);
   const isTribulationLevel    = currentLevel >= 2;
-  const currentSuccessRatePercent = Math.round(getSuccessRate(currentLevel) * 100);
+  const isTalismanActive      = Date.now() < talismanBuffExpiry;
+  const talismanCfg           = ITEM_CONFIG.find(i => i.id === 'talisman')!;
+  const baseSuccessRate       = getSuccessRate(currentLevel);
+  const effectiveSuccessRate  = isTalismanActive
+    ? Math.min(0.99, baseSuccessRate + (talismanCfg.buffSuccessBonus ?? 0))
+    : baseSuccessRate;
+  const currentSuccessRatePercent = Math.round(effectiveSuccessRate * 100);
   const prevReq = currentLevelInfo.reqXp;
   const nextReq = nextLevelInfo ? nextLevelInfo.reqXp : prevReq + 1500;
   const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / (nextReq - prevReq)) * 100));
@@ -229,7 +253,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
   // ─── Persist to localStorage ────────────────────────────────────────────────
   useEffect(() => {
     try {
-      localStorage.setItem(BUNNY_STORAGE_KEY, JSON.stringify({ xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, lastPillTime, lastSessionTime: Date.now() }));
+      localStorage.setItem(BUNNY_STORAGE_KEY, JSON.stringify({ xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, lastPillTime, talismanBuffExpiry, lastSessionTime: Date.now() }));
     } catch { /* noop */ }
   }, [xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, lastPillTime]);
 
@@ -243,6 +267,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     const id = setInterval(tick, 500);
     return () => clearInterval(id);
   }, [lastPillTime]);
+
+  // ─── Talisman Buff Countdown ────────────────────────────────────────────────
+  useEffect(() => {
+    const tick = () => setTalismanCountdown(Math.max(0, Math.ceil((talismanBuffExpiry - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [talismanBuffExpiry]);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
   const triggerGentleHop = () => { setState('jump_right'); setFrame(0); setTimeout(() => setState('idle'), 1200); };
@@ -277,23 +309,35 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     });
   };
 
-  // ─── Item: Consume Pill ─────────────────────────────────────────────────────
+  // ─── Item: Consume Pill or Activate Talisman ───────────────────────────────
   const handleConsumePill = (itemId: ItemId) => {
     const cfg = ITEM_CONFIG.find(i => i.id === itemId)!;
     if (inventory[itemId] <= 0) { setBubbleText(`😢 Kho ${cfg.emoji} trống rỗng! Tích thêm đan nhé!`); return; }
-    if (cooldownRemain > 0) { setBubbleText(`⏳ Khí Hải chưa tiêu hóa xong! Còn ${cooldownRemain}s nữa...`); return; }
 
+    // Talisman: buff type — no cooldown, no XP, just activate buff timer
+    if (cfg.isBuff) {
+      if (isTalismanActive) { setBubbleText(`🔱 Hộ Kiếp Phù đã đang hiệu lực! Còn ${Math.ceil(talismanCountdown / 60)} phút!`); return; }
+      const expiry = Date.now() + (cfg.buffDurationMs ?? 300_000);
+      setTalismanBuffExpiry(expiry);
+      setInventory(prev => ({ ...prev, [itemId]: prev[itemId] - 1 }));
+      setState('dance'); setFrame(0);
+      setBubbleText(`🔱 HỘ KIẾP PHÙ KÍCH HOẠT! +${Math.round((cfg.buffSuccessBonus ?? 0) * 100)}% tỉ lệ Độ Kiếp trong 5 phút!`);
+      setShowInventory(false);
+      return;
+    }
+
+    if (cooldownRemain > 0) { setBubbleText(`⏳ Khí Hải chưa tiêu hóa xong! Còn ${cooldownRemain}s nữa...`); return; }
     setInventory(prev => ({ ...prev, [itemId]: prev[itemId] - 1 }));
     setLastPillTime(Date.now());
     setState('eat'); setFrame(0);
     addXP(cfg.xpValue);
 
-    const msgs: Record<ItemId, string[]> = {
+    const msgs: Record<string, string[]> = {
       basic:   [`💊 Cắn Tụ Linh Đan! Linh lực dâng trào~ (+${cfg.xpValue} XP)`, `💊 Tinh hoa Tụ Linh thấm vào đan điền! (+${cfg.xpValue} XP)`],
       recover: [`🍃 Hồi Phục Đan tan chảy! Chân khí phục hồi~ (+${cfg.xpValue} XP)`, `🍃 Thuần thanh linh khí dâng trào! (+${cfg.xpValue} XP)`],
       great:   [`🌸 Đại Hoàn Đan! Linh lực cuồn cuộn! (+${cfg.xpValue} XP)`, `🌸 Cổ Thần Đan! Khí tức như sấm dậy! (+${cfg.xpValue} XP)`]
     };
-    const pool = msgs[itemId];
+    const pool = msgs[itemId] ?? [`${cfg.emoji} Cắn đan! (+${cfg.xpValue} XP)`];
     setBubbleText(pool[Math.floor(Math.random() * pool.length)]);
     setShowInventory(false);
   };
@@ -307,7 +351,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     if (isTribulationLevel) {
       setIsLevelUpAnim(true); triggerGentleHop();
       setBubbleText(`🌩️ OÀNGGG! Cửu Trùng Thiên Kiếp Sấm Sét giáng xuống! Thỏ đang chống chịu...`);
-      const success = Math.random() < getSuccessRate(currentLevel);
+      const success = Math.random() < effectiveSuccessRate;
 
       setTimeout(() => {
         setIsLevelUpAnim(false);
@@ -316,6 +360,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
           grantItem('great', 1);
           if (target.level === 10) setBubbleText(`✨ PHI THĂNG TIÊN GIỚI! Thỏ đắc đạo Chân Tiên 🌟! +1 🌸 Đại Hoàn Đan!`);
           else setBubbleText(`✨ ĐỘ KIẾP THÀNH CÔNG! Đột phá [${target.name}]! +1 🌸 Đại Hoàn Đan thưởng!`);
+          // Talisman buff consumed after tribulation
+          if (isTalismanActive) setTalismanBuffExpiry(0);
         } else {
           const gap = target.reqXp - currentLevelInfo.reqXp;
           const penalty = Math.round(gap * 0.10);
@@ -341,14 +387,21 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
 
   // ─── Milestone Grants ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (totalMinutes === 100 || (totalMinutes > 0 && totalMinutes % 100 === 0)) {
+    if (totalMinutes > 0 && totalMinutes % 100 === 0) {
       grantItem('great', 1, `🏅 Mốc ${totalMinutes} phút tọa thiền! +1 🌸 Đại Hoàn Đan!`);
+    }
+    if (totalMinutes > 0 && totalMinutes % 500 === 0) {
+      grantItem('talisman', 1, `🔱 Mốc ${totalMinutes} phút tu luyện! +1 🔱 Hộ Kiếp Phù huyền thoại!`);
     }
   }, [totalMinutes]);
 
   useEffect(() => {
     if (totalDeploys > 0 && totalDeploys % 50 === 0) {
       grantItem('great', 3, `🏅 Mốc ${totalDeploys} lần deploy! +3 🌸 Đại Hoàn Đan!`);
+    }
+    // Grant Hộ Kiếp Phù at deploy milestones 10/25/50
+    if ([10, 25, 50].includes(totalDeploys)) {
+      grantItem('talisman', 1, `🔱 Mốc ${totalDeploys} lần deploy! +1 🔱 Hộ Kiếp Phù huyền thoại!`);
     }
   }, [totalDeploys]);
 
@@ -535,17 +588,26 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
               title={isTribulationLevel ? `ĐỘ KIẾP! Tỉ lệ thành công: ${currentSuccessRatePercent}%` : 'ĐỘT PHÁ lên Trúc Cơ Kỳ!'}
               style={{
                 background: isTribulationLevel
-                  ? 'linear-gradient(135deg,#f59e0b,#ef4444,#eab308)'
+                  ? isTalismanActive
+                    ? 'linear-gradient(135deg,#fde047,#f59e0b,#eab308)'
+                    : 'linear-gradient(135deg,#f59e0b,#ef4444,#eab308)'
                   : 'linear-gradient(135deg,#34d399,#14b8a6,#fbbf24)',
-                border: `1px solid ${isTribulationLevel ? '#fde68a' : '#6ee7b7'}`,
-                borderRadius: '8px', padding: '2px 10px',
+                border: `1px solid ${isTribulationLevel ? (isTalismanActive ? '#fde047' : '#fde68a') : '#6ee7b7'}`,
+                borderRadius: '8px', padding: isTalismanActive ? '2px 10px 3px' : '2px 10px',
                 fontWeight: 900, fontSize: '10.5px', color: '#000',
                 cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
-                boxShadow: '0 0 14px rgba(245,158,11,0.7)',
+                boxShadow: isTalismanActive && isTribulationLevel
+                  ? '0 0 22px rgba(253,224,71,0.9), 0 0 8px rgba(245,158,11,0.8)'
+                  : '0 0 14px rgba(245,158,11,0.7)',
                 animation: 'pulse 1.5s infinite'
               }}
             >
-              {isTribulationLevel ? `🌩️ ĐỘ KIẾP (${currentSuccessRatePercent}%)` : '✨ ĐỘT PHÁ'}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                <span>{isTribulationLevel ? `🌩️ ĐỘ KIẾP (${currentSuccessRatePercent}%)` : '✨ ĐỘT PHÁ'}</span>
+                {isTalismanActive && (
+                  <span style={{ fontSize: '9px', color: '#fde047', fontWeight: 700 }}>🔱 +{Math.round((talismanCfg.buffSuccessBonus ?? 0) * 100)}% ({Math.ceil(talismanCountdown / 60)}m{talismanCountdown % 60}s)</span>
+                )}
+              </div>
             </button>
           ) : (
             <button
@@ -606,7 +668,10 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {ITEM_CONFIG.map(item => {
                 const qty = inventory[item.id];
-                const disabled = qty === 0 || cooldownRemain > 0;
+                const isTalismItem = item.isBuff;
+                const isActive = isTalismItem && isTalismanActive;
+                // Talisman has no cooldown restriction — pills do
+                const disabled = qty === 0 || (isTalismItem ? isActive : cooldownRemain > 0);
                 return (
                   <button
                     key={item.id}
@@ -615,17 +680,30 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                     title={item.description}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
-                      background: disabled ? 'rgba(30,35,50,0.6)' : 'rgba(245,158,11,0.08)',
-                      border: `1px solid ${disabled ? 'rgba(100,116,139,0.25)' : RARITY_COLORS[item.rarity] + '55'}`,
+                      background: isActive
+                        ? 'rgba(253,224,71,0.12)'
+                        : disabled ? 'rgba(30,35,50,0.6)' : 'rgba(245,158,11,0.08)',
+                      border: `1px solid ${isActive ? '#fde047aa' : disabled ? 'rgba(100,116,139,0.25)' : RARITY_COLORS[item.rarity] + '55'}`,
                       borderRadius: '10px', padding: '7px 10px',
                       cursor: disabled ? 'not-allowed' : 'pointer', width: '100%',
-                      opacity: disabled ? 0.5 : 1, transition: 'all 0.15s'
+                      opacity: (disabled && !isActive) ? 0.5 : 1, transition: 'all 0.15s',
+                      boxShadow: isActive ? '0 0 12px rgba(253,224,71,0.4)' : 'none'
                     }}
                   >
                     <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.emoji}</span>
                     <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ color: RARITY_COLORS[item.rarity], fontWeight: 700, fontSize: '11px' }}>{item.name}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '9.5px', marginTop: '1px' }}>+{item.xpValue} Linh Lực</div>
+                      <div style={{ color: RARITY_COLORS[item.rarity], fontWeight: 700, fontSize: '11px' }}>
+                        {item.name}
+                        {isActive && <span style={{ color: '#fde047', fontSize: '9px', marginLeft: '4px' }}>● ĐANG HIỆU LỰC</span>}
+                      </div>
+                      <div style={{ color: '#94a3b8', fontSize: '9.5px', marginTop: '1px' }}>
+                        {item.isBuff
+                          ? isActive
+                            ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s • +${Math.round((item.buffSuccessBonus ?? 0) * 100)}% Độ Kiếp`
+                            : `Kích hoạt: +${Math.round((item.buffSuccessBonus ?? 0) * 100)}% Độ Kiếp / 5 phút`
+                          : `+${item.xpValue} Linh Lực`
+                        }
+                      </div>
                     </div>
                     <div style={{
                       background: qty > 0 ? RARITY_COLORS[item.rarity] + '33' : 'rgba(100,116,139,0.2)',
@@ -642,9 +720,10 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
 
             <div style={{ marginTop: '10px', borderTop: '1px solid rgba(245,158,11,0.15)', paddingTop: '8px' }}>
               <div style={{ color: '#94a3b8', fontSize: '9px', lineHeight: '1.55' }}>
-                <div>💊 <strong style={{ color: '#93c5fd' }}>Tụ Linh Đan:</strong> 1/phút ngồi web, kéo thả Thỏ 5 lần, Thỏ tọa thiền</div>
+                <div>💊 <strong style={{ color: '#93c5fd' }}>Tụ Linh Đan:</strong> 1/phút ngồi web, kéo thả Thỏ 5 lần</div>
                 <div>🍃 <strong style={{ color: '#86efac' }}>Hồi Phục Đan:</strong> Mỗi lần deploy thành công, mở web sau 4h</div>
                 <div>🌸 <strong style={{ color: '#f9a8d4' }}>Đại Hoàn Đan:</strong> Độ Kiếp thành công, mốc 100 phút/50 deploy</div>
+                <div>🔱 <strong style={{ color: '#fde047' }}>Hộ Kiếp Phù:</strong> Mốc 10/25/50 lần deploy, mốc 500 phút tọa thiền</div>
               </div>
             </div>
           </div>
@@ -688,12 +767,12 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
           style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
           onPointerDown={e => e.stopPropagation()}
         >
-          <div style={{ background: '#0b0f19', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '18px', width: '100%', maxWidth: '520px', padding: '20px', boxShadow: '0 20px 50px rgba(245,158,11,0.18)', color: '#fff', position: 'relative' }}>
+          <div style={{ background: '#0b0f19', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '20px', width: '100%', maxWidth: '680px', padding: '24px', boxShadow: '0 20px 60px rgba(245,158,11,0.22)', color: '#fff', position: 'relative' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(245,158,11,0.18)', paddingBottom: '12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Crown style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
-                <span style={{ fontWeight: 700, fontSize: '14px', color: '#fde68a' }}>17 Cảnh Giới Tu Tiên & Pháp Bảo</span>
+                <span style={{ fontWeight: 700, fontSize: '15px', color: '#fde68a' }}>Cảnh Giới Tu Tiên & Pháp Bảo</span>
               </div>
               <button onClick={() => setShowCostumePicker(false)} style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                 <X style={{ width: '16px', height: '16px' }} />
@@ -704,9 +783,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
             <div style={{ background: 'rgba(22,31,51,0.9)', border: '1px solid rgba(245,158,11,0.28)', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '24px' }}>{currentLevelInfo.emoji}</span>
+                  <span style={{ fontSize: '28px' }}>{currentLevelInfo.emoji}</span>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#fbbf24' }}>Lv.{currentLevel}: {currentLevelInfo.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: '#fbbf24' }}>Lv.{currentLevel}: {currentLevelInfo.name}</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                       Linh Lực: {xp} XP • Túi Đan: {totalInventory} viên
                     </div>
@@ -729,8 +808,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
             </div>
 
             {/* Realm Grid */}
-            <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', marginBottom: '8px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Danh Sách 17 Cảnh Giới & Pháp Bảo</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Danh Sách 17 Cảnh Giới & Pháp Bảo</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
               {LEVEL_CONFIG.map(lvl => {
                 const unlocked = xp >= lvl.reqXp;
                 const equipped = activeSkin === lvl.skinId;
@@ -741,7 +820,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                     disabled={!unlocked}
                     onClick={() => { if (unlocked) { setActiveSkin(lvl.skinId); setShowCostumePicker(false); setBubbleText(`✨ Triệu hồi Pháp Bảo [${lvl.skinName}]!`); } }}
                     style={{
-                      padding: '10px', borderRadius: '12px', textAlign: 'left',
+                      padding: '12px', borderRadius: '12px', textAlign: 'left',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       background: equipped ? 'rgba(245,158,11,0.18)' : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
                       border: `1px solid ${equipped ? '#f59e0b' : unlocked ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
@@ -750,11 +829,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                       transition: 'all 0.15s'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-                      <span style={{ fontSize: '18px', flexShrink: 0 }}>{lvl.emoji}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                      <span style={{ fontSize: '22px', flexShrink: 0 }}>{lvl.emoji}</span>
                       <div style={{ overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 700, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.name}</div>
-                        <div style={{ fontSize: '9.5px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 700, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.name}</div>
+                        <div style={{ fontSize: '10px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {unlocked ? lvl.skinName : `Cần ${lvl.reqXp} XP`}
                           {nextLvlSuccessRate !== null && unlocked ? <span style={{ color: nextLvlSuccessRate >= 70 ? '#86efac' : nextLvlSuccessRate >= 50 ? '#fde68a' : '#fca5a5' }}> • Kiếp {nextLvlSuccessRate}%</span> : null}
                         </div>
@@ -762,7 +841,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                     </div>
                     <div style={{ flexShrink: 0, marginLeft: '4px' }}>
                       {equipped ? <div style={{ width: '18px', height: '18px', background: '#f59e0b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check style={{ width: '11px', height: '11px', color: '#000' }} /></div>
-                        : unlocked ? <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f59e0b' }}>Trần thiết</span>
+                        : unlocked ? <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f59e0b' }}>Dùng</span>
                         : <Lock style={{ width: '12px', height: '12px', color: '#4b5563' }} />}
                     </div>
                   </button>
