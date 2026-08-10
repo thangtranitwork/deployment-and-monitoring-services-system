@@ -31,6 +31,19 @@ export interface WorkspaceItem {
   services?: ServiceConfig[];
 }
 
+export interface ServiceMetric {
+  status?: string;
+  pid?: string;
+  service?: string;
+  cpu?: string;
+  memory?: string;
+  uptime?: string;
+  threads?: number;
+  ports?: string[] | string;
+  stats_port?: string;
+  binary_mtime?: number;
+}
+
 export interface Service {
   name: string;
   branch: string;
@@ -40,10 +53,11 @@ export interface Service {
   has_dev: boolean;
   has_stg: boolean;
   has_prod: boolean;
-  cpu: string;
-  memory: string;
-  uptime: string;
-  ports: string;
+  cpu?: string;
+  memory?: string;
+  uptime?: string;
+  ports?: string;
+  metrics?: Record<string, ServiceMetric>;
   dev_script?: string;
   stg_script?: string;
   prod_script?: string;

@@ -7,10 +7,24 @@ interface TerminalViewProps {
   selectedServiceName?: string;
   pwdPath: string;
   deployLogs: string;
+  activeTab?: 'pty' | 'deploy';
+  onTabChange?: (tab: 'pty' | 'deploy') => void;
 }
 
-export const TerminalView: React.FC<TerminalViewProps> = ({ selectedServiceName, pwdPath: initialPwd, deployLogs }) => {
-  const [activeTab, setActiveTab] = useState<'pty' | 'deploy'>('pty');
+export const TerminalView: React.FC<TerminalViewProps> = ({
+  selectedServiceName,
+  pwdPath: initialPwd,
+  deployLogs,
+  activeTab: controlledTab,
+  onTabChange
+}) => {
+  const [internalTab, setInternalTab] = useState<'pty' | 'deploy'>('pty');
+  const activeTab = controlledTab !== undefined ? controlledTab : internalTab;
+
+  const setActiveTab = (tab: 'pty' | 'deploy') => {
+    setInternalTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
   const terminalRef = useRef<HTMLDivElement | null>(null);
   const [pwdPath, setPwdPath] = useState<string>(initialPwd || '~');
   const [termStatus, setTermStatus] = useState<string>('idle');
@@ -136,6 +150,14 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ selectedServiceName,
     }
   };
 
+  const deployLogsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (activeTab === 'deploy' && deployLogsRef.current) {
+      deployLogsRef.current.scrollTop = deployLogsRef.current.scrollHeight;
+    }
+  }, [deployLogs, activeTab]);
+
   return (
     <div className="flex-1 flex flex-col min-h-[140px] border border-[#232a3f]/75 rounded-xl overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.4)] bg-[#06080d]/92">
       {/* Header Tab Group */}
@@ -184,6 +206,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ selectedServiceName,
 
       {/* Terminal View 2: Deploy Logs Console */}
       <div
+        ref={deployLogsRef}
         className={`flex-1 p-3 font-mono text-xs text-[#38bdf8] overflow-y-auto whitespace-pre-wrap leading-relaxed ${
           activeTab === 'deploy' ? 'block' : 'hidden'
         }`}

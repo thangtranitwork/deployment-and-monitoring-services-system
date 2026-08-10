@@ -393,10 +393,10 @@ export const GitModal: React.FC<GitModalProps> = ({
                     const found = services.find((s) => s.name === e.target.value);
                     if (found && onSelectService) onSelectService(found);
                   }}
-                  className="bg-transparent text-xs font-bold text-emerald-400 font-mono outline-none focus:outline-none border-none appearance-none pr-5 cursor-pointer"
+                  className="bg-transparent text-xs font-bold text-emerald-400 font-mono outline-none focus:outline-none border-none appearance-none pr-5 cursor-pointer shadow-none ring-0"
                 >
                   {services.map((s) => (
-                    <option key={s.name} value={s.name} className="bg-[#0b0e17] text-white">
+                    <option key={s.name} value={s.name} className="bg-white text-slate-800 dark:bg-[#0b0e17] dark:text-white">
                       {s.name}
                     </option>
                   ))}

@@ -41,7 +41,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           <span className="text-[#10b981]">Internal</span> Deploy System
         </span>
         <span className="text-[11px] opacity-50 font-normal ml-1.5 px-2 py-0.5 rounded bg-white/5 border border-[#232a3f]/75">
-          v2.0.0 (React SPA)
+          v2.0.0
         </span>
       </div>
 

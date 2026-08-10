@@ -109,15 +109,46 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
     if (isOpen) {
       loadVPNData();
 
-      // SSE connection for VPN logs
-      const evtSource = new EventSource('/api/logs');
+      const statusInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/status');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.status) {
+              setVpnState(data.status);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }, 2500);
+
+      let evtSource: EventSource | null = new EventSource('/api/logs');
       evtSource.onmessage = (e) => {
         if (e.data) {
           setLogs(prev => prev + '\n' + e.data);
         }
       };
+      evtSource.onerror = () => {
+        if (evtSource) {
+          evtSource.close();
+          evtSource = null;
+        }
+        setTimeout(() => {
+          if (isOpen) {
+            evtSource = new EventSource('/api/logs');
+            evtSource.onmessage = (e) => {
+              if (e.data) setLogs(prev => prev + '\n' + e.data);
+            };
+          }
+        }, 2000);
+      };
+
       return () => {
-        evtSource.close();
+        clearInterval(statusInterval);
+        if (evtSource) {
+          evtSource.close();
+        }
       };
     }
   }, [isOpen, customDir]);
@@ -186,8 +217,8 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
       });
 
       if (res.ok) {
-        setVpnState('connected');
-        setLogs(prev => prev + `[${new Date().toLocaleTimeString()}] ✅ OpenVPN Tunnel Connected Successfully!\nInterface tun0 assigned.\n`);
+        setVpnState('connecting');
+        setLogs(prev => prev + `[${new Date().toLocaleTimeString()}] OpenVPN process launched successfully. Monitoring tunnel status...\n`);
       } else {
         let errText = '';
         try {
@@ -200,8 +231,24 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
         setLogs(prev => prev + `❌ Connection Error: ${errText}\n`);
       }
     } catch (err: any) {
-      setVpnState('disconnected');
-      setLogs(prev => prev + `❌ Exception: ${err.message}\n`);
+      // OpenVPN route changes can cause a temporary fetch socket error in browser: verify actual status
+      setTimeout(async () => {
+        try {
+          const checkRes = await fetch('/api/status');
+          if (checkRes.ok) {
+            const st = await checkRes.json();
+            if (st && (st.status === 'connecting' || st.status === 'connected')) {
+              setVpnState(st.status);
+              setLogs(prev => prev + `[${new Date().toLocaleTimeString()}] VPN Tunnel status: ${st.status}\n`);
+              return;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        setVpnState('disconnected');
+        setLogs(prev => prev + `❌ Exception: ${err.message || 'Failed to execute VPN connect action.'}\n`);
+      }, 1500);
     }
   };
 
@@ -209,7 +256,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
     try {
       await fetch('/api/disconnect', { method: 'POST' });
       setVpnState('disconnected');
-      setLogs(prev => prev + `\n[${new Date().toLocaleTimeString()}] Disconnected VPN tunnel.`);
+      setLogs(prev => prev + `\n[${new Date().toLocaleTimeString()}] Disconnected VPN tunnel.\n`);
     } catch (e) {
       setVpnState('disconnected');
     }
@@ -363,7 +410,10 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
                     vpnState === 'connecting' ? 'bg-amber-400 animate-pulse' : 'bg-rose-500'
                   }`} />
                   <div>
-                    <div className="font-bold text-xs uppercase tracking-wider">
+                    <div className={`font-bold text-xs uppercase tracking-wider ${
+                      vpnState === 'connected' ? 'text-[#10b981]' :
+                      vpnState === 'connecting' ? 'text-amber-500' : 'text-rose-500'
+                    }`}>
                       {vpnState}
                     </div>
                     <div className="text-[10px] text-[#94a3b8]">
@@ -378,7 +428,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
                 <div className="space-y-1 text-[11px] mt-1.5">
                   <div className="flex justify-between">
                     <span className="text-[#94a3b8]">Interface:</span>
-                    <span className="font-mono font-bold text-white">{vpnState === 'connected' ? 'tun0' : 'none'}</span>
+                    <span className="font-mono font-bold text-[#f1f5f9]">{vpnState === 'connected' ? 'tun0' : 'none'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#94a3b8]">Accounts:</span>
@@ -391,7 +441,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
             {/* Live Logs Monitor */}
             <div className="flex-1 border border-[#232a3f]/75 rounded-xl overflow-hidden bg-[#06080d] flex flex-col h-[260px] max-h-[300px]">
               <div className="px-3 py-1.5 bg-[#0d1017] border-b border-[#232a3f]/75 flex justify-between items-center text-[10px] text-[#94a3b8] font-mono">
-                <span className="font-bold text-white">openvpn.log</span>
+                <span className="font-bold text-[#f1f5f9]">openvpn.log</span>
                 <span>Live stream</span>
               </div>
               <pre ref={logContainerRef} className="flex-1 p-3 font-mono text-[11px] text-[#38bdf8] overflow-y-auto whitespace-pre-wrap leading-relaxed">
@@ -405,7 +455,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
         <div className="px-6 py-3 border-t border-[#232a3f]/75 flex justify-end bg-[#0d1017]">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold rounded-lg border border-[#232a3f]/75 text-[#94a3b8] hover:text-white transition-all cursor-pointer"
+            className="px-5 py-2 text-xs font-semibold rounded-lg border border-[#232a3f]/75 bg-white/5 hover:bg-white/10 text-[#f1f5f9] transition-all cursor-pointer"
           >
             Close
           </button>

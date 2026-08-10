@@ -399,7 +399,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
                   {/* Selection Indicator Pill */}
                   <div className="pt-2 border-t border-white/5 flex justify-between items-center text-[10px]">
                     <span className={`font-semibold ${isSelected ? 'text-emerald-400' : 'text-[#94a3b8]'}`}>
-                      {isSelected ? '✓ Selected for deploy' : eligible ? 'Click to select' : 'Disabled'}
+                      {isSelected ? '✓ Selected' : eligible ? '' : 'Disabled'}
                     </span>
 
                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${

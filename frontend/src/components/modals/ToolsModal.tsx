@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Code, FileText, Database, Shield, Globe, Terminal, Clock, QrCode, Layers, GitCompare, Wrench } from 'lucide-react';
+import { parseKVString } from '@/utils/kvParser';
 
 interface ToolsModalProps {
   isOpen: boolean;
@@ -160,19 +161,10 @@ export const ToolsModal: React.FC<ToolsModalProps> = ({ isOpen, onClose }) => {
 
   const convertKvToJson = () => {
     try {
-      const obj: Record<string, any> = {};
-      const pairs = kvInput.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-      pairs.forEach(p => {
-        const idx = p.indexOf(':');
-        if (idx !== -1) {
-          const k = p.substring(0, idx).trim();
-          let v = p.substring(idx + 1).trim().replace(/^"|"$/g, '');
-          obj[k] = isNaN(Number(v)) ? v : Number(v);
-        }
-      });
-      setKvOutput(JSON.stringify(obj, null, 2));
+      const parsedObj = parseKVString(kvInput);
+      setKvOutput(JSON.stringify(parsedObj, null, 2));
     } catch (e: any) {
-      setKvOutput('Failed to parse KV sequence');
+      setKvOutput('Failed to parse KV sequence: ' + e.message);
     }
   };
 

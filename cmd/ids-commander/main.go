@@ -126,53 +126,92 @@ func main() {
 	mux.HandleFunc("/api/accounts", handleAccounts)
 	mux.HandleFunc("/api/accounts/delete", handleDeleteAccount)
 
-	// React SPA dist static fallback
-	distPath := filepath.Join(basePath, "frontend", "dist")
-	if _, err := os.Stat(distPath); err == nil {
-		log.Printf("[Init] Serving React SPA Frontend from: %s", distPath)
-		fileServer := http.FileServer(http.Dir(distPath))
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, "/api/") {
-				http.NotFound(w, r)
-				return
-			}
-			path := filepath.Join(distPath, r.URL.Path)
-			if _, err := os.Stat(path); os.IsNotExist(err) || r.URL.Path == "/" {
-				http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
-				return
-			}
-			fileServer.ServeHTTP(w, r)
-		})
-	} else {
-		mux.HandleFunc("/", indexHandler)
-		mux.HandleFunc("/health-monitor", healthMonitorHandler)
-		mux.HandleFunc("/tools", toolsHandler)
-	}
-
-	// Legacy Static assets fallback
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(basePath, "static")))))
-	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(basePath, "static", "favicon.ico"))
-	})
-
 	startVPNMonitor()
+
+	appMode := strings.ToUpper(os.Getenv("APP_MODE"))
+	if appMode == "" {
+		appMode = "BOTH"
+	}
+	runHTML := (appMode == "BOTH" || appMode == "HTML")
+	runReact := (appMode == "BOTH" || appMode == "REACT")
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "5000"
+		port = "5555"
+	}
+	reactPort := os.Getenv("REACT_PORT")
+	if reactPort == "" {
+		reactPort = "55555"
 	}
 
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
-	}
+	distPath := filepath.Join(basePath, "frontend", "dist")
 
-	go func() {
-		fmt.Printf("Server starting on http://localhost:%s\n", port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+	log.Printf("[Init] APP_MODE: %s (Run HTML: %v on port %s, Run React: %v on port %s)", appMode, runHTML, port, runReact, reactPort)
+
+	// 1. Start HTML Server if enabled
+	var htmlSrv *http.Server
+	if runHTML {
+		mux.HandleFunc("/", indexHandler)
+		mux.HandleFunc("/health-monitor", healthMonitorHandler)
+		mux.HandleFunc("/tools", toolsHandler)
+
+		mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(filepath.Join(basePath, "static")))))
+		mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, filepath.Join(basePath, "static", "favicon.ico"))
+		})
+
+		htmlSrv = &http.Server{
+			Addr:    ":" + port,
+			Handler: mux,
 		}
-	}()
+
+		go func() {
+			fmt.Printf("HTML Server starting on http://localhost:%s\n", port)
+			if err := htmlSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("listen html: %s\n", err)
+			}
+		}()
+	}
+
+	// 2. Start React SPA Server if enabled
+	var reactSrv *http.Server
+	if runReact {
+		if _, err := os.Stat(distPath); err == nil {
+			targetReactPort := reactPort
+			if !runHTML {
+				targetReactPort = port
+			}
+			log.Printf("[Init] Serving React SPA Frontend from: %s on port %s", distPath, targetReactPort)
+			reactMux := http.NewServeMux()
+			fileServer := http.FileServer(http.Dir(distPath))
+			reactMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				if strings.HasPrefix(r.URL.Path, "/api/") {
+					mux.ServeHTTP(w, r)
+					return
+				}
+				path := filepath.Join(distPath, r.URL.Path)
+				if _, err := os.Stat(path); os.IsNotExist(err) || r.URL.Path == "/" {
+					http.ServeFile(w, r, filepath.Join(distPath, "index.html"))
+					return
+				}
+				fileServer.ServeHTTP(w, r)
+			})
+
+			reactSrv = &http.Server{
+				Addr:    ":" + targetReactPort,
+				Handler: reactMux,
+			}
+
+			go func() {
+				fmt.Printf("React SPA Server starting on http://localhost:%s\n", targetReactPort)
+				if err := reactSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					log.Printf("listen react: %s\n", err)
+				}
+			}()
+		} else {
+			log.Printf("[Init] Warning: React build directory %s does not exist", distPath)
+		}
+	}
 
 	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
@@ -184,8 +223,16 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("[Main] Server forced to shutdown: %v", err)
+	if reactSrv != nil {
+		if err := reactSrv.Shutdown(ctx); err != nil {
+			log.Printf("[Main] React Server forced to shutdown: %v", err)
+		}
+	}
+
+	if htmlSrv != nil {
+		if err := htmlSrv.Shutdown(ctx); err != nil {
+			log.Printf("[Main] HTML Server forced to shutdown: %v", err)
+		}
 	}
 
 	log.Println("[Main] Server exiting")

@@ -50,6 +50,8 @@ export const ServiceSidebar: React.FC<ServiceSidebarProps> = ({
           const isSelected = selectedService?.name === svc.name;
           const isSuggest = (svc.ahead || 0) > 0 || (svc.ahead_staging || 0) > 0;
           const hasStash = svc.has_stash;
+          const dUp = svc.metrics?.['Development'] && (svc.metrics['Development'].status === 'RUNNING' || svc.metrics['Development'].status === 'UP');
+          const sUp = svc.metrics?.['Staging'] && (svc.metrics['Staging'].status === 'RUNNING' || svc.metrics['Staging'].status === 'UP');
 
           return (
             <div
@@ -66,6 +68,12 @@ export const ServiceSidebar: React.FC<ServiceSidebarProps> = ({
                   {svc.name}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {svc.metrics && (
+                    <div className="flex gap-1 items-center mr-1" title={`Dev: ${dUp ? 'UP' : 'DOWN'}, Stg: ${sUp ? 'UP' : 'DOWN'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${dUp ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-rose-500'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${sUp ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-rose-500'}`} />
+                    </div>
+                  )}
                   {hasStash && <span title="Has Git Stash" className="text-xs">📥</span>}
                   {isSuggest && (
                     <span

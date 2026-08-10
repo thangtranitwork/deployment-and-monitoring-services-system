@@ -106,10 +106,14 @@ export const App: React.FC = () => {
       const res = await fetch(`/api/services?workspace_id=${targetId}`);
       if (res.ok) {
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data.services || [];
+        const list: Service[] = Array.isArray(data) ? data : data.services || [];
         setServices(list);
-        if (list.length > 0 && !selectedService) {
-          setSelectedService(list[0]);
+        if (list.length > 0) {
+          setSelectedService(prev => {
+            if (!prev) return list[0];
+            const updated = list.find(s => s.name === prev.name);
+            return updated || prev;
+          });
         }
       }
     } catch (e) {
@@ -137,7 +141,11 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     loadSettingsAndServices();
-  }, []);
+    const interval = setInterval(() => {
+      fetchServicesForWorkspace();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeWorkspaceId]);
 
   // Global Shortcuts
   useEffect(() => {
@@ -206,6 +214,7 @@ export const App: React.FC = () => {
 
   const executeRealDeploy = async (msg: string, prodPassword?: string) => {
     if (!selectedService) return;
+    setTerminalTab('deploy');
     setIsDeploying(true);
     setDeployLogs(`🚀 [${new Date().toLocaleTimeString()}] Starting deployment for [${selectedService.name}] on ${currentEnv}...\nCommit Message: ${msg || 'None'}\n\n`);
 
@@ -214,29 +223,60 @@ export const App: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service_name: selectedService.name,
-          environment: currentEnv,
+          service: selectedService.name,
+          env: currentEnv,
           message: msg,
-          prod_password: prodPassword,
+          password: prodPassword,
           workspace_id: activeWorkspaceId
         })
       });
 
-      if (res.ok) {
-        const result = await res.json();
-        setDeployLogs(prev => prev + `[Output]: ${result.output || 'Deployment completed successfully.'}\n✅ Status: Success`);
-      } else {
+      if (res.status === 401) {
+        setDeployLogs(prev => prev + '\n❌ Access Denied: Invalid production password.\n');
+        return;
+      }
+
+      if (!res.ok) {
         const errText = await res.text();
-        setDeployLogs(prev => prev + `❌ [Error]: ${errText || 'Deployment failed.'}`);
+        setDeployLogs(prev => prev + `❌ [Error]: ${errText || 'Deployment failed.'}\n`);
+        return;
+      }
+
+      if (!res.body) {
+        setDeployLogs(prev => prev + '❌ Failed to read deployment stream.\n');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const events = chunk.split('\n\n');
+        for (const event of events) {
+          const trimmed = event.trimStart();
+          if (trimmed.startsWith('data: ')) {
+            const content = trimmed.slice(6);
+            if (content.trim() === '[EOF]') {
+              setDeployLogs(prev => prev + '\n✅ Deployment completed successfully!\n');
+            } else {
+              setDeployLogs(prev => prev + content + '\n');
+            }
+          }
+        }
       }
     } catch (err: any) {
-      setDeployLogs(prev => prev + `❌ [Network Error]: ${err.message || 'Failed to reach backend deployment endpoint.'}`);
+      setDeployLogs(prev => prev + `❌ [Network Error]: ${err.message || 'Failed to reach backend deployment endpoint.'}\n`);
     } finally {
       setIsDeploying(false);
+      fetchServicesForWorkspace();
     }
   };
 
   const handleTriggerDeploy = (msg: string) => {
+    setTerminalTab('deploy');
     if (currentEnv === 'Production') {
       setPendingDeployMsg(msg);
       setIsProdPassOpen(true);
@@ -251,6 +291,7 @@ export const App: React.FC = () => {
   };
 
   const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string) => {
+    setTerminalTab('deploy');
     setIsDeploying(true);
     setDeployLogs(`⚡ [${new Date().toLocaleTimeString()}] Initiating parallel multi-deploy for (${selectedNames.length}) services on ${env}...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
 
@@ -260,23 +301,48 @@ export const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           services: selectedNames,
-          environment: env,
+          env: env,
           message: msg,
           workspace_id: activeWorkspaceId
         })
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setDeployLogs(prev => prev + `[Parallel Output]: ${JSON.stringify(data, null, 2)}\n✅ Parallel Multi-Deploy completed!`);
-      } else {
+      if (!res.ok) {
         const errText = await res.text();
-        setDeployLogs(prev => prev + `❌ Multi-Deploy Error: ${errText}`);
+        setDeployLogs(prev => prev + `❌ Multi-Deploy Error: ${errText}\n`);
+        return;
+      }
+
+      if (!res.body) {
+        setDeployLogs(prev => prev + '❌ Failed to read multi-deploy stream.\n');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const events = chunk.split('\n\n');
+        for (const event of events) {
+          const trimmed = event.trimStart();
+          if (trimmed.startsWith('data: ')) {
+            const content = trimmed.slice(6);
+            if (content.trim() === '[EOF]') {
+              setDeployLogs(prev => prev + '\n✅ Parallel Multi-Deploy completed!\n');
+            } else {
+              setDeployLogs(prev => prev + content + '\n');
+            }
+          }
+        }
       }
     } catch (err: any) {
-      setDeployLogs(prev => prev + `❌ Multi-Deploy Exception: ${err.message}`);
+      setDeployLogs(prev => prev + `❌ Multi-Deploy Exception: ${err.message}\n`);
     } finally {
       setIsDeploying(false);
+      fetchServicesForWorkspace();
     }
   };
 
@@ -291,6 +357,25 @@ export const App: React.FC = () => {
       await loadSettingsAndServices();
     } catch (e) {
       // ignore
+    }
+  };
+
+  const [terminalTab, setTerminalTab] = useState<'pty' | 'deploy'>('pty');
+
+  const handleOpenLogs = () => {
+    setTerminalTab('deploy');
+    if (selectedService) {
+      const metric = selectedService.metrics?.[currentEnv];
+      if (metric && metric.stats_port && metric.stats_port !== 'N/A') {
+        const agentUrl = currentEnv === 'Development' ? settings.dev_agent_url :
+                         currentEnv === 'Staging' ? settings.stg_agent_url : settings.prod_agent_url;
+        try {
+          const host = agentUrl ? new URL(agentUrl).hostname : window.location.hostname;
+          window.open(`http://${host}:${metric.stats_port}`, '_blank');
+        } catch {
+          window.open(`http://${window.location.hostname}:${metric.stats_port}`, '_blank');
+        }
+      }
     }
   };
 
@@ -344,12 +429,16 @@ export const App: React.FC = () => {
                   onWorkspaceChange={handleWorkspaceChange}
                   onTriggerDeploy={handleTriggerDeploy}
                   isDeploying={isDeploying}
+                  onRefresh={loadSettingsAndServices}
+                  onOpenLogs={handleOpenLogs}
                 />
 
                 <TerminalView
                   selectedServiceName={selectedService?.name}
                   pwdPath={pwdPath}
                   deployLogs={deployLogs}
+                  activeTab={terminalTab}
+                  onTabChange={setTerminalTab}
                 />
               </main>
             </div>
@@ -372,6 +461,7 @@ export const App: React.FC = () => {
             <CompareModal
               isOpen={isCompareOpen}
               onClose={() => setIsCompareOpen(false)}
+              onOpenMultiDeploy={() => setIsMultiDeployOpen(true)}
               services={services}
             />
 

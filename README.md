@@ -1,267 +1,169 @@
 # 🚀 Internal Deploy System (IDS) - v2.0.0
 
-A high-performance, aesthetic deployment automation and monitoring dashboard built with **Go**. Manage your services, Git operations, and deployments with a premium web interface and real-time health metrics.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Manage your microservices, Git operations, multi-service parallel deployments, OpenVPN connections, and developer tools with a state-of-the-art dual-architecture web system.
+
+---
+
+## 🌐 Application Execution Modes (`APP_MODE`)
+
+IDS v2.0 supports 3 flexible UI execution modes configured via the `APP_MODE` environment variable in `.env`:
+
+- `APP_MODE=BOTH` *(Default)*: Runs both the HTML version on port `5555` and React SPA on port `55555` concurrently.
+- `APP_MODE=REACT`: Only builds and runs the modern **React SPA** (serves on port `5555` / `55555`).
+- `APP_MODE=HTML`: Only runs the standalone **HTML / Go Template Version** on port `5555`.
+
+- 👉 **React SPA Version (Vite + TS)**: [http://localhost:55555](http://localhost:55555)
+- 👉 **HTML / Go Template Version**: [http://localhost:5555](http://localhost:5555)
+
+Rebuild and restart instantly using the root script:
+```bash
+./restart.sh
+```
+
+---
 
 ## 📁 Project Structure
 
 ```text
 deploy-tool/
 ├── cmd/
-│   ├── ids-commander/      # Main Management Backend (Standard Library + SSE + DB logs)
-│   └── ids-health/         # Health Agent (Deploy on target servers)
+│   ├── ids-commander/      # Main Go Backend (Standard Library, SSE, PTY, Git & SQL Proxy)
+│   └── ids-health/         # Health Metrics Agent (Deploys on remote servers)
+├── frontend/               # React SPA Architecture (Vite + TypeScript + Tailwind CSS)
+│   ├── src/
+│   │   ├── components/     # UI Components (HeaderBar, ServiceSidebar, DeploymentPanel, TerminalView)
+│   │   ├── components/modals/ # Modals (GitModal, MultiDeployModal, CompareModal, VPNModal, HealthMonitorModal, GlobalSettingsModal, ShortcutsModal, ToolsModal)
+│   │   ├── pages/          # Standalone Pages (ToolsPage)
+│   │   ├── types/          # TypeScript Type Definitions
+│   │   └── utils/          # Key-Value & KV Parsers
+│   └── dist/               # Production React Build Bundle
 ├── scripts/                # Automation & Runner scripts
-├── templates/              # Web UI templates (HTML + Vanilla JS)
-├── static/                 # Static assets (css, js, favicon, etc.)
-├── settings.json           # Tool configuration (workspace, user, services, etc.)
-├── .env                    # Environment variables (DB, Agents)
-└── README.md               # Documentation
+├── templates/              # HTML Web UI Templates
+├── static/                 # Static Assets (CSS, JS, Favicon)
+├── settings.json           # Application Configuration (Workspaces, Services, Commands)
+├── restart.sh              # One-click Rebuild & Restart Script for Dual Stack
+├── .env                    # Environment Variables (DB, Agents, SSH)
+└── README.md               # System Documentation
 ```
 
-## 🛠 Features
+---
+
+## 🛠 Features & Capabilities
+
+### ⚡ React SPA & Dual Stack Architecture
+- **Dual Port Deployment**: Runs React SPA on port `55555` and HTML version on port `5555` via `./restart.sh`.
+- **Pure White Light Mode Redesign**: Pure white `#ffffff` background with crisp dark contrast typography (`#111827`, `#059669`, `#2563eb`), pure white modal cards, and emerald green action buttons matching 100% of the HTML design system.
+- **Controlled Terminal & Auto Log Tab Switching**: Triggers auto-tab switching to `Deploy Logs` upon deployment execution, auto-scrolls log output in real-time, and provides `📄 Logs` buttons linking directly to service stats ports.
+
+### 🔍 Workspace Branch Comparison (Compare Source Suite)
+- **Service Diff Accordion Cards**: Bento-style expandable cards displaying local branch, target branch, un-deployed commit count, and changed file count.
+- **Live Search Filter**: Filter services in real-time by service name or branch.
+- **Staging Synchronization (Cập nhật Staging)**: Single-click bulk or per-service staging update with auto-stash, `git checkout staging`, `git pull origin/staging`, and automatic restoration back to your original branch (`restoreOriginalBranch`).
+- **Direct Multi Deploy Access**: Integrated `⚡ Go to Multi Deploy` action button to immediately jump into parallel multi-service deployments.
 
 ### 📁 Multi-Workspace Management
-
-- **Nested Workspace Data Architecture**: Services are grouped neatly per workspace in `settings.json`, preventing flat array clutter and eliminating global state pollution.
-- **Instant SPA Workspace Switcher**: Switch active workspaces in ~100ms directly from the top header bar without full page reloads (`location.reload()`), preserving active UI states and WebSocket terminals.
-- **Dynamic Workspace Selection in Settings**: Single-click workspace table selector in settings. Dynamic binding of `DevAgentURL`, `StgAgentURL`, and `ProdAgentURL` inputs per selected workspace with strict memory isolation.
+- **Nested Workspace Data Architecture**: Services are grouped neatly per workspace in `settings.json`, preventing flat array clutter.
+- **Instant Workspace Switcher**: Switch active workspaces in ~100ms from the header bar without full page reloads.
+- **Dynamic Workspace Settings**: Single-click workspace table selector with dynamic binding of `DevAgentURL`, `StgAgentURL`, and `ProdAgentURL`.
 - **Automatic Service Rescan**: Dynamically scans microservice directories and deployment scripts scoped strictly to the active workspace path.
 
-### 🖥️ Monitoring & Health
+### 🖥️ Monitoring & Server Health
+- **Real-time Metrics Agent**: Live CPU %, Memory usage, Uptime, and Port bindings fetched from remote servers via SSE.
+- **Excel-like Metric Sorting**: Sort health metrics by any column with a single click.
+- **Post-Deploy Verification**: Verifies if a service restarted correctly by comparing binary `Mtime`.
 
-- **Real-time Metrics**: Live CPU, Memory, Uptime, and Port status from remote servers via SSE.
-- **Excel-like Sorting**: Sort service tables by any metric with a single click.
-- **Post-Deploy Verification**: Automatically verifies if a service restarted correctly by comparing binary `Mtime`.
-
-### 🌳 Git Management & Stashes
-
+### 🌳 Source Control & Git Management
 - **Full Control**: Branch switching, merging, and creation directly from the UI.
 - **Commit History**: Browse the last 15 commits with "Use Message" shortcut for deployments.
-- **Git Tags**: Current release/git tags are fetched via `git describe --tags --always` and displayed next to the branch name as a badge.
-- **Unpushed Highlights**: Commits not yet pushed to the remote are marked with an "UNPUSHED" badge and blue border.
-- **Status at a Glance**: Ahead/Behind counts (↑/↓) for **every local branch** are displayed in the branch list.
-- **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal feedback.
-- **Safe Stash**: Automatic stashing during checkouts to prevent data loss.
-- **Git Stash Manager**: A dedicated tab in the Git management card to view stashed files, create new stashes, pop, apply, or drop stashes directly.
-- **Git Staging Reset (Reset Staging)**: Automatically stashes local changes, detaches HEAD, deletes local `staging`, pulls a fresh `origin/staging` to deploy, and automatically restores the original workspace state (checkout branch/pop stash) afterwards.
-- **Conflicts & Rollback Manager**: When checkouts or branches conflict with local changes, an interactive modal displays conflicting files, letting users selectively revert/delete untracked files or perform an auto-stash with custom messages.
-- **Git Staging & Commit (Source Control)**: A VS-Code-like staging panel that lists staged/unstaged changes, displays file diffs, allows discarding changes, staging/unstaging individual or all files, and committing directly from the UI.
+- **Unpushed Highlights**: Commits not yet pushed to the remote are marked with an "UNPUSHED" badge.
+- **Remote Operations**: Dedicated buttons for **Fetch**, **Pull**, and **Push** with real-time terminal log feedback.
+- **Git Staging & Commit**: VS-Code-like staging panel that lists staged/unstaged changes, displays line-by-line diffs, allows discarding changes, and committing directly from the UI.
 
-### 🚀 Deployment Workflow & Interactive Animations
+### 🚀 Parallel Service Deployment (Multi-Deploy)
+- **Concurrent Execution**: Deploy multiple services concurrently without blocking thread loops.
+- **Card-Style Selection**: Selection dashboard (`Alt + Shift + M`) with active border glow, `Select All Eligible`, and `Clear Selection` controls.
+- **Live Multi-Deploy Console Matrix**: Auto-layout grid displaying live log streams for all deploying services in parallel.
+- **Master & Single Retry**: Retry failed deployments with a single click.
 
-- **Multi-Environment**: Seamlessly switch between Development, Staging, and Production targets with active pill indicators.
-- **Per-Service Production**: Toggle the Production environment visibility individually for each service.
-- **Production Protection**: Secure modal password verification before triggering any single or multi-service deployment to Production.
-- **Animated Run Deploy Button**: High-prominence Emerald Green gradient with idle breathing aura (`deployIdleBreath`), smooth 3D spring transition on hover (`transform: translateY(-3.5px) scale(1.05)`), tilted rocket `🚀` ignition angle, light sheen sweep, and active launch pulsing state (`.deploying`).
-- **Message History**: Navigate through previous commit messages using arrows or `Alt + Shift + Left/Right`.
-- **History Tracking**: Full SQL-based logging of every deployment (User, Time, Status, Message).
+### 🔒 OpenVPN Management
+- **OpenVPN Control**: Toggle host VPN connections directly from the Web interface.
+- **Socket Disconnect Fallback**: Resilient connection handling that catches Linux `tun0` interface routing drops without resetting state to disconnected.
+- **SSE Log Streaming**: Real-time `.ovpn` output log console with auto-reconnection on network route changes.
 
-### 💻 Interactive Terminal & Command Shell
+### 🛠️ Developer Utility Tools (IDS Tools Suite - `/tools`)
+A comprehensive suite of 13 local developer utility tools:
+- **Markdown Live Preview**: Real-time Markdown rendering with export and raw copy.
+- **JSON Formatter**: Beautify, compact, and validate JSON strings in real-time.
+- **JWT Decoder & Editor**: Parse token segments, sign/verify HMAC-SHA256 signatures, and edit payloads/headers.
+- **KV to JSON Parser**: Convert key-value logging sequences (`id:1 name:user`) into structured JSON.
+- **Text Diff Compare**: Line-by-line diffing with color-coded additions/deletions.
+- **Bcrypt Generator**: Backend-powered password hashing and validation via native Go bcrypt.
+- **Time Converter**: Multi-format time conversions (ISO 8601, Local, Epoch, UTC).
+- **Curl Online Runner**: Execute HTTP requests from raw cURL commands using a backend proxy.
+- **QR Code Gen/Reader**: Local QR Code generation, file drag-and-drop reading, and webcam scanner.
+- **DNS Dig / Whois / GeoIP**: Run DNS record queries (A, AAAA, MX, CNAME), TCP WHOIS port 43 lookup, and GeoIP location checks.
+- **WebSocket Client**: Test ws/wss connections, filter console message logs, and send custom payloads.
+- **SQL Preview & Schema**: Auto-fetch database table schema with a **100% Read-Only Simulation Engine** that parses `UPDATE`, `INSERT`, `DELETE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data**.
 
-- **Real PTY Integration**: Full interactive terminal session in the browser using WebSocket and `creack/pty`, supporting interactive CLI tools (vim, nano, htop).
-- **Clean Container View**: Seamless xterm.js integration with zero duplicate container scrollbars.
-- **Persistent Working Directory**: Automatically tracks and maintains your current working directory (`cd` command) across the entire session using real-time `/proc/<pid>/cwd` monitoring.
-- **Quick Command Snippets**: Save, manage, and instantly execute frequently used terminal snippets for rapid operations.
-- **Dual Tabs View**: Seamlessly switch between the `💻 Interactive Terminal` and the `🚀 Deploy Logs` views without losing state.
-
-### ⚡ Parallel Service Deployment (Multi-Deploy)
-
-- **Concurrent Execution**: Deploy multiple services at the same time without blocking or waiting for each deployment sequence.
-- **Premium Selection Modal**: Open selection dashboard via `Alt + Shift + M`. Select target environment, filter services, and enter a unified deployment message.
-- **Card-Style Selection & Clear**: Modern UI cards with active border glow. Includes a dedicated `🗑️ Clear Selection` button to reset choices in one click.
-- **Smart Eligibility Filter**: Automatically disables selection for services that lack deployment scripts for the selected environment.
-- **"Select All" Toggle**: A single button that toggles select/deselect of all currently filtered eligible services.
-- **Choice Persistence**: Automatically saves and reloads your last multi-deployment selections and target environment from `localStorage`.
-- **Fast Multi Deploy**: Instantly trigger deployment for saved services via `Ctrl + Alt + Shift + M`.
-- **Live Multi-Deploy Console Modal (Auto Grid)**: Displays live terminal logs for all deploying services in an auto-layout matrix grid. Completed services light up with vibrant Emerald/Red glow indicators.
-- **Advanced Retry Mechanisms**: Individual `🔄 Retry` buttons for each service in the auto-grid, plus a powerful `🔄 Retry Failed` master button to relaunch all failed deployments with a single click.
-
-### 🔒 VPN Management
-
-- **OpenVPN Integration**: Toggle VPN connection state on the host directly from the Web interface.
-- **Real-time Status**: Displays active tunnel status (connected, disconnected, connecting, disconnecting, or error state) with real-time logs via Server-Sent Events (SSE). Shows active WAN IP address, geo-location, active network interface, and uptime.
-- **Config & Account Management**:
-  - Scan for `.ovpn` profiles in custom directories or user folders.
-  - Save, edit, and delete multiple VPN credentials/accounts with custom labels.
-  - Automatically loads last saved credentials or persistent profiles.
-- **Passwordless Integration**: Seamlessly integrates with system OpenVPN using passwordless sudoers configuration.
-
-### 🎨 User Experience, Themes & Dual Canvas Backgrounds
-
-- **Dual-Canvas Animated Backgrounds**:
-  - **Dark Mode**: Retro 16-bit **Background Pixel Stars** with dynamic twinkling, periodic shooting stars with pixelated trails, and universe star regeneration.
-  - **Light Mode**: Pure white glassmorphic backdrop (`#ffffff`) with **Meteor Shower** (vibrant diagonal neon light speed meteor trails in Royal Blue, Purple, Emerald Green, Cyan, and Indigo).
-- **Vibrant Emerald Green Color System**: Fresh, modern Bright Emerald Green (`#10b981` / `#34d399`) theme across buttons, indicators, active tabs, and badges.
-- **Glassmorphism Transparency**: Semi-transparent card panels and sidebar (`backdrop-filter: blur(12px)`) letting animated canvas stars and meteors softly shine through.
-- **Micro-Animations**: Smooth spring transitions for header action buttons, environment pills, and sidebar service selection cards (`translateX(4px)` slide).
-- **Advanced Search**: Filter services and branches with smart query parsing (comma-separated list for **OR** matches, space-separated words for **AND** matches).
-- **Formatted Dialogs**: System alerts, confirms, and prompts support HTML formatting natively (e.g., highlighting key names in bold) for a cleaner UX.
-- **Resizable Layout**: Drag the split-pane resizer to balance space between terminal logs and Git management.
-- **Shortcuts Modal**: Quick-reference guide for all system keyboard shortcuts.
-
-### 🛠️ Developer Utility Tools (IDS Tools Suite)
-
-A comprehensive suite of local developer utility tools integrated into the workspace dashboard:
-
-- **Markdown Live Preview**: Real-time Markdown parsing and preview rendering with built-in export and raw copy actions.
-- **JSON Formatter**: Instantly beautify, compact, or validate JSON strings in real-time using a debounced formatting engine.
-- **JWT Decoder & Editor**: Parse token segments, sign/verify HMAC-SHA256 signatures, and edit payloads/headers directly in real-time.
-- **KV to JSON Parser**: Auto-convert key-value logging sequences (like `id:1 name:user`) into valid structured JSON.
-- **Text Diff Compare**: Local line-by-line diffing utilizing a custom LCS (Longest Common Subsequence) algorithm with color-coded additions/deletions.
-- **Bcrypt Generator**: Backend-powered password hashing and hash validation using native Go bcrypt packages.
-- **Time Converter**: Multi-format time conversions (ISO, Local, Epoch timestamp offsets, Relative time) supporting custom destination timezones.
-- **Curl Online Runner**: Execute HTTP requests from raw curl commands using a secure backend proxy to bypass CORS. Supports Chrome DevTools-style collapsible JSON tree viewer and image rendering.
-- **QR Code Gen/Reader**: Local QR Code generation with error correction control and download actions. Includes local QR file reading (drag-and-drop) and webcam scanning streams.
-- **DNS Dig / Whois / GeoIP**: Run DNS queries (A, AAAA, MX, CNAME, etc.) via custom resolvers, query domain registry WHOIS metadata directly over TCP socket port 43, and look up geographical server ISP info.
-- **WebSocket Client**: Interactive WebSocket connection testing client. Supports connecting to custom ws/wss URLs, filtering console message logs, sending custom payloads, subscribing to channels with quick presets, and collapsible JSON tree rendering for socket message payloads.
-- **SQL Preview & Schema**: Auto-fetch database table structure, column types, keys, and defaults. Features a **100% Read-Only Simulation Engine** powered by `SELECT` queries that parses `UPDATE`, `INSERT`, `DELETE`, and `REPLACE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data** (compatible with all storage engines like MyISAM, InnoDB, MEMORY). Includes text-overflow ellipsis protection and hover tooltips for long hash/token values.
+---
 
 ## ⌨️ Keyboard Shortcuts
 
 ### 🏠 Management Page
 
-| Action                         | Shortcut                                        |
-| :----------------------------- | :---------------------------------------------- |
-| **Search Service**             | `/`                                             |
-| **Navigate Services**          | `Alt + ↑ / ↓`                                   |
-| **Run Deploy**                 | `Ctrl + Enter`                                  |
-| **Multi Deploy Modal**         | `Alt + Shift + M`                               |
-| **Fast Multi Deploy (Last)**   | `Ctrl + Alt + Shift + M`                        |
-| **Cycle Deploy Msg**           | `Alt + Shift + ← / →` (Left=Newer, Right=Older) |
-| **Toggle Git Card**            | `Alt + Shift + G`                               |
-| **Switch Env (Dev/Stg)**       | `Alt + Shift + 1 / 2`                           |
-| **Git Tabs (B/C/S)**           | `Alt + Shift + Q / W / E`                       |
-| **View Logs**                  | `Alt + Shift + L`                               |
-| **Refresh / Stats / Settings** | `Alt + Shift + R / S / I`                       |
-| **Toggle Theme / Help**        | `Alt + Shift + T / H`                           |
-| **Toggle VPN Card**            | `Alt + Shift + U`                               |
-| **Close Modal**                | `Esc`                                           |
+| Action | Shortcut |
+| :--- | :--- |
+| **Search Service** | `/` |
+| **Navigate Services** | `Alt + ↑ / ↓` |
+| **Run Single Deploy** | `Ctrl + Enter` |
+| **Multi Deploy Modal** | `Alt + Shift + M` |
+| **Fast Multi Deploy** | `Ctrl + Alt + Shift + M` |
+| **Cycle Deploy Message** | `Alt + Shift + ← / →` |
+| **Workspace Compare** | `Alt + Shift + C` |
+| **Toggle Git Modal** | `Alt + Shift + G` |
+| **Toggle Theme** | `Alt + Shift + T` |
+| **Toggle VPN Modal** | `Alt + Shift + U` |
+| **Global Settings** | `Alt + Shift + I` |
+| **Refresh Data** | `Alt + Shift + R` |
+| **Shortcuts Help** | `Alt + Shift + H` |
+| **Close Modal** | `Esc` |
 
-### 🛠️ Utility Tools Page (`/tools`)
+---
 
-| Action                   | Shortcut                       |
-| :----------------------- | :----------------------------- |
-| **Markdown Preview**     | `Alt + Shift + 1`              |
-| **JSON Formatter**       | `Alt + Shift + 2`              |
-| **JWT Decoder**          | `Alt + Shift + 3`              |
-| **KV to JSON Parser**    | `Alt + Shift + 4`              |
-| **Text Diff Compare**    | `Alt + Shift + 5`              |
-| **Bcrypt Generator**     | `Alt + Shift + 6`              |
-| **Time Converter**       | `Alt + Shift + 7`              |
-| **Curl Online Runner**   | `Alt + Shift + 8`              |
-| **QR Code Gen/Reader**   | `Alt + Shift + 9`              |
-| **DNS Dig / Whois**      | `Alt + Shift + 0`              |
-| **WebSocket Client**     | `Alt + Shift + W`              |
-| **SQL Preview & Schema** | `Alt + Shift + S`              |
-| **Execute SQL Preview**  | `Ctrl + Enter` / `Cmd + Enter` |
+## 🚀 Getting Started
 
-## 📐 Usage: Sample Project Structure
-
-To use IDS effectively, your workspace should follow a consistent structure. IDS looks for deployment scripts in a specific subdirectory within each service folder.
-
-### Recommended Workspace Layout
-
-```text
-/home/user/work/projects/
-├── service-auth/
-│   ├── .git/
-│   ├── main.go
-│   └── deploy/          <-- IDS looks here
-│       ├── dev.sh       # Script to deploy to Development
-│       └── stg.sh       # Script to deploy to Staging
-├── service-payment/
-│   ├── .git/
-│   ├── package.json
-│   └── deploy/
-│       ├── dev.sh
-│       └── stg.sh
-└── service-inventory/
-    └── deploy/
-        ├── dev.sh
-        └── stg.sh
-```
-
-### Sample `dev.sh`
-
-```bash
-#!/bin/bash
-# IDS passes the deployment message as the first argument
-MESSAGE=$1
-echo "Deploying with message: $MESSAGE"
-
-# 1. Build
-go build -o auth-server main.go
-
-# 2. Sync to remote
-rsync -avz auth-server user@remote-dev:/opt/services/auth/
-
-# 3. Restart remote service
-ssh user@remote-dev "sudo systemctl restart auth.service"
-```
-
-### ⚙️ Custom Deployment Commands (Alternative)
-
-If you prefer not to use `.sh` script files in each service subdirectory, or if you have complex deployment flows, you can define custom commands directly in the **Settings** modal (or under `custom_cmds` in `settings.json`).
-
-Format in Settings (one entry per line):
-
-```text
-folder-name:environment:command
-```
-
-Examples:
-
-- `user-service:dev:go build && systemctl restart user-service`
-- `crm-front-end:stg:npm run build && rsync -avz dist/ user@stg-server:/var/www/html/`
-
-During execution, the deployment message is injected into the environment as `$DEPLOY_MSG` and `$DEPLOY_MESSAGE`. You can reference them in your commands:
-
-- `user-service:dev:echo "Deploying with message: $DEPLOY_MESSAGE" && go build && ...`
-
-## ⚙️ Environment Variables (`.env`)
-
-Configure the application by creating a `.env` file in the project root:
-
+### 1. Configure Environment (`.env`)
+Copy `.env.example` to `.env` and set your MySQL database, SSH credentials, and agent URLs:
 ```ini
-# Application environment: 'local' (uses SSH tunneling if enabled) or 'server' (direct connect)
 APP_ENV=local
-
-# MySQL Database Configuration
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_DB=deploy_logs
 
-# SSH Tunnel Configuration (Used if APP_ENV=local)
-USE_SSH=true
-SSH_HOST=your_ssh_ip
-SSH_PORT=22
-SSH_USER=ubuntu
-SSH_KEY_PATH=/path/to/your/private_key  # Must be an absolute path
-# SSH_PASSWORD=your_ssh_password       # Alternative if no key is used
-
-# Agent Connections
-DEV_AGENT_URL=http://your-dev-agent-ip:8080
-STG_AGENT_URL=http://your-stg-agent-ip:8080
-PROD_AGENT_URL=http://your-prod-agent-ip:8080
+DEV_AGENT_URL=http://14.225.249.148:55555
+STG_AGENT_URL=http://171.244.204.148:55555
+PROD_AGENT_URL=http://localhost:8555
 ```
 
-## 🚀 Getting Started
+### 2. Configure OpenVPN Privileges (Required on Host)
+Add passwordless sudoers permission for OpenVPN:
+```bash
+echo "thang ALL=(ALL) NOPASSWD: /usr/sbin/openvpn" | sudo tee /etc/sudoers.d/openvpn
+```
 
-1. **Configure Environment**: Copy `.env.example` to `.env` and fill in your database, SSH, and agent URLs.
-2. **Configure Agent**: Deploy `ids-health` to your target servers and set agent URLs in `.env`.
-3. **Configure OpenVPN Permissions (Required)**:
-   Since OpenVPN requires root privileges to manipulate routing tables and create TUN/TAP interfaces, the system service (running as the unprivileged user `thang`) needs a passwordless sudoers exception. Run the following command on the host:
-   ```bash
-   echo "thang ALL=(ALL) NOPASSWD: /usr/sbin/openvpn" | sudo tee /etc/sudoers.d/openvpn
-   ```
-4. **Build & Run**:
-   ```bash
-   # Build ids-commander
-   go build -o ids-commander ./cmd/ids-commander
-   ./ids-commander
-   ```
-5. **Configure Services**: Open **Settings > Deployment** to configure folder mappings, service names, custom deployment commands, and production environment flags for each service.
+### 3. Build & Launch Application Stack
+Run the restart script to build the React SPA frontend and compile the Go backend:
+```bash
+./restart.sh
+```
+
+Access the interfaces:
+- **React SPA**: [http://localhost:55555](http://localhost:55555)
+- **HTML Version**: [http://localhost:5555](http://localhost:5555)
+
+---
 
 ## 📄 License
 

@@ -20,23 +20,529 @@
     --modal-overlay: rgba(5, 7, 12, 0.75);
 }
 
+/* ==========================================================================
+   PREMIUM LIGHT THEME (MATCHING HTML VERSION DESIGN EXACTLY - IMAGE 1 & 2)
+   ========================================================================== */
+
+/* ==========================================================================
+   PREMIUM LIGHT THEME (PURE WHITE BACKGROUND + CRISP DARK CONTRAST TEXT)
+   ========================================================================== */
+
 body.light-theme {
     background-color: #ffffff !important;
     background-image: none !important;
+    color: #111827 !important;
+
     --bg-body: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.92);
-    --bg-hover: #f1f5f9;
-    --border: #e2e8f0;
-    --text-main: #0f172a;
-    --text-dim: #64748b;
+    --bg-card: #ffffff;
+    --bg-hover: #ffffff;
+    --border: #e5e7eb;
+    --text-main: #111827;
+    --text-dim: #4b5563;
     --accent: #10b981;
     --accent-glow: rgba(16, 185, 129, 0.18);
-    --success: #10b981;
-    --error: #ef4444;
-    --terminal-bg: #0f172a;
-    --terminal-text: #38bdf8;
-    --header-bg: rgba(255, 255, 255, 0.9);
-    --modal-overlay: rgba(15, 23, 42, 0.5);
+    --header-bg: #ffffff;
+    --modal-overlay: rgba(15, 23, 42, 0.45);
+}
+
+/* Force Dark Text Colors for all Light Theme Elements (Except Green Buttons & Terminal) */
+body.light-theme .text-\[\#f1f5f9\],
+body.light-theme .text-white,
+body.light-theme .text-slate-100,
+body.light-theme .text-slate-200,
+body.light-theme .text-gray-100,
+body.light-theme .text-gray-200,
+body.light-theme div.fixed .text-white,
+body.light-theme div.fixed .text-\[\#f1f5f9\] {
+    color: #111827 !important;
+}
+
+body.light-theme .text-\[\#94a3b8\],
+body.light-theme .text-slate-400,
+body.light-theme .text-gray-400,
+body.light-theme div.fixed .text-\[\#94a3b8\],
+body.light-theme div.fixed label {
+    color: #4b5563 !important;
+}
+
+body.light-theme .text-\[\#38bdf8\],
+body.light-theme .text-cyan-400 {
+    color: #0284c7 !important;
+}
+
+/* Light Theme Header Bar */
+body.light-theme header {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.light-theme header span {
+    color: #111827 !important;
+}
+
+body.light-theme header span.text-\[\#10b981\] {
+    color: #10b981 !important;
+}
+
+body.light-theme header button:not(.btn-deploy-animated) {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light-theme header button:not(.btn-deploy-animated):hover {
+    background-color: #ffffff !important;
+    color: #059669 !important;
+    border-color: #10b981 !important;
+}
+
+/* Light Theme Sidebar */
+body.light-theme aside {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e5e7eb !important;
+}
+
+body.light-theme aside input {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+body.light-theme aside input::placeholder {
+    color: #9ca3af !important;
+}
+
+body.light-theme aside div[onClick] {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme aside div[onClick]:hover {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme aside div[onClick].border-l-\[\#10b981\],
+body.light-theme aside div[onClick].bg-\[rgba\(16\,185\,129\,0\.18\)\] {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    border-left-color: #10b981 !important;
+}
+
+/* Light Theme Main Area & Deployment Panel (Pure White, No Gray) */
+body.light-theme main {
+    background-color: #ffffff !important;
+}
+
+body.light-theme main div.bg-\[\#111520\]\/65,
+body.light-theme main div.bg-\[\#111520\]\/75,
+body.light-theme main div.bg-\[\#111520\] {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Controls inside Deployment Panel */
+body.light-theme select {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+body.light-theme select option {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
+body.light-theme input[type="text"],
+body.light-theme input[type="password"],
+body.light-theme textarea {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder {
+    color: #9ca3af !important;
+}
+
+body.light-theme button.bg-\[\#1b2132\]\/75,
+body.light-theme button.bg-\[\#1b2132\],
+body.light-theme button.bg-\[\#0a0d14\]\/70 {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border-color: #d1d5db !important;
+}
+
+body.light-theme button.bg-\[\#1b2132\]\/75:hover,
+body.light-theme button.bg-\[\#1b2132\]:hover,
+body.light-theme button.bg-\[\#0a0d14\]\/70:hover {
+    background-color: #ffffff !important;
+    color: #059669 !important;
+    border-color: #10b981 !important;
+}
+
+/* Environment Switcher Container & Buttons */
+body.light-theme div.bg-\[\#0a0d14\]\/70 {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme button.bg-\[\#10b981\] {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-theme .btn-deploy-animated {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
+body.light-theme .btn-deploy-animated span {
+    color: #ffffff !important;
+}
+
+/* Terminal View in Light Theme (Keep dark slate `#0f172a` for log readability) */
+body.light-theme div.bg-\[\#06080d\]\/92 {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+body.light-theme div.bg-\[\#111111\] {
+    background-color: #1e293b !important;
+    border-bottom-color: #334155 !important;
+}
+
+body.light-theme div.bg-\[\#0c0f17\] {
+    background-color: #1e293b !important;
+    border-top-color: #334155 !important;
+}
+
+/* ==========================================================================
+   LIGHT THEME MODALS (PURE WHITE CONTAINERS & PURE WHITE CARDS - NO GRAY)
+   ========================================================================== */
+
+body.light-theme div.fixed.inset-0 {
+    background-color: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(6px) !important;
+}
+
+/* Modal Outer Shell Box */
+body.light-theme div.fixed > div {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111827 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Modal Header & Footer Bars */
+body.light-theme div.fixed div.px-6.py-4,
+body.light-theme div.fixed div.px-6.py-3,
+body.light-theme div.fixed div.border-b,
+body.light-theme div.fixed div.border-t {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme div.fixed h2,
+body.light-theme div.fixed h3,
+body.light-theme div.fixed h4 {
+    color: #111827 !important;
+}
+
+body.light-theme div.fixed h2.text-\[\#10b981\] {
+    color: #059669 !important;
+}
+
+/* Modal Body Container & All Dark Containers (Pure White) */
+body.light-theme div.fixed div.flex-1.overflow-y-auto,
+body.light-theme div.fixed div.p-6.bg-\[\#0a0d14\]\/70,
+body.light-theme div.fixed div.bg-\[\#05070c\],
+body.light-theme div.fixed div.bg-\[\#05070d\],
+body.light-theme div.fixed div.bg-\[\#080b12\],
+body.light-theme div.fixed div.bg-\[\#0d1017\],
+body.light-theme div.fixed div.bg-\[\#060810\],
+body.light-theme div.fixed div.bg-\[\#090c15\],
+body.light-theme div.fixed div.bg-\[\#07090e\],
+body.light-theme div.fixed div.bg-\[\#0b0e17\],
+body.light-theme div.fixed div.bg-black\/40,
+body.light-theme div.fixed div.bg-black\/30,
+body.light-theme div.fixed div.bg-black\/20,
+body.light-theme div.fixed div.space-y-4 {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Internal Cards in Modals (Pure White with Crisp Border) */
+body.light-theme div.fixed div.p-3,
+body.light-theme div.fixed div.p-4,
+body.light-theme div.fixed div.p-5,
+body.light-theme div.fixed div.rounded-xl,
+body.light-theme div.fixed div.rounded-2xl {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+    color: #111827 !important;
+}
+
+/* Tables inside Modals (Shortcuts, Health Monitor, Workspaces) */
+body.light-theme div.fixed table {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme div.fixed table tr {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme div.fixed table tr:hover {
+    background-color: #f9fafb !important;
+}
+
+body.light-theme div.fixed table th {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border-color: #e5e7eb !important;
+    font-weight: 700 !important;
+}
+
+body.light-theme div.fixed table td {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #f3f4f6 !important;
+    font-weight: 600 !important;
+}
+
+/* High-Contrast Bold Colors for Table Metric Columns in Light Mode */
+body.light-theme div.fixed table td.text-\[\#38bdf8\] {
+    color: #2563eb !important;
+    font-weight: 700 !important;
+}
+
+body.light-theme div.fixed table td.text-emerald-400 {
+    color: #059669 !important;
+    font-weight: 700 !important;
+}
+
+body.light-theme div.fixed table td.text-amber-400 {
+    color: #d97706 !important;
+    font-weight: 700 !important;
+}
+
+/* Keyboard Shortcut Badges (<kbd>) */
+body.light-theme div.fixed kbd {
+    background-color: #ffffff !important;
+    color: #059669 !important;
+    border: 1px solid #d1d5db !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Form Controls in Modals */
+body.light-theme div.fixed input[type="text"],
+body.light-theme div.fixed input[type="password"],
+body.light-theme div.fixed select,
+body.light-theme div.fixed textarea {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+body.light-theme div.fixed select option {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
+/* Active Environment Button Highlighting (Vibrant Emerald Green) */
+body.light-theme button.bg-emerald-500,
+body.light-theme button.bg-\[\#10b981\],
+body.light-theme button.from-emerald-500,
+body.light-theme button.bg-gradient-to-r {
+    background-color: #10b981 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35) !important;
+}
+
+body.light-theme button.bg-\[\#10b981\] span,
+body.light-theme button.bg-emerald-500 span {
+    color: #ffffff !important;
+}
+
+/* Terminal Log Box inside Modal (openvpn.log) */
+body.light-theme div.fixed div.bg-\[\#06080d\] {
+    background-color: #000000 !important;
+    border: 1px solid #1f2937 !important;
+}
+
+body.light-theme div.fixed div.bg-\[\#0d1017\] {
+    background-color: #111827 !important;
+    color: #f9fafb !important;
+    border-color: #1f2937 !important;
+}
+
+body.light-theme div.fixed div.bg-\[\#0d1017\] span {
+    color: #f9fafb !important;
+}
+
+body.light-theme div.fixed pre {
+    color: #38bdf8 !important;
+}
+
+/* Disconnect Button (White button with light pink border & red text) */
+body.light-theme div.fixed button.border-rose-500\/50,
+body.light-theme div.fixed button.bg-rose-500\/10 {
+    background-color: #ffffff !important;
+    border: 1px solid #fca5a5 !important;
+    color: #ef4444 !important;
+}
+
+body.light-theme div.fixed button.border-rose-500\/50:hover,
+body.light-theme div.fixed button.bg-rose-500\/10:hover {
+    background-color: #fef2f2 !important;
+}
+
+/* Secondary & Close Buttons */
+body.light-theme div.fixed button.bg-white\/5,
+body.light-theme div.fixed button.border-\[\#232a3f\]\/75,
+body.light-theme div.fixed button.border-\[\#232a3f\] {
+    background-color: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+}
+
+body.light-theme div.fixed button.bg-white\/5:hover,
+body.light-theme div.fixed button.border-\[\#232a3f\]\/75:hover {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
+/* ==========================================================================
+   LIGHT THEME OVERRIDES FOR TOOLS PAGE (/tools) - NO GRAY
+   ========================================================================== */
+
+body.light-theme div.h-screen.w-screen,
+body.light-theme div.h-screen.w-screen header,
+body.light-theme div.h-screen.w-screen aside,
+body.light-theme div.h-screen.w-screen main {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme div.h-screen.w-screen h1,
+body.light-theme div.h-screen.w-screen h2,
+body.light-theme div.h-screen.w-screen h3,
+body.light-theme div.h-screen.w-screen h4 {
+    color: #111827 !important;
+}
+
+body.light-theme div.h-screen.w-screen div.bg-black\/40,
+body.light-theme div.h-screen.w-screen div.bg-black\/50,
+body.light-theme div.h-screen.w-screen div.bg-black\/30,
+body.light-theme div.h-screen.w-screen div.bg-black\/20,
+body.light-theme div.h-screen.w-screen div.bg-\[\#05070c\],
+body.light-theme div.h-screen.w-screen div.bg-\[\#07090e\],
+body.light-theme div.h-screen.w-screen div.bg-\[\#07090e\]\/90,
+body.light-theme div.h-screen.w-screen div.bg-\[\#07090e\]\/80,
+body.light-theme div.h-screen.w-screen div.bg-\[\#080b12\],
+body.light-theme div.h-screen.w-screen div.bg-\[\#0d1017\],
+body.light-theme div.h-screen.w-screen div.bg-white\/5,
+body.light-theme div.h-screen.w-screen div.bg-white\/10 {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+}
+
+body.light-theme div.h-screen.w-screen textarea,
+body.light-theme div.h-screen.w-screen input,
+body.light-theme div.h-screen.w-screen select,
+body.light-theme div.h-screen.w-screen pre {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+body.light-theme div.h-screen.w-screen textarea::placeholder,
+body.light-theme div.h-screen.w-screen input::placeholder {
+    color: #9ca3af !important;
+}
+
+/* Sidebar Tool Buttons */
+body.light-theme div.h-screen.w-screen aside button:not(.bg-gradient-to-r) {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border-color: transparent !important;
+}
+
+body.light-theme div.h-screen.w-screen aside button:not(.bg-gradient-to-r):hover {
+    background-color: #f9fafb !important;
+    color: #059669 !important;
+}
+
+body.light-theme div.h-screen.w-screen aside button.bg-gradient-to-r {
+    background-color: #10b981 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+body.light-theme div.h-screen.w-screen aside button.bg-gradient-to-r span {
+    color: #ffffff !important;
+}
+
+/* Tool Action Buttons */
+body.light-theme div.h-screen.w-screen button.bg-white\/5 {
+    background-color: #ffffff !important;
+    color: #374151 !important;
+    border: 1px solid #d1d5db !important;
+}
+
+body.light-theme div.h-screen.w-screen button.bg-white\/5:hover {
+    background-color: #f9fafb !important;
+    color: #059669 !important;
+    border-color: #10b981 !important;
+}
+
+body.light-theme div.h-screen.w-screen button.bg-emerald-500 {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+body.light-theme div.fixed button.bg-white\/5,
+body.light-theme div.fixed button.bg-\[\#1b2132\] {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.light-theme div.fixed button.bg-white\/5:hover,
+body.light-theme div.fixed button.bg-\[\#1b2132\]:hover {
+    background-color: #f1f5f9 !important;
+    color: #059669 !important;
+}
+
+body.light-theme div.fixed h2,
+body.light-theme div.fixed h3,
+body.light-theme div.fixed h4 {
+    color: #0f172a !important;
 }
 
 /* Global Reset for Input, Select, Textarea */
