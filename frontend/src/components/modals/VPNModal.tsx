@@ -33,7 +33,7 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
   const [accounts, setAccounts] = useState<VPNAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() => localStorage.getItem('vpn_selected_account_id') || '');
   const [username, setUsername] = useState<string>(() => localStorage.getItem('vpn_username') || '');
-  const [password, setPassword] = useState<string>(() => localStorage.getItem('vpn_password') || '');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [saveCreds, setSaveCreds] = useState<boolean>(true);
   const [logs, setLogs] = useState<string>('Waiting for connection logs...');
@@ -172,7 +172,6 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
       setUsername('');
       setPassword('');
       localStorage.removeItem('vpn_username');
-      localStorage.removeItem('vpn_password');
       return;
     }
     const acc = accounts.find(a => a.id === accId);
@@ -182,7 +181,6 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
       setUsername(u);
       setPassword(p);
       localStorage.setItem('vpn_username', u);
-      localStorage.setItem('vpn_password', p);
     }
   };
 
@@ -193,7 +191,6 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
-    localStorage.setItem('vpn_password', val);
   };
 
   const handleConnect = async () => {
