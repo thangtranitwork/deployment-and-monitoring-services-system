@@ -131,6 +131,16 @@ The corner mascot has been upgraded into a full **Tu Tiên (Cultivation) progres
 - **Inventory popup** renders above the mascot bubble in-context
 - Full **dark/light mode** compatibility via inline styles
 
+**🏆 Achievement System (Hệ Thống Thành Tựu):**
+- **16 Achievements** categorized into *Cultivation*, *DevOps*, *Activity*, and *Secret (Bí Cảnh Ẩn)*
+- **Secret Achievements**: Hidden conditions with cryptic hints (`Thiên Lôi Thối Thể`, `Nghịch Thiên Cải Mệnh`, `Dạ Du Thần Quân`, `Cổ Thần Chi Lực`)
+- **Instant Rewards**: Unlocking achievements auto-grants items/pills with an animated celebration toast
+- **Interactive Modal Tab**: Switch between *Cảnh Giới* and *Thành Tựu* with real-time unlock tracking (`x/16`)
+
+**💬 Deploy Commentary Engine (Thỏ Bình Luận):**
+- Dynamic lore-rich reactions tailored to each microservice (`trip-*`, `auth-*`, `order/payment`, `notification/worker`, `report/analytics`, `open-api`)
+- Contextual lines merging Tu Tiên mythology with developer operations
+
 ---
 
 ## ⌨️ Keyboard Shortcuts

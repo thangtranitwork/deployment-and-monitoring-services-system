@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, X, Crown, Zap, Lock, Check, Package } from 'lucide-react';
+import { Moon, X, Crown, Zap, Lock, Check, Package, Trophy, Sparkles, Award, Gift, ShieldAlert } from 'lucide-react';
 
 interface BunnyMascotProps {
   isDeploying?: boolean;
   selectedService?: string;
+  activeDeployServices?: string[];
 }
 
 type BunnyState = 'idle' | 'walk_right' | 'walk_left' | 'jump_right' | 'jump_left' | 'sleep' | 'eat' | 'run_right' | 'run_left' | 'dance';
@@ -83,6 +84,270 @@ const RARITY_COLORS: Record<string, string> = {
 };
 
 const PILL_COOLDOWN_MS = 30_000; // 30 seconds between pills
+
+// ─── Achievement System ───────────────────────────────────────────────────────
+export type AchievementCategory = 'cultivation' | 'devops' | 'activity' | 'secret';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  category: AchievementCategory;
+  icon: string;
+  description: string;
+  hint?: string;          // Gợi ý cho thành tựu ẩn
+  isSecret?: boolean;     // Ẩn nội dung khi chưa mở khóa
+  rewardText: string;
+  reward: {
+    itemId?: ItemId;
+    itemAmount?: number;
+    xp?: number;
+  };
+}
+
+export const ACHIEVEMENTS: Achievement[] = [
+  // Tu Tiên
+  {
+    id: 'cult_lvl2',
+    title: 'Sơ Nhập Đạo Đồ',
+    category: 'cultivation',
+    icon: '🧘',
+    description: 'Đột phá lên Trúc Cơ Kỳ (Lv.2)',
+    rewardText: '+2 💊 Tụ Linh Đan',
+    reward: { itemId: 'basic', itemAmount: 2 }
+  },
+  {
+    id: 'cult_lvl3',
+    title: 'Kết Thành Kim Đan',
+    category: 'cultivation',
+    icon: '🔮',
+    description: 'Độ Kiếp thành công lên Kim Đan Kỳ (Lv.3)',
+    rewardText: '+1 🍃 Hồi Phục Đan',
+    reward: { itemId: 'recover', itemAmount: 1 }
+  },
+  {
+    id: 'cult_lvl10',
+    title: 'Phi Thăng Thượng Giới',
+    category: 'cultivation',
+    icon: '🌟',
+    description: 'Vượt thiên kiếp phi thăng lên Chân Tiên (Lv.10)',
+    rewardText: '+2 🌸 Đại Hoàn Đan',
+    reward: { itemId: 'great', itemAmount: 2 }
+  },
+  {
+    id: 'cult_lvl17',
+    title: 'Tiên Đế Chí Tôn',
+    category: 'cultivation',
+    icon: '👑',
+    description: 'Đạt cảnh giới tối cao Thánh Nhân / Tiên Đế (Lv.17)',
+    rewardText: '+3 🔱 Hộ Kiếp Phù',
+    reward: { itemId: 'talisman', itemAmount: 3 }
+  },
+
+  // DevOps
+  {
+    id: 'dev_first',
+    title: 'Tập Sự DevOps',
+    category: 'devops',
+    icon: '🚀',
+    description: 'Thực hiện 1 lần deploy microservice đầu tiên',
+    rewardText: '+1 🍃 Hồi Phục Đan',
+    reward: { itemId: 'recover', itemAmount: 1 }
+  },
+  {
+    id: 'dev_10',
+    title: 'Bách Chiến Bách Thắng',
+    category: 'devops',
+    icon: '⚡',
+    description: 'Tích lũy 10 lần deploy microservice',
+    rewardText: '+1 🔱 Hộ Kiếp Phù',
+    reward: { itemId: 'talisman', itemAmount: 1 }
+  },
+  {
+    id: 'dev_50',
+    title: 'Đại La Deployer',
+    category: 'devops',
+    icon: '⚔️',
+    description: 'Tích lũy 50 lần deploy microservice',
+    rewardText: '+2 🔱 Hộ Kiếp Phù',
+    reward: { itemId: 'talisman', itemAmount: 2 }
+  },
+  {
+    id: 'dev_multi_3',
+    title: 'Vạn Giới Đồng Bộ',
+    category: 'devops',
+    icon: '🌌',
+    description: 'Deploy thành công từ 3 microservice khác nhau trở lên',
+    rewardText: '+2 🌸 Đại Hoàn Đan',
+    reward: { itemId: 'great', itemAmount: 2 }
+  },
+
+  // Tu Luyện & Hoạt Động
+  {
+    id: 'time_60m',
+    title: 'Khô Thiền Nhất Nguyện',
+    category: 'activity',
+    icon: '⏱️',
+    description: 'Tọa thiền online tích lũy đủ 60 phút',
+    rewardText: '+1 🌸 Đại Hoàn Đan',
+    reward: { itemId: 'great', itemAmount: 1 }
+  },
+  {
+    id: 'time_300m',
+    title: 'Vạn Niên Bế Quan',
+    category: 'activity',
+    icon: '🧘‍♂️',
+    description: 'Tọa thiền online tích lũy đủ 300 phút',
+    rewardText: '+2 🔱 Hộ Kiếp Phù',
+    reward: { itemId: 'talisman', itemAmount: 2 }
+  },
+  {
+    id: 'pill_30',
+    title: 'Dược Vương Tái Thế',
+    category: 'activity',
+    icon: '💊',
+    description: 'Nuốt tổng cộng 30 viên đan dược bất kỳ',
+    rewardText: '+1 🌸 Đại Hoàn Đan',
+    reward: { itemId: 'great', itemAmount: 1 }
+  },
+  {
+    id: 'drag_20',
+    title: 'Ngự Kiếm Phi Hành',
+    category: 'activity',
+    icon: '🎈',
+    description: 'Kéo thả bế Thỏ bay lượn 20 lần',
+    rewardText: '+3 💊 Tụ Linh Đan',
+    reward: { itemId: 'basic', itemAmount: 3 }
+  },
+
+  // Bí Cảnh Ẩn (Secret)
+  {
+    id: 'secret_fail_kiep',
+    title: 'Thiên Lôi Thối Thể',
+    category: 'secret',
+    icon: '⚡',
+    description: 'Độ Kiếp thất bại lần đầu tiên (Tổn hại kinh mạch hóa thành đại đạo)',
+    hint: 'Trải qua thử thách sấm sét bất thành...',
+    isSecret: true,
+    rewardText: '+2 🍃 Hồi Phục Đan',
+    reward: { itemId: 'recover', itemAmount: 2 }
+  },
+  {
+    id: 'secret_talisman_kiep',
+    title: 'Nghịch Thiên Cải Mệnh',
+    category: 'secret',
+    icon: '🔱',
+    description: 'Độ Kiếp thành công khi đang kích hoạt Hộ Kiếp Phù',
+    hint: 'Dùng pháp bảo huyền thoại trợ lực vượt qua kiếp nạn...',
+    isSecret: true,
+    rewardText: '+1 🌸 Đại Hoàn Đan',
+    reward: { itemId: 'great', itemAmount: 1 }
+  },
+  {
+    id: 'secret_night_owl',
+    title: 'Dạ Du Thần Quân',
+    category: 'secret',
+    icon: '🌙',
+    description: 'Deploy hoặc tu luyện trong khung giờ đêm (23:00 - 05:00)',
+    hint: 'Hấp thu nguyệt hoa lúc nửa đêm...',
+    isSecret: true,
+    rewardText: '+1 🔱 Hộ Kiếp Phù',
+    reward: { itemId: 'talisman', itemAmount: 1 }
+  },
+  {
+    id: 'secret_first_great_pill',
+    title: 'Cổ Thần Chi Lực',
+    category: 'secret',
+    icon: '🌸',
+    description: 'Nuốt 1 viên Đại Hoàn Đan (+50 XP) lần đầu tiên',
+    hint: 'Thưởng thức linh đan cực phẩm...',
+    isSecret: true,
+    rewardText: '+2 🍃 Hồi Phục Đan',
+    reward: { itemId: 'recover', itemAmount: 2 }
+  }
+];
+
+// ─── Deploy Commentary Voice Lines ────────────────────────────────────────────
+export const getDeployCommentary = (serviceName: string, multiServices?: string[]): string => {
+  // Multi-Deploy Commentary
+  if (multiServices && multiServices.length > 1) {
+    const count = multiServices.length;
+    const namesPreview = multiServices.slice(0, 3).join(', ') + (count > 3 ? ` và ${count - 3} service khác` : '');
+    const multiLines = [
+      `⚡ Vạn Kiếm Quy Tông! Triển khai đồng loạt ${count} đại pháp bảo (${namesPreview}) đại thành công!`,
+      `🌌 Vạn Giới Tề Khởi! ${count} microservices (${namesPreview}) đồng loạt thăng thiên, thanh thế ngút trời!`,
+      `✨ Thần thông quảng đại! Một tay điều khiển ${count} pháp trận song hành, công đức vô lượng!`,
+      `🚀 Trận pháp Multi-Deploy đã kích hoạt! ${count} microservices vận hành trơn tru không trở ngại!`
+    ];
+    return multiLines[Math.floor(Math.random() * multiLines.length)];
+  }
+
+  const s = (serviceName || '').toLowerCase();
+  
+  if (s.includes('trip')) {
+    const lines = [
+      `🚗 ${serviceName} đã đắc đạo! Vạn dặm hành trình của các chuyến xe đã được gia trì hộ thể!`,
+      `✨ Bát quái định vị, thần hành bách biến! ${serviceName} đã sẵn sàng cất cánh!`,
+      `🗺️ Chuyến đi thông suốt tam giới! ${serviceName} vận hành viên mãn!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+  
+  if (s.includes('auth') || s.includes('user') || s.includes('account')) {
+    const lines = [
+      `🛡️ Kết giới Auth đã trùng tu! Tà ma ngoại đạo chớ hòng xâm nhập ${serviceName}!`,
+      `🔑 Vạn Pháp Quy Nhất! Token đã được thanh lọc, bảo mật vạn thọ vô cương!`,
+      `⚡ ${serviceName} thiết lập cấm chế hộ thân, thiên binh vạn mã không lay chuyển!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+  
+  if (s.includes('order') || s.includes('payment') || s.includes('wallet') || s.includes('pay')) {
+    const lines = [
+      `💰 Linh thạch cuồn cuộn đổ về! ${serviceName} thanh toán thông suốt tam giới!`,
+      `🏮 Tài lộc hanh thông! Đơn hàng dịch vụ ${serviceName} đại cát đại lợi!`,
+      `💎 Kim ngân tài bảo dâng trào! ${serviceName} đã sẵn sàng thu nhận linh thạch!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+  
+  if (s.includes('notify') || s.includes('worker') || s.includes('message') || s.includes('mq') || s.includes('rabbit') || s.includes('publisher')) {
+    const lines = [
+      `📜 Phi kiếm truyền thư đã kích hoạt! ${serviceName} ngàn dặm truyền âm không sót một lời!`,
+      `🕊️ Thần điệp xuất kích! ${serviceName} bắn thông báo bay nhanh hơn sấm sét!`,
+      `⚡ Hàng đợi tin tức đã thông suốt, vạn sự truyền đi trong chớp mắt!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+  
+  if (s.includes('open-api') || s.includes('vendor') || s.includes('gateway') || s.includes('api')) {
+    const lines = [
+      `🌐 Thiên Môn khai mở! Cổng kết nối ${serviceName} đón nhận vạn phái triều bái!`,
+      `🔮 Tương thông dị giới! Giao tiếp API ${serviceName} trơn tru không trở ngại!`,
+      `✨ Linh mạch thông suốt! ${serviceName} đã sẵn sàng tiếp nhận request!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+
+  if (s.includes('report') || s.includes('analytic') || s.includes('sql') || s.includes('stat') || s.includes('health')) {
+    const lines = [
+      `📊 Thiên Cơ Bàn đã tính toán xong! Số liệu ${serviceName} rõ ràng như nhật nguyệt!`,
+      `🔮 Thần toán vô song! Báo cáo ${serviceName} minh bạch từng li từng tí!`,
+      `📈 Khí vận hưng thịnh! Chỉ số ${serviceName} tăng vọt ngút trời!`
+    ];
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+
+  // Generic fallback pool
+  const genericLines = [
+    `🚀 Triển khai ${serviceName || 'Service'} viên mãn! Thiên địa dị tượng, công đức vô lượng!`,
+    `⚡ Tốc độ deploy ${serviceName || 'Service'} quả là Súc Địa Thành Thốn, chớp mắt là hoàn tất!`,
+    `✨ Bổn Thỏ đã đứng canh gác log ${serviceName || 'Service'} an toàn! Mau thưởng đan đi đại nhân 🐰`,
+    `🧘 Pháp bảo ${serviceName || 'Service'} đã ổn định vận hành, khí vận đại tăng!`
+  ];
+  return genericLines[Math.floor(Math.random() * genericLines.length)];
+};
+
+
 
 // ─── Cultivation Levels ────────────────────────────────────────────────────────
 export const LEVEL_CONFIG: LevelInfo[] = [
@@ -184,7 +449,11 @@ const LightningCanvas: React.FC<{ bunnyX: number; bunnyY: number }> = ({ bunnyX,
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, selectedService = '' }) => {
+export const BunnyMascot: React.FC<BunnyMascotProps> = ({
+  isDeploying = false,
+  selectedService = '',
+  activeDeployServices = []
+}) => {
   type Inventory = Record<ItemId, number>;
 
   // ─── Persistent State ───────────────────────────────────────────────────────
@@ -192,16 +461,19 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     try { const s = localStorage.getItem(BUNNY_STORAGE_KEY); return s ? JSON.parse(s) : {}; } catch { return {}; }
   };
 
-  const [xp, setXp]                     = useState<number>(() => loadSaved().xp ?? 0);
-  const [activeSkin, setActiveSkin]     = useState<string>(() => loadSaved().activeSkin ?? 'none');
-  const [inventory, setInventory]       = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 0, great: loadSaved().inventory?.great ?? 0, talisman: loadSaved().inventory?.talisman ?? 1 }));
-  const [totalMinutes, setTotalMinutes] = useState<number>(() => loadSaved().totalMinutes ?? 0);
-  const [totalDrags, setTotalDrags]     = useState<number>(() => loadSaved().totalDrags ?? 0);
-  const [totalDeploys, setTotalDeploys] = useState<number>(() => loadSaved().totalDeploys ?? 0);
-  const [lastPillTime, setLastPillTime]             = useState<number>(() => loadSaved().lastPillTime ?? 0);
-  const [talismanBuffExpiry, setTalismanBuffExpiry] = useState<number>(() => loadSaved().talismanBuffExpiry ?? 0);
-  const [talismanCountdown, setTalismanCountdown]   = useState<number>(0);
-  const [lastSessionTime]               = useState<number>(() => {
+  const [xp, setXp]                                         = useState<number>(() => loadSaved().xp ?? 0);
+  const [activeSkin, setActiveSkin]                         = useState<string>(() => loadSaved().activeSkin ?? 'none');
+  const [inventory, setInventory]                           = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 0, great: loadSaved().inventory?.great ?? 0, talisman: loadSaved().inventory?.talisman ?? 1 }));
+  const [totalMinutes, setTotalMinutes]                     = useState<number>(() => loadSaved().totalMinutes ?? 0);
+  const [totalDrags, setTotalDrags]                         = useState<number>(() => loadSaved().totalDrags ?? 0);
+  const [totalDeploys, setTotalDeploys]                     = useState<number>(() => loadSaved().totalDeploys ?? 0);
+  const [totalPillsConsumed, setTotalPillsConsumed]         = useState<number>(() => loadSaved().totalPillsConsumed ?? 0);
+  const [deployedServices, setDeployedServices]             = useState<string[]>(() => loadSaved().deployedServices ?? []);
+  const [unlockedAchievements, setUnlockedAchievements]     = useState<string[]>(() => loadSaved().unlockedAchievements ?? []);
+  const [lastPillTime, setLastPillTime]                     = useState<number>(() => loadSaved().lastPillTime ?? 0);
+  const [talismanBuffExpiry, setTalismanBuffExpiry]         = useState<number>(() => loadSaved().talismanBuffExpiry ?? 0);
+  const [talismanCountdown, setTalismanCountdown]           = useState<number>(0);
+  const [lastSessionTime]                                   = useState<number>(() => {
     const saved = loadSaved().lastSessionTime ?? 0;
     const now = Date.now();
     // If more than 4 hours since last session, grant 2 Hồi Phục Đan on next render
@@ -214,18 +486,20 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
   });
 
   // ─── UI State ───────────────────────────────────────────────────────────────
-  const [isLevelUpAnim, setIsLevelUpAnim]     = useState(false);
-  const [showCostumePicker, setShowCostumePicker] = useState(false);
-  const [showInventory, setShowInventory]     = useState(false);
-  const [state, setState]                     = useState<BunnyState>('idle');
-  const [frame, setFrame]                     = useState(0);
-  const [posX, setPosX]                       = useState(82);
-  const [posYBottom, setPosYBottom]           = useState(12);
-  const [direction, setDirection]             = useState<'left' | 'right'>('left');
-  const [bubbleText, setBubbleText]           = useState('Bổn Thỏ xin chào Chân Tiên! 🐰');
-  const [isDismissed, setIsDismissed]         = useState(false);
-  const [isDragging, setIsDragging]           = useState(false);
-  const [cooldownRemain, setCooldownRemain]     = useState(0);
+  const [isLevelUpAnim, setIsLevelUpAnim]                   = useState(false);
+  const [showCostumePicker, setShowCostumePicker]           = useState(false);
+  const [modalTab, setModalTab]                             = useState<'levels' | 'achievements'>('levels');
+  const [recentAchievementToast, setRecentAchievementToast] = useState<Achievement | null>(null);
+  const [showInventory, setShowInventory]                   = useState(false);
+  const [state, setState]                                   = useState<BunnyState>('idle');
+  const [frame, setFrame]                                   = useState(0);
+  const [posX, setPosX]                                     = useState(82);
+  const [posYBottom, setPosYBottom]                         = useState(12);
+  const [direction, setDirection]                           = useState<'left' | 'right'>('left');
+  const [bubbleText, setBubbleText]                         = useState('Bổn Thỏ xin chào Chân Tiên! 🐰');
+  const [isDismissed, setIsDismissed]                       = useState(false);
+  const [isDragging, setIsDragging]                         = useState(false);
+  const [cooldownRemain, setCooldownRemain]                 = useState(0);
 
   const directionRef = useRef<'left' | 'right'>('left');
   directionRef.current = direction;
@@ -253,9 +527,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
   // ─── Persist to localStorage ────────────────────────────────────────────────
   useEffect(() => {
     try {
-      localStorage.setItem(BUNNY_STORAGE_KEY, JSON.stringify({ xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, lastPillTime, talismanBuffExpiry, lastSessionTime: Date.now() }));
+      localStorage.setItem(BUNNY_STORAGE_KEY, JSON.stringify({
+        xp,
+        activeSkin,
+        inventory,
+        totalMinutes,
+        totalDrags,
+        totalDeploys,
+        totalPillsConsumed,
+        deployedServices,
+        unlockedAchievements,
+        lastPillTime,
+        talismanBuffExpiry,
+        lastSessionTime: Date.now()
+      }));
     } catch { /* noop */ }
-  }, [xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, lastPillTime]);
+  }, [xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, lastPillTime]);
 
   // ─── Cooldown Countdown Timer ───────────────────────────────────────────────
   useEffect(() => {
@@ -288,6 +575,55 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     });
     if (msg) setBubbleText(msg);
   };
+
+  // ─── Achievement Unlock Engine ──────────────────────────────────────────────
+  const unlockAchievement = (achId: string) => {
+    setUnlockedAchievements(prev => {
+      if (prev.includes(achId)) return prev;
+      const ach = ACHIEVEMENTS.find(a => a.id === achId);
+      if (!ach) return prev;
+
+      // Grant reward
+      if (ach.reward.itemId && ach.reward.itemAmount) {
+        grantItem(ach.reward.itemId, ach.reward.itemAmount);
+      }
+      if (ach.reward.xp) {
+        addXP(ach.reward.xp);
+      }
+
+      setRecentAchievementToast(ach);
+      setState('dance');
+      setFrame(0);
+
+      setTimeout(() => {
+        setRecentAchievementToast(curr => (curr?.id === ach.id ? null : curr));
+      }, 5000);
+
+      return [...prev, achId];
+    });
+  };
+
+  // Check achievements automatically based on stats
+  useEffect(() => {
+    if (currentLevel >= 2) unlockAchievement('cult_lvl2');
+    if (currentLevel >= 3) unlockAchievement('cult_lvl3');
+    if (currentLevel >= 10) unlockAchievement('cult_lvl10');
+    if (currentLevel >= 17) unlockAchievement('cult_lvl17');
+    if (totalMinutes >= 60) unlockAchievement('time_60m');
+    if (totalMinutes >= 300) unlockAchievement('time_300m');
+    if (totalDeploys >= 1) unlockAchievement('dev_first');
+    if (totalDeploys >= 10) unlockAchievement('dev_10');
+    if (totalDeploys >= 50) unlockAchievement('dev_50');
+    if (deployedServices.length >= 3) unlockAchievement('dev_multi_3');
+    if (totalDrags >= 20) unlockAchievement('drag_20');
+    if (totalPillsConsumed >= 30) unlockAchievement('pill_30');
+
+    // Night Owl Check
+    const hour = new Date().getHours();
+    if (hour >= 23 || hour < 5) {
+      unlockAchievement('secret_night_owl');
+    }
+  }, [currentLevel, totalMinutes, totalDeploys, deployedServices.length, totalDrags, totalPillsConsumed]);
 
   const addXP = (amount: number, reasonText?: string) => {
     setXp(prevXp => {
@@ -328,9 +664,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
 
     if (cooldownRemain > 0) { setBubbleText(`⏳ Khí Hải chưa tiêu hóa xong! Còn ${cooldownRemain}s nữa...`); return; }
     setInventory(prev => ({ ...prev, [itemId]: prev[itemId] - 1 }));
+    setTotalPillsConsumed(prev => prev + 1);
     setLastPillTime(Date.now());
     setState('eat'); setFrame(0);
     addXP(cfg.xpValue);
+
+    if (itemId === 'great') {
+      unlockAchievement('secret_first_great_pill');
+    }
 
     const msgs: Record<string, string[]> = {
       basic:   [`💊 Cắn Tụ Linh Đan! Linh lực dâng trào~ (+${cfg.xpValue} XP)`, `💊 Tinh hoa Tụ Linh thấm vào đan điền! (+${cfg.xpValue} XP)`],
@@ -356,6 +697,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
       setTimeout(() => {
         setIsLevelUpAnim(false);
         if (success) {
+          if (isTalismanActive) {
+            unlockAchievement('secret_talisman_kiep');
+          }
           setXp(target.reqXp + 1); setActiveSkin(target.skinId); triggerGentleHop();
           grantItem('great', 1);
           if (target.level === 10) setBubbleText(`✨ PHI THĂNG TIÊN GIỚI! Thỏ đắc đạo Chân Tiên 🌟! +1 🌸 Đại Hoàn Đan!`);
@@ -363,6 +707,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
           // Talisman buff consumed after tribulation
           if (isTalismanActive) setTalismanBuffExpiry(0);
         } else {
+          unlockAchievement('secret_fail_kiep');
           const gap = target.reqXp - currentLevelInfo.reqXp;
           const penalty = Math.round(gap * 0.10);
           setXp(prev => Math.max(currentLevelInfo.reqXp, prev - penalty));
@@ -405,19 +750,43 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
     }
   }, [totalDeploys]);
 
-  // ─── Deploy Reaction ────────────────────────────────────────────────────────
+  // ─── Deploy Reaction & Commentary Engine ─────────────────────────────────────
   const wasDeployingRef = useRef(false);
   useEffect(() => {
+    const deployList = (activeDeployServices && activeDeployServices.length > 0)
+      ? activeDeployServices
+      : (selectedService ? [selectedService] : []);
+    const deployCount = Math.max(1, deployList.length);
+
     if (isDeploying && !wasDeployingRef.current) {
       wasDeployingRef.current = true;
       setDirection('left'); setState('run_left');
-      addXP(25, `🚀 Phân Thần Thuật! Thần tốc deploy ${selectedService || 'Service'} (+25 XP)`);
+      if (deployCount > 1) {
+        addXP(25 * deployCount, `🚀 Vạn Kiếm Quy Tông! Thần tốc deploy ${deployCount} microservices (+${25 * deployCount} XP)`);
+      } else {
+        addXP(25, `🚀 Phân Thần Thuật! Thần tốc deploy ${deployList[0] || 'Service'} (+25 XP)`);
+      }
     } else if (!isDeploying && wasDeployingRef.current) {
-      wasDeployingRef.current = false; setState('idle');
-      setTotalDeploys(d => d + 1);
-      grantItem('recover', 1, `✨ Deploy thành công! +1 🍃 Hồi Phục Đan!`);
+      wasDeployingRef.current = false;
+      setState('dance');
+      setTotalDeploys(d => d + deployCount);
+
+      if (deployList.length > 0) {
+        setDeployedServices(prev => Array.from(new Set([...prev, ...deployList])));
+      }
+      grantItem('recover', deployCount);
+
+      // Deploy Voice Line Commentary (Single or Multi-Deploy)
+      const commentary = getDeployCommentary(deployList[0] || '', deployList);
+      setBubbleText(commentary);
+
+      // Check night owl achievement
+      const hour = new Date().getHours();
+      if (hour >= 23 || hour < 5) {
+        unlockAchievement('secret_night_owl');
+      }
     }
-  }, [isDeploying, selectedService]);
+  }, [isDeploying, selectedService, activeDeployServices]);
 
   // ─── Row Y offsets ──────────────────────────────────────────────────────────
   const stateRowY: Record<BunnyState, number> = {
@@ -546,7 +915,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
       {/* ── Bunny + Bubble ── */}
       <div
         className={`fixed z-[95] flex flex-col items-center select-none ${isDragging ? 'cursor-grabbing transition-none' : 'cursor-grab transition-all duration-300 ease-linear'}`}
-        style={{ left: `${posX}%`, bottom: `${posYBottom}px`, transform: `translate(-50%, ${currentOffsetY}px)` }}
+        style={{ left: `${posX}%`, bottom: `${posYBottom}px`, transform: 'translateX(-50%)' }}
         onPointerDown={handlePointerDown}
       >
         {/* Speech Bubble — all colors via inline style to avoid light-theme CSS override */}
@@ -732,6 +1101,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
         {/* ── Bunny Sprite ── */}
         <div
           className="relative transition-transform duration-200 hover:scale-125 active:scale-95"
+          style={{ transform: `translateY(${currentOffsetY}px)` }}
           title="Nhấp chuột mở Túi Đan 🎒 | KÉO THẢ để nhận XP 🎈"
         >
           {/* Artifact Layer */}
@@ -760,7 +1130,44 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
         </div>
       </div>
 
-      {/* ── Costume Picker Modal ── */}
+      {/* ── Floating Achievement Toast ── */}
+      {recentAchievementToast && (
+        <div
+          className="fixed top-8 left-1/2 -translate-x-1/2 z-[1001] pointer-events-auto flex items-center gap-3 animate-bounce"
+          style={{
+            background: 'linear-gradient(135deg, rgba(20,25,40,0.97), rgba(10,13,22,0.98))',
+            border: '2px solid #f59e0b',
+            borderRadius: '16px',
+            padding: '12px 20px',
+            boxShadow: '0 0 35px rgba(245,158,11,0.6), 0 10px 40px rgba(0,0,0,0.8)',
+            backdropFilter: 'blur(16px)',
+            cursor: 'pointer'
+          }}
+          onClick={() => setRecentAchievementToast(null)}
+        >
+          <div style={{ fontSize: '28px', flexShrink: 0 }}>🏆</div>
+          <div>
+            <div style={{ color: '#fbbf24', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles style={{ width: '13px', height: '13px', color: '#fde047' }} />
+              MỞ KHÓA THÀNH TỰU MỚI!
+            </div>
+            <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, marginTop: '2px' }}>
+              {recentAchievementToast.icon} {recentAchievementToast.title}
+            </div>
+            <div style={{ color: '#86efac', fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>
+              🎁 Thưởng: {recentAchievementToast.rewardText}
+            </div>
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); setRecentAchievementToast(null); }}
+            style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', marginLeft: '8px' }}
+          >
+            <X style={{ width: '14px', height: '14px' }} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Costume & Achievement Modal ── */}
       {showCostumePicker && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
@@ -768,12 +1175,40 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
           onPointerDown={e => e.stopPropagation()}
         >
           <div style={{ background: '#0b0f19', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '20px', width: '100%', maxWidth: '680px', padding: '24px', boxShadow: '0 20px 60px rgba(245,158,11,0.22)', color: '#fff', position: 'relative' }}>
-            {/* Header */}
+            {/* Header Tabs */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(245,158,11,0.18)', paddingBottom: '12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Crown style={{ width: '18px', height: '18px', color: '#f59e0b' }} />
-                <span style={{ fontWeight: 700, fontSize: '15px', color: '#fde68a' }}>Cảnh Giới Tu Tiên & Pháp Bảo</span>
+                <button
+                  onClick={() => setModalTab('levels')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: modalTab === 'levels' ? 'rgba(245,158,11,0.22)' : 'transparent',
+                    border: `1px solid ${modalTab === 'levels' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px', padding: '6px 14px', fontSize: '12.5px', fontWeight: 700,
+                    color: modalTab === 'levels' ? '#fde68a' : '#94a3b8', cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Crown style={{ width: '15px', height: '15px', color: modalTab === 'levels' ? '#f59e0b' : '#64748b' }} />
+                  17 Cảnh Giới & Pháp Bảo
+                </button>
+
+                <button
+                  onClick={() => setModalTab('achievements')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: modalTab === 'achievements' ? 'rgba(245,158,11,0.22)' : 'transparent',
+                    border: `1px solid ${modalTab === 'achievements' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px', padding: '6px 14px', fontSize: '12.5px', fontWeight: 700,
+                    color: modalTab === 'achievements' ? '#fde68a' : '#94a3b8', cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Trophy style={{ width: '15px', height: '15px', color: modalTab === 'achievements' ? '#fbbf24' : '#64748b' }} />
+                  Thành Tựu ({unlockedAchievements.length}/{ACHIEVEMENTS.length})
+                </button>
               </div>
+
               <button onClick={() => setShowCostumePicker(false)} style={{ color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
                 <X style={{ width: '16px', height: '16px' }} />
               </button>
@@ -787,7 +1222,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '14px', color: '#fbbf24' }}>Lv.{currentLevel}: {currentLevelInfo.name}</div>
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                      Linh Lực: {xp} XP • Túi Đan: {totalInventory} viên
+                      Linh Lực: {xp} XP • Túi Đan: {totalInventory} viên • Thành Tựu: {unlockedAchievements.length}/{ACHIEVEMENTS.length}
                     </div>
                   </div>
                 </div>
@@ -800,54 +1235,146 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({ isDeploying = false, s
                 <div style={{ height: '100%', width: `${progressPercent}%`, background: 'linear-gradient(90deg,#f59e0b,#a855f7,#22d3ee)', borderRadius: '999px', transition: 'width 0.5s ease' }} />
               </div>
               {/* Stats row */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <span style={{ fontSize: '10px', color: '#94a3b8' }}>⏱️ {totalMinutes} phút online</span>
                 <span style={{ fontSize: '10px', color: '#94a3b8' }}>🚀 {totalDeploys} deploys</span>
                 <span style={{ fontSize: '10px', color: '#94a3b8' }}>🎈 {totalDrags} kéo thả</span>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>💊 {totalPillsConsumed} cắn đan</span>
               </div>
             </div>
 
-            {/* Realm Grid */}
-            <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Danh Sách 17 Cảnh Giới & Pháp Bảo</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
-              {LEVEL_CONFIG.map(lvl => {
-                const unlocked = xp >= lvl.reqXp;
-                const equipped = activeSkin === lvl.skinId;
-                const nextLvlSuccessRate = lvl.level >= 2 ? Math.round(getSuccessRate(lvl.level) * 100) : null;
-                return (
-                  <button
-                    key={lvl.skinId}
-                    disabled={!unlocked}
-                    onClick={() => { if (unlocked) { setActiveSkin(lvl.skinId); setShowCostumePicker(false); setBubbleText(`✨ Triệu hồi Pháp Bảo [${lvl.skinName}]!`); } }}
-                    style={{
-                      padding: '12px', borderRadius: '12px', textAlign: 'left',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: equipped ? 'rgba(245,158,11,0.18)' : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
-                      border: `1px solid ${equipped ? '#f59e0b' : unlocked ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
-                      color: equipped ? '#fde68a' : unlocked ? '#e2e8f0' : '#4b5563',
-                      cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.5,
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                      <span style={{ fontSize: '22px', flexShrink: 0 }}>{lvl.emoji}</span>
-                      <div style={{ overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 700, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.name}</div>
-                        <div style={{ fontSize: '10px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {unlocked ? lvl.skinName : `Cần ${lvl.reqXp} XP`}
-                          {nextLvlSuccessRate !== null && unlocked ? <span style={{ color: nextLvlSuccessRate >= 70 ? '#86efac' : nextLvlSuccessRate >= 50 ? '#fde68a' : '#fca5a5' }}> • Kiếp {nextLvlSuccessRate}%</span> : null}
+            {/* TAB 1: Realm Grid */}
+            {modalTab === 'levels' && (
+              <>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Danh Sách 17 Cảnh Giới & Pháp Bảo</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+                  {LEVEL_CONFIG.map(lvl => {
+                    const unlocked = xp >= lvl.reqXp;
+                    const equipped = activeSkin === lvl.skinId;
+                    const nextLvlSuccessRate = lvl.level >= 2 ? Math.round(getSuccessRate(lvl.level) * 100) : null;
+                    return (
+                      <button
+                        key={lvl.skinId}
+                        disabled={!unlocked}
+                        onClick={() => { if (unlocked) { setActiveSkin(lvl.skinId); setShowCostumePicker(false); setBubbleText(`✨ Triệu hồi Pháp Bảo [${lvl.skinName}]!`); } }}
+                        style={{
+                          padding: '12px', borderRadius: '12px', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          background: equipped ? 'rgba(245,158,11,0.18)' : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
+                          border: `1px solid ${equipped ? '#f59e0b' : unlocked ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
+                          color: equipped ? '#fde68a' : unlocked ? '#e2e8f0' : '#4b5563',
+                          cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.5,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '22px', flexShrink: 0 }}>{lvl.emoji}</span>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 700, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.name}</div>
+                            <div style={{ fontSize: '10px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {unlocked ? lvl.skinName : `Cần ${lvl.reqXp} XP`}
+                              {nextLvlSuccessRate !== null && unlocked ? <span style={{ color: nextLvlSuccessRate >= 70 ? '#86efac' : nextLvlSuccessRate >= 50 ? '#fde68a' : '#fca5a5' }}> • Kiếp {nextLvlSuccessRate}%</span> : null}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginLeft: '4px' }}>
+                          {equipped ? <div style={{ width: '18px', height: '18px', background: '#f59e0b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check style={{ width: '11px', height: '11px', color: '#000' }} /></div>
+                            : unlocked ? <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f59e0b' }}>Dùng</span>
+                            : <Lock style={{ width: '12px', height: '12px', color: '#4b5563' }} />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* TAB 2: Achievements Grid */}
+            {modalTab === 'achievements' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    16 Thành Tựu & Huy Chương Ẩn
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#86efac', fontWeight: 600 }}>
+                    🏆 Đã mở khóa: {unlockedAchievements.length}/{ACHIEVEMENTS.length}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+                  {ACHIEVEMENTS.map(ach => {
+                    const isUnlocked = unlockedAchievements.includes(ach.id);
+                    const isSecret = ach.isSecret && !isUnlocked;
+
+                    return (
+                      <div
+                        key={ach.id}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '12px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          background: isUnlocked
+                            ? 'rgba(245,158,11,0.12)'
+                            : isSecret
+                            ? 'rgba(88,28,135,0.18)'
+                            : 'rgba(0,0,0,0.3)',
+                          border: `1px solid ${
+                            isUnlocked
+                              ? 'rgba(245,158,11,0.5)'
+                              : isSecret
+                              ? 'rgba(168,85,247,0.3)'
+                              : 'rgba(255,255,255,0.06)'
+                          }`,
+                          boxShadow: isUnlocked ? '0 0 12px rgba(245,158,11,0.15)' : 'none',
+                          opacity: isUnlocked ? 1 : 0.65,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '24px', flexShrink: 0, filter: isUnlocked ? 'none' : 'grayscale(80%)' }}>
+                            {isSecret ? '❓' : ach.icon}
+                          </span>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700, fontSize: '12px', color: isUnlocked ? '#fbbf24' : isSecret ? '#c084fc' : '#e2e8f0' }}>
+                                {isSecret ? 'Thành Tựu Ẩn (Bí Cảnh)' : ach.title}
+                              </span>
+                              {ach.isSecret && (
+                                <span style={{ background: 'rgba(168,85,247,0.2)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '4px', padding: '1px 4px', fontSize: '8.5px', color: '#d8b4fe', fontWeight: 600 }}>
+                                  ẨN
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ fontSize: '10px', color: isUnlocked ? '#cbd5e1' : '#94a3b8', marginTop: '2px', lineHeight: '1.4' }}>
+                              {isSecret ? (ach.hint ?? 'Bí ẩn đang chờ khám phá...') : ach.description}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', fontSize: '9.5px', color: isUnlocked ? '#86efac' : '#fde047', fontWeight: 600 }}>
+                              <Gift style={{ width: '10px', height: '10px' }} />
+                              {ach.rewardText}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ flexShrink: 0, marginLeft: '6px', marginTop: '2px' }}>
+                          {isUnlocked ? (
+                            <div style={{ width: '20px', height: '20px', background: '#f59e0b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Check style={{ width: '12px', height: '12px', color: '#000' }} />
+                            </div>
+                          ) : (
+                            <Lock style={{ width: '14px', height: '14px', color: '#64748b' }} />
+                          )}
                         </div>
                       </div>
-                    </div>
-                    <div style={{ flexShrink: 0, marginLeft: '4px' }}>
-                      {equipped ? <div style={{ width: '18px', height: '18px', background: '#f59e0b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check style={{ width: '11px', height: '11px', color: '#000' }} /></div>
-                        : unlocked ? <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f59e0b' }}>Dùng</span>
-                        : <Lock style={{ width: '12px', height: '12px', color: '#4b5563' }} />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

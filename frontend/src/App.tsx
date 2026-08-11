@@ -54,6 +54,7 @@ export const App: React.FC = () => {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('default');
   const [deployLogs, setDeployLogs] = useState<string>('No deployment logs available.');
   const [isDeploying, setIsDeploying] = useState<boolean>(false);
+  const [activeDeployServices, setActiveDeployServices] = useState<string[]>([]);
   const [pwdPath, setPwdPath] = useState<string>('~');
   const [isSwitchingWorkspace, setIsSwitchingWorkspace] = useState<boolean>(false);
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -375,6 +376,9 @@ export const App: React.FC = () => {
 
   const handleTriggerDeploy = (msg: string) => {
     setTerminalTab('deploy');
+    if (selectedService) {
+      setActiveDeployServices([selectedService.name]);
+    }
     if (currentEnv === 'Production') {
       setPendingDeployMsg(msg);
       setIsProdPassOpen(true);
@@ -390,6 +394,7 @@ export const App: React.FC = () => {
 
   const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string) => {
     setTerminalTab('deploy');
+    setActiveDeployServices(selectedNames);
     setIsDeploying(true);
     setDeployLogs(`⚡ [${new Date().toLocaleTimeString()}] Initiating parallel multi-deploy for (${selectedNames.length}) services on ${env}...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
 
@@ -534,6 +539,7 @@ export const App: React.FC = () => {
                 <BunnyMascot
                   isDeploying={isDeploying}
                   selectedService={selectedService?.name}
+                  activeDeployServices={activeDeployServices}
                 />
 
                 <TerminalView
