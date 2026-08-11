@@ -11,6 +11,8 @@ interface VPNAccount {
 interface OVPNConfig {
   name: string;
   path: string;
+  saved_username?: string;
+  saved_password?: string;
 }
 
 interface VPNModalProps {
@@ -52,18 +54,19 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
       const savedProfile = localStorage.getItem('vpn_selected_profile');
       const savedAccId = localStorage.getItem('vpn_selected_account_id');
 
+      let loadedConfigs: OVPNConfig[] = [];
       // 1. Load OVPN Configs
       const cfgRes = await fetch(`/api/configs${customDir ? `?custom_dir=${encodeURIComponent(customDir)}` : ''}`);
       if (cfgRes.ok) {
-        const cfgData: OVPNConfig[] = await cfgRes.json();
-        setConfigs(cfgData || []);
-        if (cfgData && cfgData.length > 0) {
-          const matched = cfgData.find(c => c.name === savedProfile || c.path === savedProfile);
+        loadedConfigs = (await cfgRes.json()) || [];
+        setConfigs(loadedConfigs);
+        if (loadedConfigs.length > 0) {
+          const matched = loadedConfigs.find(c => c.name === savedProfile || c.path === savedProfile);
           if (matched) {
             setSelectedProfile(matched.name);
-          } else if (!selectedProfile || !cfgData.some(c => c.name === selectedProfile)) {
-            setSelectedProfile(cfgData[0].name);
-            localStorage.setItem('vpn_selected_profile', cfgData[0].name);
+          } else if (!selectedProfile || !loadedConfigs.some(c => c.name === selectedProfile)) {
+            setSelectedProfile(loadedConfigs[0].name);
+            localStorage.setItem('vpn_selected_profile', loadedConfigs[0].name);
           }
         }
       }
@@ -71,23 +74,31 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
       // 2. Load Saved Accounts from accounts.json
       const accRes = await fetch('/api/accounts');
       if (accRes.ok) {
-        const accData: VPNAccount[] = await accRes.json();
-        setAccounts(accData || []);
-        if (accData && accData.length > 0) {
+        const accData: VPNAccount[] = (await accRes.json()) || [];
+        setAccounts(accData);
+        if (accData.length > 0) {
           const matchedAcc = accData.find(a => a.id === savedAccId);
           if (matchedAcc) {
             setSelectedAccountId(matchedAcc.id);
-            if (!username) {
-              setUsername(matchedAcc.username || '');
-              setPassword(matchedAcc.password || '');
-            }
+            setUsername(matchedAcc.username || '');
+            setPassword(matchedAcc.password || '');
+            localStorage.setItem('vpn_username', matchedAcc.username || '');
           } else if (savedAccId === '') {
-            // Keep custom input
-          } else if (!selectedAccountId) {
+            // User explicitly chose custom creds
+          } else {
             setSelectedAccountId(accData[0].id);
             setUsername(accData[0].username || '');
             setPassword(accData[0].password || '');
             localStorage.setItem('vpn_selected_account_id', accData[0].id);
+            localStorage.setItem('vpn_username', accData[0].username || '');
+          }
+        } else {
+          // If no saved accounts, check if selected profile has saved credentials
+          const activeProfName = savedProfile || loadedConfigs[0]?.name;
+          const activeProf = loadedConfigs.find(c => c.name === activeProfName || c.path === activeProfName);
+          if (activeProf && (activeProf.saved_username || activeProf.saved_password)) {
+            setUsername(activeProf.saved_username || '');
+            setPassword(activeProf.saved_password || '');
           }
         }
       }
@@ -163,17 +174,26 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
   const handleProfileSelect = (val: string) => {
     setSelectedProfile(val);
     localStorage.setItem('vpn_selected_profile', val);
+
+    const matchedCfg = configs.find(c => c.name === val || c.path === val);
+    if (matchedCfg && (matchedCfg.saved_username || matchedCfg.saved_password)) {
+      if (!selectedAccountId) {
+        setUsername(matchedCfg.saved_username || '');
+        setPassword(matchedCfg.saved_password || '');
+      }
+    }
   };
 
   const handleAccountSelect = (accId: string) => {
     setSelectedAccountId(accId);
-    localStorage.setItem('vpn_selected_account_id', accId);
     if (!accId) {
+      localStorage.setItem('vpn_selected_account_id', '');
       setUsername('');
       setPassword('');
       localStorage.removeItem('vpn_username');
       return;
     }
+    localStorage.setItem('vpn_selected_account_id', accId);
     const acc = accounts.find(a => a.id === accId);
     if (acc) {
       const u = acc.username || '';
@@ -191,6 +211,92 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
+  };
+
+  const handleSaveAccount = async () => {
+    if (!username.trim() || !password) {
+      alert('Please enter both username and password first.');
+      return;
+    }
+
+    let label = '';
+    if (selectedAccountId) {
+      const existing = accounts.find(a => a.id === selectedAccountId);
+      if (existing) {
+        if (window.confirm(`Do you want to update credentials for saved account "${existing.label || existing.username}"?`)) {
+          label = existing.label || existing.username;
+        } else {
+          return;
+        }
+      }
+    }
+
+    if (!label) {
+      const inputLabel = window.prompt('Enter a display name/label for this account:', username.trim());
+      if (!inputLabel || !inputLabel.trim()) return;
+      label = inputLabel.trim();
+    }
+
+    try {
+      const payload: any = { label, username: username.trim(), password };
+      if (selectedAccountId) {
+        payload.id = selectedAccountId;
+      }
+
+      const res = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const updatedAccounts: VPNAccount[] = await res.json();
+        setAccounts(updatedAccounts);
+        const match = updatedAccounts.find(a => a.username === username.trim() && a.label === label);
+        if (match) {
+          setSelectedAccountId(match.id);
+          localStorage.setItem('vpn_selected_account_id', match.id);
+        }
+        alert('Account saved successfully!');
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Failed to save account' }));
+        alert(err.error || 'Failed to save account');
+      }
+    } catch (err: any) {
+      alert('Failed to save account: ' + err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedAccountId) return;
+    const acc = accounts.find(a => a.id === selectedAccountId);
+    if (!acc) return;
+
+    if (!window.confirm(`Are you sure you want to delete saved account "${acc.label || acc.username}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/accounts/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedAccountId })
+      });
+
+      if (res.ok) {
+        setSelectedAccountId('');
+        localStorage.setItem('vpn_selected_account_id', '');
+        setUsername('');
+        setPassword('');
+        await loadVPNData();
+        alert('Account deleted successfully!');
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Failed to delete account' }));
+        alert(err.error || 'Failed to delete account');
+      }
+    } catch (err: any) {
+      alert('Failed to delete account: ' + err.message);
+    }
   };
 
   const handleConnect = async () => {
@@ -319,7 +425,29 @@ export const VPNModal: React.FC<VPNModalProps> = ({ isOpen, onClose, onStateChan
 
             {/* Saved Accounts Selection */}
             <div>
-              <label className="text-[11px] font-bold text-[#94a3b8] uppercase block mb-1">Saved Accounts (accounts.json)</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[11px] font-bold text-[#94a3b8] uppercase">Saved Accounts (accounts.json)</label>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSaveAccount}
+                    className="px-2 py-0.5 text-[10px] font-semibold bg-[#10b981]/20 hover:bg-[#10b981]/30 border border-[#10b981]/40 text-[#10b981] rounded flex items-center gap-1 cursor-pointer transition-all"
+                    title="Save current credentials to accounts.json"
+                  >
+                    <Save className="w-3 h-3" /> Save
+                  </button>
+                  {selectedAccountId && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      className="px-2 py-0.5 text-[10px] font-semibold bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-400 rounded flex items-center gap-1 cursor-pointer transition-all"
+                      title="Delete selected account"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </button>
+                  )}
+                </div>
+              </div>
               <select
                 value={selectedAccountId}
                 onChange={(e) => handleAccountSelect(e.target.value)}
