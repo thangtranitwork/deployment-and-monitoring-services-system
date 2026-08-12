@@ -1,6 +1,6 @@
-# 🚀 Internal Deploy System (IDS) - v2.1.0
+# 🚀 Internal Deploy System (IDS) - v2.1.1
 
-A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Manage your microservices, Git operations, multi-service parallel deployments, OpenVPN connections, and developer tools with a state-of-the-art dual-architecture web system.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 102 achievements, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, zero pill cooldowns, and real-time multi-deploy reactions.
 
 ---
 
