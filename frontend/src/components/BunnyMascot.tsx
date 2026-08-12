@@ -15,7 +15,7 @@ interface LevelInfo {
   reqXp: number;
   skinId: string;
   skinName: string;
-  emoji: string;
+  treasureId: number;
 }
 
 // ─── Item System ───────────────────────────────────────────────────────────────
@@ -351,23 +351,23 @@ export const getDeployCommentary = (serviceName: string, multiServices?: string[
 
 // ─── Cultivation Levels ────────────────────────────────────────────────────────
 export const LEVEL_CONFIG: LevelInfo[] = [
-  { level: 1,  name: 'Luyện Khí Kỳ 🌫️',           reqXp: 0,    skinId: 'none',      skinName: 'Thỏ Phàm Nhân',          emoji: '🐰' },
-  { level: 2,  name: 'Trúc Cơ Kỳ 🧘',              reqXp: 40,   skinId: 'grad_cap',  skinName: 'Bồ Đoàn Tụ Linh',        emoji: '🧘' },
-  { level: 3,  name: 'Kim Đan Kỳ 🔮',              reqXp: 100,  skinId: 'cap',       skinName: 'Kim Đan Phù Chú',         emoji: '🔮' },
-  { level: 4,  name: 'Nguyên Anh Kỳ 👶',           reqXp: 200,  skinId: 'helmet',    skinName: 'Hào Quang Nguyên Anh',    emoji: '👶' },
-  { level: 5,  name: 'Hóa Thần Kỳ ⚡',             reqXp: 350,  skinId: 'astro',     skinName: 'Linh Phù Hóa Thần',      emoji: '⚡' },
-  { level: 6,  name: 'Luyện Hư Kỳ 🪐',             reqXp: 550,  skinId: 'glasses',   skinName: 'Linh Chu Vũ Trụ',         emoji: '🪐' },
-  { level: 7,  name: 'Hợp Thể Kỳ ⚔️',              reqXp: 800,  skinId: 'ninja',     skinName: 'Phi Kiếm Trảm Tiên',      emoji: '⚔️' },
-  { level: 8,  name: 'Đại Thừa Kỳ ☯️',             reqXp: 1100, skinId: 'crown',     skinName: 'Bát Quái Kính',           emoji: '☯️' },
-  { level: 9,  name: 'Độ Kiếp Kỳ 🌩️',              reqXp: 1500, skinId: 'aura',      skinName: 'Mũ Tiên Vương',           emoji: '👑🌩️' },
-  { level: 10, name: 'Chân Tiên 🌟',               reqXp: 2000, skinId: 'chan_tien', skinName: 'Bồ Đề Tiên Thần',        emoji: '🎓🌟' },
-  { level: 11, name: 'Huyền Tiên 🔮',              reqXp: 2600, skinId: 'huyen_tien',skinName: 'Pháp Tắc Khí Huấn',      emoji: '🕶️🔮' },
-  { level: 12, name: 'Kim Tiên 👑',                reqXp: 3300, skinId: 'kim_tien',  skinName: 'Vương Miện Kim Tiên',     emoji: '👑✨' },
-  { level: 13, name: 'Thái Ất Ngọc Tiên 💎',       reqXp: 4100, skinId: 'ngoc_tien', skinName: 'Ngọc Bích Pháp Bảo',     emoji: '💎' },
-  { level: 14, name: 'Thái Ất Kim Tiên ⚡',         reqXp: 5000, skinId: 'thai_at',  skinName: 'Lôi Đình Thần Phù',      emoji: '⚡🪖' },
-  { level: 15, name: 'Đại La Kim Tiên 🌌',          reqXp: 6000, skinId: 'dai_la',   skinName: 'Vạn Giới Hào Quang',     emoji: '🌌👑' },
-  { level: 16, name: 'Hỗn Nguyên Đại La 🌌✨',      reqXp: 7200, skinId: 'hon_nguyen',skinName: 'Vũ Trụ Trận Pháp',       emoji: '🌌✨' },
-  { level: 17, name: 'Thánh Nhân (Tiên Đế) 👑⚡',  reqXp: 8500, skinId: 'god',      skinName: 'Chân Thể Tiên Đế Vô Cực',emoji: '👑⚡☯️' }
+  { level: 1,  name: 'Luyện Khí Kỳ',           reqXp: 0,    skinId: 'none',      skinName: 'Mộc Linh Kiếm',        treasureId: 1 },
+  { level: 2,  name: 'Trúc Cơ Kỳ',              reqXp: 40,   skinId: 'grad_cap',  skinName: 'Tụ Linh Phù',          treasureId: 2 },
+  { level: 3,  name: 'Kim Đan Kỳ',              reqXp: 100,  skinId: 'cap',       skinName: 'Kim Đan Phi Kiếm',      treasureId: 3 },
+  { level: 4,  name: 'Nguyên Anh Kỳ',           reqXp: 200,  skinId: 'helmet',    skinName: 'Nguyên Anh Liên Đài',  treasureId: 4 },
+  { level: 5,  name: 'Hóa Thần Kỳ',             reqXp: 350,  skinId: 'astro',     skinName: 'Hóa Thần Linh Trượng', treasureId: 5 },
+  { level: 6,  name: 'Luyện Hư Kỳ',             reqXp: 550,  skinId: 'glasses',   skinName: 'Hư Không Luân',        treasureId: 6 },
+  { level: 7,  name: 'Hợp Thể Kỳ',              reqXp: 800,  skinId: 'ninja',     skinName: 'Thiên Đạo Thương',     treasureId: 7 },
+  { level: 8,  name: 'Đại Thừa Kỳ',             reqXp: 1100, skinId: 'crown',     skinName: 'Bát Quái Kính',        treasureId: 8 },
+  { level: 9,  name: 'Độ Kiếp Kỳ',              reqXp: 1500, skinId: 'aura',      skinName: 'Cửu Thiên Lôi Ấn',     treasureId: 9 },
+  { level: 10, name: 'Chân Tiên',               reqXp: 2000, skinId: 'chan_tien', skinName: 'Bồ Đề Thần Thụ',      treasureId: 10 },
+  { level: 11, name: 'Huyền Tiên',              reqXp: 2600, skinId: 'huyen_tien',skinName: 'Huyền Thiên Đạo Luân',treasureId: 11 },
+  { level: 12, name: 'Kim Tiên',                reqXp: 3300, skinId: 'kim_tien',  skinName: 'Kim Tiên Đế Ấn',      treasureId: 12 },
+  { level: 13, name: 'Thái Ất Ngọc Tiên',       reqXp: 4100, skinId: 'ngoc_tien', skinName: 'Thái Ất Ngọc Hồ',     treasureId: 13 },
+  { level: 14, name: 'Thái Ất Kim Tiên',         reqXp: 5000, skinId: 'thai_at',  skinName: 'Thái Ất Thần Kích',    treasureId: 14 },
+  { level: 15, name: 'Đại La Kim Tiên',          reqXp: 6000, skinId: 'dai_la',   skinName: 'Vạn Giới Thiên Luân', treasureId: 15 },
+  { level: 16, name: 'Hỗn Nguyên Đại La',      reqXp: 7200, skinId: 'hon_nguyen',skinName: 'Hỗn Nguyên Đạo Đỉnh',  treasureId: 16 },
+  { level: 17, name: 'Thánh Nhân (Tiên Đế)',  reqXp: 8500, skinId: 'god',      skinName: 'Vạn Giới Đạo Bảo',      treasureId: 17 }
 ];
 
 export const getSuccessRate = (level: number): number => {
@@ -375,7 +375,150 @@ export const getSuccessRate = (level: number): number => {
   return Math.max(0.20, Math.min(0.85, baseSuccess / 100));
 };
 
-const BUNNY_STORAGE_KEY = 'ids_bunny_progress_v2';
+// ─── Bunny Mascot Size & Sprite Grid Constants ─────────────────────────────────
+export const MASCOT_SIZE = 80;
+
+export const BUNNY_STATE_ROW_INDEX: Record<BunnyState, number> = {
+  idle: 0,
+  walk_right: 1,
+  walk_left: 2,
+  jump_right: 3,
+  jump_left: 4,
+  sleep: 5,
+  eat: 6,
+  run_right: 7,
+  run_left: 8,
+  dance: 9
+};
+
+// ─── Bunny Skin Sprite Component (10-frame PNG animation) ────────────────────────
+export const BunnySkinSprite: React.FC<{
+  level: number;
+  size?: number;
+  animated?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}> = ({ level, size = 48, animated = true, className = '', style = {} }) => {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    if (!animated) return;
+    const timer = setInterval(() => {
+      setFrame((f) => (f + 1) % 10);
+    }, 130);
+    return () => clearInterval(timer);
+  }, [animated]);
+
+  const bgX = -frame * size;
+
+  return (
+    <div
+      className={`select-none pointer-events-none ${className}`}
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        backgroundImage: `url(/skins/${level}.png)`,
+        backgroundSize: `${size * 10}px ${size * 10}px`,
+        backgroundPosition: `${bgX}px 0px`,
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: 'transparent',
+        imageRendering: 'pixelated',
+        ...style
+      }}
+    />
+  );
+};
+
+// ─── Treasure Sprite Component (10-frame PNG animation) ────────────────────────
+export const TreasureSprite: React.FC<{
+  treasureId: number;
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}> = ({ treasureId, size = 48, className = '', style = {} }) => {
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((f) => (f + 1) % 10);
+    }, 100); // 10 FPS (100ms per frame)
+    return () => clearInterval(timer);
+  }, []);
+
+  const bgX = -frame * size;
+
+  return (
+    <div
+      className={`select-none pointer-events-none ${className}`}
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        backgroundImage: `url(/treasures/${treasureId}.png)`,
+        backgroundSize: `${size * 10}px ${size}px`,
+        backgroundPosition: `${bgX}px 0px`,
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: 'transparent',
+        imageRendering: 'pixelated',
+        ...style
+      }}
+    />
+  );
+};
+
+// ─── Treasure Orbiting Component (Quỹ đạo 3D xoay quanh mascot) ───────────────
+export const TreasureOrbit: React.FC<{
+  treasureId: number;
+  isDeploying?: boolean;
+}> = ({ treasureId, isDeploying }) => {
+  const [angle, setAngle] = useState(0);
+
+  useEffect(() => {
+    let animId: number;
+    let lastTime = performance.now();
+
+    const update = (now: number) => {
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+      const speed = isDeploying ? 3.5 : 1.5;
+      setAngle((prev) => (prev + speed * delta) % (Math.PI * 2));
+      animId = requestAnimationFrame(update);
+    };
+
+    animId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animId);
+  }, [isDeploying]);
+
+  const radiusX = 64;
+  const radiusY = 22;
+
+  const offsetX = Math.cos(angle) * radiusX;
+  const offsetY = Math.sin(angle) * radiusY - 14;
+
+  const isFront = Math.sin(angle) >= 0;
+  const zIndex = isFront ? 30 : -1;
+  const scale = 0.8 + (Math.sin(angle) + 1) * 0.25;
+  const opacity = 0.8 + (Math.sin(angle) + 1) * 0.1;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) scale(${scale})`,
+        zIndex,
+        opacity,
+        transition: 'transform 0.05s linear',
+        filter: isDeploying
+          ? 'drop-shadow(0 0 16px rgba(245,158,11,0.9))'
+          : 'drop-shadow(0 0 10px rgba(245,158,11,0.5))',
+        pointerEvents: 'none'
+      }}
+    >
+      <TreasureSprite treasureId={treasureId} size={50} />
+    </div>
+  );
+};
 
 // ─── Lightning Canvas ──────────────────────────────────────────────────────────
 const LightningCanvas: React.FC<{ bunnyX: number; bunnyY: number }> = ({ bunnyX, bunnyY }) => {
@@ -448,6 +591,8 @@ const LightningCanvas: React.FC<{ bunnyX: number; bunnyY: number }> = ({ bunnyX,
   return <canvas ref={canvasRef} className="fixed inset-0 z-[999] pointer-events-none w-full h-full" />;
 };
 
+const BUNNY_STORAGE_KEY = 'ids_bunny_progress_v2';
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   isDeploying = false,
@@ -463,6 +608,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
   const [xp, setXp]                                         = useState<number>(() => loadSaved().xp ?? 0);
   const [activeSkin, setActiveSkin]                         = useState<string>(() => loadSaved().activeSkin ?? 'none');
+  const [activeTreasureId, setActiveTreasureId]             = useState<number>(() => loadSaved().activeTreasureId ?? 1);
   const [inventory, setInventory]                           = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 0, great: loadSaved().inventory?.great ?? 0, talisman: loadSaved().inventory?.talisman ?? 1 }));
   const [totalMinutes, setTotalMinutes]                     = useState<number>(() => loadSaved().totalMinutes ?? 0);
   const [totalDrags, setTotalDrags]                         = useState<number>(() => loadSaved().totalDrags ?? 0);
@@ -488,7 +634,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   // ─── UI State ───────────────────────────────────────────────────────────────
   const [isLevelUpAnim, setIsLevelUpAnim]                   = useState(false);
   const [showCostumePicker, setShowCostumePicker]           = useState(false);
-  const [modalTab, setModalTab]                             = useState<'levels' | 'achievements'>('levels');
+  const [modalTab, setModalTab]                             = useState<'skins' | 'treasures' | 'achievements'>('skins');
   const [recentAchievementToast, setRecentAchievementToast] = useState<Achievement | null>(null);
   const [showInventory, setShowInventory]                   = useState(false);
   const [state, setState]                                   = useState<BunnyState>('idle');
@@ -507,9 +653,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const dragStartRef = useRef({ startX: 0, startY: 0, initPosX: 82, initPosY: 12 });
 
   // ─── Computed ───────────────────────────────────────────────────────────────
-  const currentLevelInfo = LEVEL_CONFIG.slice().reverse().find(l => xp >= l.reqXp) ?? LEVEL_CONFIG[0];
-  const currentLevel     = currentLevelInfo.level;
-  const nextLevelInfo    = LEVEL_CONFIG.find(l => l.level === currentLevel + 1);
+  const currentLevelInfo   = LEVEL_CONFIG.slice().reverse().find(l => xp >= l.reqXp) ?? LEVEL_CONFIG[0];
+  const currentLevel       = currentLevelInfo.level;
+  const activeSkinInfo     = LEVEL_CONFIG.find(l => l.skinId === activeSkin) ?? currentLevelInfo;
+  const activeTreasureInfo = LEVEL_CONFIG.find(l => l.treasureId === activeTreasureId) ?? currentLevelInfo;
+  const nextLevelInfo      = LEVEL_CONFIG.find(l => l.level === currentLevel + 1);
   const isReadyToBreakthrough = Boolean(nextLevelInfo && xp >= nextLevelInfo.reqXp - 1);
   const isTribulationLevel    = currentLevel >= 2;
   const isTalismanActive      = Date.now() < talismanBuffExpiry;
@@ -530,6 +678,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       localStorage.setItem(BUNNY_STORAGE_KEY, JSON.stringify({
         xp,
         activeSkin,
+        activeTreasureId,
         inventory,
         totalMinutes,
         totalDrags,
@@ -542,7 +691,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         lastSessionTime: Date.now()
       }));
     } catch { /* noop */ }
-  }, [xp, activeSkin, inventory, totalMinutes, totalDrags, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, lastPillTime]);
+  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, lastPillTime]);
 
   // ─── Cooldown Countdown Timer ───────────────────────────────────────────────
   useEffect(() => {
@@ -700,7 +849,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           if (isTalismanActive) {
             unlockAchievement('secret_talisman_kiep');
           }
-          setXp(target.reqXp + 1); setActiveSkin(target.skinId); triggerGentleHop();
+          setXp(target.reqXp + 1); setActiveSkin(target.skinId); setActiveTreasureId(target.treasureId); triggerGentleHop();
           grantItem('great', 1);
           if (target.level === 10) setBubbleText(`✨ PHI THĂNG TIÊN GIỚI! Thỏ đắc đạo Chân Tiên 🌟! +1 🌸 Đại Hoàn Đan!`);
           else setBubbleText(`✨ ĐỘ KIẾP THÀNH CÔNG! Đột phá [${target.name}]! +1 🌸 Đại Hoàn Đan thưởng!`);
@@ -716,7 +865,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         }
       }, 3200);
     } else {
-      triggerGentleHop(); setXp(target.reqXp + 1); setActiveSkin(target.skinId);
+      triggerGentleHop(); setXp(target.reqXp + 1); setActiveSkin(target.skinId); setActiveTreasureId(target.treasureId);
       setBubbleText(`✨ ĐỘT PHÁ THÀNH CÔNG! Khai phá đan điền, bước vào Trúc Cơ Kỳ 🧘!`);
     }
   };
@@ -877,8 +1026,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
   if (isDismissed) return null;
 
-  const bgX = -(frame * 50);
-  const bgY = -stateRowY[state];
+  const bgX = -(frame * MASCOT_SIZE);
+  const bgY = -(BUNNY_STATE_ROW_INDEX[state] * MASCOT_SIZE);
 
   const getVerticalOffset = () => {
     if (state.startsWith('jump') || isDragging) return [0,-20,-42,-62,-75,-70,-50,-28,-10,0][frame % 10];
@@ -932,7 +1081,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           <button
             onClick={e => { e.stopPropagation(); setShowCostumePicker(p => !p); }}
             onPointerDown={e => e.stopPropagation()}
-            title="Xem Cảnh Giới Tu Tiên & Tủ Đồ Pháp Bảo"
+            title="Xem Cảnh Giới Tu Tiên, Thân Pháp & Pháp Bảo"
             style={{
               background: 'linear-gradient(135deg,rgba(245,158,11,0.28),rgba(168,85,247,0.28),rgba(16,185,129,0.28))',
               border: '1px solid rgba(245,158,11,0.4)', borderRadius: '8px',
@@ -987,25 +1136,23 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                 background: canEatAny ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)',
                 border: `1px solid ${canEatAny ? 'rgba(245,158,11,0.5)' : 'rgba(100,116,139,0.3)'}`,
                 borderRadius: '8px', padding: '2px 8px',
-                fontSize: '10.5px', fontWeight: 700,
-                color: canEatAny ? '#fde68a' : '#94a3b8',
-                cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
-                display: 'flex', alignItems: 'center', gap: '4px'
+                fontSize: '11px', fontWeight: 700, color: canEatAny ? '#fbbf24' : '#94a3b8',
+                cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px'
               }}
             >
-              <Package style={{ width: '11px', height: '11px', flexShrink: 0 }} />
-              {cooldownRemain > 0 ? `${cooldownRemain}s` : `💊 Túi Đan (${totalInventory})`}
+              <Package style={{ width: '13px', height: '13px', color: canEatAny ? '#fbbf24' : '#94a3b8' }} />
+              <span>{totalInventory}</span>
             </button>
           )}
 
-          {/* Dismiss */}
+          {/* Dismiss button */}
           <button
             onClick={e => { e.stopPropagation(); setIsDismissed(true); }}
             onPointerDown={e => e.stopPropagation()}
-            title="Ẩn Thỏ Tiên"
+            title="Ẩn Thỏ"
             style={{ color: '#64748b', cursor: 'pointer', padding: '2px', borderRadius: '50%', background: 'none', border: 'none', flexShrink: 0 }}
           >
-            <X style={{ width: '12px', height: '12px' }} />
+            <X style={{ width: '11px', height: '11px' }} />
           </button>
 
           {/* Bubble arrow */}
@@ -1098,35 +1245,41 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           </div>
         )}
 
-        {/* ── Bunny Sprite ── */}
+        {/* ── Bunny Sprite + Orbiting Cultivation Treasure ── */}
         <div
-          className="relative transition-transform duration-200 hover:scale-125 active:scale-95"
-          style={{ transform: `translateY(${currentOffsetY}px)` }}
+          className="relative transition-transform duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
+          style={{
+            transform: `translateY(${currentOffsetY}px)`,
+            width: `${MASCOT_SIZE}px`,
+            height: `${MASCOT_SIZE}px`
+          }}
           title="Nhấp chuột mở Túi Đan 🎒 | KÉO THẢ để nhận XP 🎈"
         >
-          {/* Artifact Layer */}
-          {activeSkin === 'grad_cap'  && <div style={artifactSideStyle} className="text-xl animate-bounce filter drop-shadow-[0_0_8px_#f59e0b]">🧘</div>}
-          {activeSkin === 'cap'       && <div style={artifactSideStyle} className="text-xl animate-pulse filter drop-shadow-[0_0_8px_#a855f7]">🔮</div>}
-          {activeSkin === 'helmet'    && <div style={artifactSideStyle} className="text-xl animate-pulse filter drop-shadow-[0_0_8px_#38bdf8]">👶</div>}
-          {activeSkin === 'astro'     && <div style={artifactSideStyle} className="text-2xl animate-pulse filter drop-shadow-[0_0_10px_#f59e0b]">⚡</div>}
-          {activeSkin === 'glasses'   && <div style={artifactSideStyle} className="text-lg animate-bounce filter drop-shadow-[0_0_8px_#38bdf8]">🪐</div>}
-          {activeSkin === 'ninja'     && <div style={artifactSideStyle} className="text-lg animate-bounce filter drop-shadow-[0_0_8px_#ef4444]">⚔️</div>}
-          {activeSkin === 'crown'     && <div style={artifactSideStyle} className="text-2xl animate-bounce filter drop-shadow-[0_0_10px_#eab308]">☯️</div>}
-          {activeSkin === 'aura'      && <><div style={artifactSideStyle} className="text-xl animate-bounce">👑</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_25px_8px_rgba(245,158,11,0.7)] pointer-events-none" /></>}
-          {activeSkin === 'chan_tien' && <div style={artifactSideStyle} className="text-xl animate-pulse filter drop-shadow-[0_0_10px_#eab308]">🎓🌟</div>}
-          {activeSkin === 'huyen_tien'&& <div style={artifactSideStyle} className="text-lg animate-bounce filter drop-shadow-[0_0_10px_#a855f7]">🕶️🔮</div>}
-          {activeSkin === 'kim_tien'  && <div style={artifactSideStyle} className="text-2xl animate-bounce filter drop-shadow-[0_0_12px_#f59e0b]">👑✨</div>}
-          {activeSkin === 'ngoc_tien' && <div style={artifactSideStyle} className="text-xl animate-pulse filter drop-shadow-[0_0_10px_#10b981]">💎</div>}
-          {activeSkin === 'thai_at'   && <div style={artifactSideStyle} className="text-xl animate-bounce filter drop-shadow-[0_0_10px_#38bdf8]">⚡🪖</div>}
-          {activeSkin === 'dai_la'    && <><div style={artifactSideStyle} className="text-2xl animate-bounce">🌌👑</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_30px_10px_rgba(56,189,248,0.8)] pointer-events-none" /></>}
-          {activeSkin === 'hon_nguyen'&& <><div style={artifactSideStyle} className="text-2xl animate-bounce">🌌✨</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_35px_12px_rgba(168,85,247,0.8)] pointer-events-none border-2 border-purple-400" /></>}
-          {activeSkin === 'god'       && <><div style={artifactSideStyle} className="text-2xl animate-bounce">👑⚡</div><div className="absolute -top-1 -right-2 text-sm z-10 animate-ping">☯️</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_35px_14px_rgba(234,179,8,0.9)] pointer-events-none border-2 border-amber-300" /></>}
+          {/* Automatic Orbiting Cultivation Treasure (Pháp Bảo) */}
+          {activeTreasureId && (
+            <TreasureOrbit treasureId={activeTreasureId} isDeploying={isDeploying} />
+          )}
+
+          {/* Additional Realm Aura Effects */}
+          {activeSkinInfo.skinId === 'aura'       && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_30px_10px_rgba(245,158,11,0.7)] pointer-events-none" />}
+          {activeSkinInfo.skinId === 'dai_la'     && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_35px_12px_rgba(56,189,248,0.8)] pointer-events-none" />}
+          {activeSkinInfo.skinId === 'hon_nguyen' && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_40px_14px_rgba(168,85,247,0.8)] pointer-events-none border-2 border-purple-400" />}
+          {activeSkinInfo.skinId === 'god'        && <><div className="absolute -top-2 -right-3 text-base z-10 animate-ping">☯️</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_40px_16px_rgba(234,179,8,0.9)] pointer-events-none border-2 border-amber-300" /></>}
 
           <div
-            className="w-[50px] h-[50px] bg-no-repeat drop-shadow-[0_4px_10px_rgba(245,158,11,0.4)]"
-            style={{ backgroundImage: 'url(/bunny_10x10_grid.png)', backgroundSize: '500px 500px', backgroundPosition: `${bgX}px ${bgY}px`, imageRendering: 'pixelated' }}
+            className="bg-no-repeat"
+            style={{
+              width: `${MASCOT_SIZE}px`,
+              height: `${MASCOT_SIZE}px`,
+              backgroundImage: `url(/skins/${activeSkinInfo.level}.png)`,
+              backgroundSize: `${MASCOT_SIZE * 10}px ${MASCOT_SIZE * 10}px`,
+              backgroundPosition: `${bgX}px ${bgY}px`,
+              backgroundRepeat: 'no-repeat',
+              backgroundColor: 'transparent',
+              imageRendering: 'pixelated'
+            }}
           />
-          {state === 'sleep' && <div className="absolute -top-2 left-0 animate-bounce"><Moon style={{ width: '14px', height: '14px', color: '#f59e0b' }} /></div>}
+          {state === 'sleep' && <div className="absolute -top-2 left-0 animate-bounce"><Moon style={{ width: '16px', height: '16px', color: '#f59e0b' }} /></div>}
         </div>
       </div>
 
@@ -1176,21 +1329,36 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         >
           <div style={{ background: '#0b0f19', border: '1px solid rgba(245,158,11,0.45)', borderRadius: '20px', width: '100%', maxWidth: '680px', padding: '24px', boxShadow: '0 20px 60px rgba(245,158,11,0.22)', color: '#fff', position: 'relative' }}>
             {/* Header Tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(245,158,11,0.18)', paddingBottom: '12px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(245,158,11,0.18)', paddingBottom: '12px', marginBottom: '14px', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => setModalTab('levels')}
+                  onClick={() => setModalTab('skins')}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '6px',
-                    background: modalTab === 'levels' ? 'rgba(245,158,11,0.22)' : 'transparent',
-                    border: `1px solid ${modalTab === 'levels' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '10px', padding: '6px 14px', fontSize: '12.5px', fontWeight: 700,
-                    color: modalTab === 'levels' ? '#fde68a' : '#94a3b8', cursor: 'pointer',
+                    background: modalTab === 'skins' ? 'rgba(245,158,11,0.22)' : 'transparent',
+                    border: `1px solid ${modalTab === 'skins' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px', padding: '6px 12px', fontSize: '12px', fontWeight: 700,
+                    color: modalTab === 'skins' ? '#fde68a' : '#94a3b8', cursor: 'pointer',
                     transition: 'all 0.15s'
                   }}
                 >
-                  <Crown style={{ width: '15px', height: '15px', color: modalTab === 'levels' ? '#f59e0b' : '#64748b' }} />
-                  17 Cảnh Giới & Pháp Bảo
+                  <Crown style={{ width: '14px', height: '14px', color: modalTab === 'skins' ? '#f59e0b' : '#64748b' }} />
+                  🥋 Diện mạo
+                </button>
+
+                <button
+                  onClick={() => setModalTab('treasures')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: modalTab === 'treasures' ? 'rgba(245,158,11,0.22)' : 'transparent',
+                    border: `1px solid ${modalTab === 'treasures' ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px', padding: '6px 12px', fontSize: '12px', fontWeight: 700,
+                    color: modalTab === 'treasures' ? '#bae6fd' : '#94a3b8', cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Zap style={{ width: '14px', height: '14px', color: modalTab === 'treasures' ? '#38bdf8' : '#64748b' }} />
+                  🔮 Pháp Bảo 
                 </button>
 
                 <button
@@ -1199,12 +1367,12 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                     display: 'flex', alignItems: 'center', gap: '6px',
                     background: modalTab === 'achievements' ? 'rgba(245,158,11,0.22)' : 'transparent',
                     border: `1px solid ${modalTab === 'achievements' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '10px', padding: '6px 14px', fontSize: '12.5px', fontWeight: 700,
+                    borderRadius: '10px', padding: '6px 12px', fontSize: '12px', fontWeight: 700,
                     color: modalTab === 'achievements' ? '#fde68a' : '#94a3b8', cursor: 'pointer',
                     transition: 'all 0.15s'
                   }}
                 >
-                  <Trophy style={{ width: '15px', height: '15px', color: modalTab === 'achievements' ? '#fbbf24' : '#64748b' }} />
+                  <Trophy style={{ width: '14px', height: '14px', color: modalTab === 'achievements' ? '#fbbf24' : '#64748b' }} />
                   Thành Tựu ({unlockedAchievements.length}/{ACHIEVEMENTS.length})
                 </button>
               </div>
@@ -1217,11 +1385,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             {/* Progress Card */}
             <div style={{ background: 'rgba(22,31,51,0.9)', border: '1px solid rgba(245,158,11,0.28)', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '28px' }}>{currentLevelInfo.emoji}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BunnySkinSprite level={activeSkinInfo.level} size={54} />
+                    <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>
+                      <TreasureSprite treasureId={activeTreasureId} size={28} />
+                    </div>
+                  </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '14px', color: '#fbbf24' }}>Lv.{currentLevel}: {currentLevelInfo.name}</div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    <div style={{ fontWeight: 800, fontSize: '14px', color: '#fbbf24' }}>
+                      Lv.{currentLevel}: {currentLevelInfo.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, marginTop: '2px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <span>🥋 Thân Pháp: <strong style={{ color: '#fde68a' }}>{activeSkinInfo.name}</strong></span>
+                      <span>🔮 Pháp Bảo: <strong style={{ color: '#38bdf8' }}>{activeTreasureInfo.skinName}</strong></span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
                       Linh Lực: {xp} XP • Túi Đan: {totalInventory} viên • Thành Tựu: {unlockedAchievements.length}/{ACHIEVEMENTS.length}
                     </div>
                   </div>
@@ -1243,44 +1422,65 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
               </div>
             </div>
 
-            {/* TAB 1: Realm Grid */}
-            {modalTab === 'levels' && (
+            {/* TAB 1: Skins (Thân Pháp) Grid */}
+            {modalTab === 'skins' && (
               <>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.7)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Danh Sách 17 Cảnh Giới & Pháp Bảo</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(251,191,36,0.8)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  DANH SÁCH 17 THÂN PHÁP / SKIN THỎ
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
                   {LEVEL_CONFIG.map(lvl => {
                     const unlocked = xp >= lvl.reqXp;
                     const equipped = activeSkin === lvl.skinId;
-                    const nextLvlSuccessRate = lvl.level >= 2 ? Math.round(getSuccessRate(lvl.level) * 100) : null;
                     return (
                       <button
                         key={lvl.skinId}
                         disabled={!unlocked}
-                        onClick={() => { if (unlocked) { setActiveSkin(lvl.skinId); setShowCostumePicker(false); setBubbleText(`✨ Triệu hồi Pháp Bảo [${lvl.skinName}]!`); } }}
+                        onClick={() => {
+                          if (unlocked) {
+                            setActiveSkin(lvl.skinId);
+                            setShowCostumePicker(false);
+                            setBubbleText(`✨ Đã thay Thân Pháp [${lvl.name}]! 🐰`);
+                          }
+                        }}
                         style={{
-                          padding: '12px', borderRadius: '12px', textAlign: 'left',
+                          padding: '10px 12px', borderRadius: '12px', textAlign: 'left',
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          background: equipped ? 'rgba(245,158,11,0.18)' : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
-                          border: `1px solid ${equipped ? '#f59e0b' : unlocked ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'}`,
+                          background: equipped
+                            ? 'rgba(245,158,11,0.18)'
+                            : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
+                          border: `1px solid ${equipped ? '#f59e0b' : unlocked ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.04)'}`,
                           color: equipped ? '#fde68a' : unlocked ? '#e2e8f0' : '#4b5563',
                           cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.5,
                           transition: 'all 0.15s'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                          <span style={{ fontSize: '22px', flexShrink: 0 }}>{lvl.emoji}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                          <div style={{ width: '48px', height: '48px', filter: unlocked ? 'none' : 'grayscale(100%) opacity(0.4)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <BunnySkinSprite level={lvl.level} size={46} />
+                          </div>
                           <div style={{ overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 700, fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lvl.name}</div>
-                            <div style={{ fontSize: '10px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {unlocked ? lvl.skinName : `Cần ${lvl.reqXp} XP`}
-                              {nextLvlSuccessRate !== null && unlocked ? <span style={{ color: nextLvlSuccessRate >= 70 ? '#86efac' : nextLvlSuccessRate >= 50 ? '#fde68a' : '#fca5a5' }}> • Kiếp {nextLvlSuccessRate}%</span> : null}
+                            <div style={{ fontWeight: 800, fontSize: '12px', color: equipped ? '#fbbf24' : unlocked ? '#f1f5f9' : '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              Lv.{lvl.level}: {lvl.name}
+                            </div>
+                            <div style={{ fontSize: '10.5px', fontWeight: 600, color: unlocked ? '#fde68a' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                              {unlocked ? `Thân Pháp Cảnh Giới ${lvl.level}` : `Khóa (Cần ${lvl.reqXp} XP)`}
                             </div>
                           </div>
                         </div>
-                        <div style={{ flexShrink: 0, marginLeft: '4px' }}>
-                          {equipped ? <div style={{ width: '18px', height: '18px', background: '#f59e0b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check style={{ width: '11px', height: '11px', color: '#000' }} /></div>
-                            : unlocked ? <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#f59e0b' }}>Dùng</span>
-                            : <Lock style={{ width: '12px', height: '12px', color: '#4b5563' }} />}
+                        <div style={{ flexShrink: 0, marginLeft: '6px' }}>
+                          {equipped ? (
+                            <div style={{ background: '#f59e0b', color: '#000', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <Check style={{ width: '10px', height: '10px', strokeWidth: 3 }} />
+                              Đang Mặc
+                            </div>
+                          ) : unlocked ? (
+                            <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#fde68a', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 800 }}>
+                              Mặc Thân Pháp
+                            </div>
+                          ) : (
+                            <Lock style={{ width: '14px', height: '14px', color: '#475569' }} />
+                          )}
                         </div>
                       </button>
                     );
@@ -1289,7 +1489,74 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
               </>
             )}
 
-            {/* TAB 2: Achievements Grid */}
+            {/* TAB 2: Treasures (Pháp Bảo) Grid */}
+            {modalTab === 'treasures' && (
+              <>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(56,189,248,0.8)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  DANH SÁCH 17 PHÁP BẢO HỘ THỂ
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '6px' }}>
+                  {LEVEL_CONFIG.map(lvl => {
+                    const unlocked = xp >= lvl.reqXp;
+                    const equipped = activeTreasureId === lvl.treasureId;
+                    return (
+                      <button
+                        key={lvl.treasureId}
+                        disabled={!unlocked}
+                        onClick={() => {
+                          if (unlocked) {
+                            setActiveTreasureId(lvl.treasureId);
+                            setShowCostumePicker(false);
+                            setBubbleText(`✨ Đã ngự Pháp Bảo [${lvl.skinName}] gia trì hộ thể! 🔮`);
+                          }
+                        }}
+                        style={{
+                          padding: '10px 12px', borderRadius: '12px', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          background: equipped
+                            ? 'rgba(56,189,248,0.18)'
+                            : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
+                          border: `1px solid ${equipped ? '#38bdf8' : unlocked ? 'rgba(56,189,248,0.25)' : 'rgba(255,255,255,0.04)'}`,
+                          color: equipped ? '#bae6fd' : unlocked ? '#e2e8f0' : '#4b5563',
+                          cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.5,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                          <div style={{ width: '48px', height: '48px', filter: unlocked ? 'none' : 'grayscale(100%) opacity(0.4)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <TreasureSprite treasureId={lvl.treasureId} size={46} />
+                          </div>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 800, fontSize: '12px', color: equipped ? '#38bdf8' : unlocked ? '#f1f5f9' : '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {lvl.skinName}
+                            </div>
+                            <div style={{ fontSize: '10.5px', fontWeight: 600, color: unlocked ? '#94a3b8' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>
+                              {unlocked ? `Cảnh Giới Lv.${lvl.level}: ${lvl.name}` : `Khóa (Cần ${lvl.reqXp} XP)`}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, marginLeft: '6px' }}>
+                          {equipped ? (
+                            <div style={{ background: '#38bdf8', color: '#000', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <Check style={{ width: '10px', height: '10px', strokeWidth: 3 }} />
+                              Đang Ngự
+                            </div>
+                          ) : unlocked ? (
+                            <div style={{ background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.4)', color: '#38bdf8', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 800 }}>
+                              Ngự Bảo
+                            </div>
+                          ) : (
+                            <Lock style={{ width: '14px', height: '14px', color: '#475569' }} />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* TAB 3: Achievements Grid */}
             {modalTab === 'achievements' && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>

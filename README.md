@@ -58,7 +58,7 @@ deploy-tool/
 ### 🔍 Workspace Branch Comparison (Compare Source Suite)
 - **Service Diff Accordion Cards**: Bento-style expandable cards displaying local branch, target branch, un-deployed commit count, and changed file count.
 - **Live Search Filter**: Filter services in real-time by service name or branch.
-- **Staging Synchronization (Cập nhật Staging)**: Single-click bulk or per-service staging update with auto-stash, `git checkout staging`, `git pull origin/staging`, and automatic restoration back to your original branch (`restoreOriginalBranch`).
+- **Staging Synchronization**: Single-click bulk or per-service staging update with auto-stash, `git checkout staging`, `git pull origin/staging`, and automatic restoration back to your original branch (`restoreOriginalBranch`).
 - **Direct Multi Deploy Access**: Integrated `⚡ Go to Multi Deploy` action button to immediately jump into parallel multi-service deployments.
 
 ### 📁 Multi-Workspace Management
@@ -109,37 +109,43 @@ A comprehensive suite of 13 local developer utility tools:
 
 ## 🌟 What's New in v2.1.0
 
-### 🐰 Thỏ Tiên Mascot — Tu Tiên Cultivation System
+### 🐰 Immortal Bunny Mascot — Cultivation & Customization System
 
-The corner mascot has been upgraded into a full **Tu Tiên (Cultivation) progression system** with 17 cultivation realms spanning the mortal world (`Luyện Khí` → `Độ Kiếp`) and the immortal realm (`Chân Tiên` → `Tiên Đế`).
+The corner mascot has been upgraded into a full **Tu Tiên (Cultivation) progression system** featuring 17 cultivation realms spanning the mortal world (`Qi Condensation` → `Tribulation Crossing`) and the immortal realm (`True Immortal` → `Immortal Emperor`), accompanied by independent skin & artifact customization.
+
+**✨ Visual & Mascot Highlights:**
+- **80px HD Display Size**: The bunny mascot is rendered at a crisp 80px HD size with detailed pixel art and autonomous animations (running, hopping, meditating, flying sword hovering, consuming pills, dancing...).
+- **17 Realm Appearances (Skins)**: 17 dedicated transparent 10x10 spritesheets corresponding to the 17 cultivation realms.
+- **17 Guardian Artifacts (Treasures)**: 17 unique 3D orbiting artifacts revolving around the mascot with dynamic illumination during deployments.
+- **Independent Customization**: Fully independent customization of **🥋 Appearance (Skin)** and **🔮 Guardian Artifact (Treasure)** across dedicated modal tabs.
 
 **Realm Progression:**
-- **17 Cảnh Giới** from Phàm Nhân to Tiên Đế, each with unique skins and lore
-- **Độ Kiếp (天劫)**: Manual tribulation button with procedural full-screen lightning canvas animation
-- **Dynamic failure rate**: Success rate decreases per realm (85% → 20%); failure penalizes XP by 10% of the gap
+- **17 Cultivation Realms** from Mortal to Immortal Emperor, each featuring unique lore, appearances, and guardian artifacts.
+- **Tribulation (天劫 / Độ Kiếp)**: Manual breakthrough & tribulation system powered by a procedural full-screen lightning canvas animation.
+- **Dynamic Tribulation Success Rates**: Success rate scales with higher realms (85% → 20%); failures penalize XP by 10% of the realm gap.
 
-**Item System (Túi Trữ Vật):**
+**Item & Storage System (Storage Bag):**
 | Item | Effect | How to Earn |
 |---|---|---|
-| 💊 **Tụ Linh Đan** | +8 XP | 1/minute on page, every 5 drags |
-| 🍃 **Hồi Phục Đan** | +20 XP | Each successful deploy, re-open after 4h idle |
-| 🌸 **Đại Hoàn Đan** | +50 XP | Tribulation success, 100-min & 50-deploy milestones |
-| 🔱 **Hộ Kiếp Phù** | +25% tribulation rate for 5 min | Deploy milestones 10/25/50, 500-min milestone |
+| 💊 **Spirit Gathering Pill** | +8 XP | 1/minute on page, every 5 mascot drags |
+| 🍃 **Recovery Pill** | +20 XP | Each successful deploy, re-open after 4h idle |
+| 🌸 **Great Rejuvenation Pill** | +50 XP | Tribulation success, 100-min & 50-deploy milestones |
+| 🔱 **Tribulation Talisman** | +25% tribulation success rate for 5 min | Deploy milestones 10/25/50, 500-min milestone |
 
 - **30-second cooldown** between pill consumption
 - **Max 999 per item** type
 - **Inventory popup** renders above the mascot bubble in-context
 - Full **dark/light mode** compatibility via inline styles
 
-**🏆 Achievement System (Hệ Thống Thành Tựu):**
-- **16 Achievements** categorized into *Cultivation*, *DevOps*, *Activity*, and *Secret (Bí Cảnh Ẩn)*
-- **Secret Achievements**: Hidden conditions with cryptic hints (`Thiên Lôi Thối Thể`, `Nghịch Thiên Cải Mệnh`, `Dạ Du Thần Quân`, `Cổ Thần Chi Lực`)
+**🏆 Achievement System:**
+- **16 Achievements** categorized into *Cultivation*, *DevOps*, *Activity*, and *Secret Realms*
+- **Secret Achievements**: Hidden conditions with enigmatic hints (*Heavenly Lightning Body Tempering*, *Defying the Heavens*, *Night Owl Immortal*, *Ancient God Power*)
 - **Instant Rewards**: Unlocking achievements auto-grants items/pills with an animated celebration toast
-- **Interactive Modal Tab**: Switch between *Cảnh Giới* and *Thành Tựu* with real-time unlock tracking (`x/16`)
+- **Interactive Modal Tabs**: Seamlessly switch between *🥋 Appearance*, *🔮 Artifacts*, and *🏆 Achievements*
 
-**💬 Deploy Commentary Engine (Thỏ Bình Luận):**
+**💬 Deployment Commentary Engine:**
 - Dynamic lore-rich reactions tailored to each microservice (`trip-*`, `auth-*`, `order/payment`, `notification/worker`, `report/analytics`, `open-api`)
-- Contextual lines merging Tu Tiên mythology with developer operations
+- Contextual voice lines merging ancient cultivation lore with modern DevOps operations
 
 ---
 
