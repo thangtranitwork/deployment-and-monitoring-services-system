@@ -20,6 +20,18 @@ Rebuild and restart instantly using the root script:
 ./restart.sh
 ```
 
+Or run via **Docker Compose**:
+```bash
+# Build & start in background
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop container
+docker compose down
+```
+
 ---
 
 ## 📁 Project Structure

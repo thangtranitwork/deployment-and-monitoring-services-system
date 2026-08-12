@@ -1,0 +1,33 @@
+services:
+  ids-commander:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ids-commander:latest
+    container_name: ids-commander
+    restart: unless-stopped
+    ports:
+      - "5555:5555"     # HTML UI Mode
+      - "55555:55555"   # React SPA UI Mode
+    environment:
+      - APP_MODE=BOTH
+      - PORT=5555
+      - REACT_PORT=55555
+    volumes:
+      # Configurations & persistent data
+      - ./settings.json:/app/settings.json
+      - ./accounts.json:/app/accounts.json
+      - ./credentials.json:/app/credentials.json
+      - ./.env:/app/.env
+      # SSH keys & Git config for remote operations
+      - ${HOST_HOME:-/root}/.ssh:/root/.ssh:ro
+      - ${HOST_HOME:-/root}/.gitconfig:/root/.gitconfig:ro
+      # Workspaces & home files (allows any user workspace & ovpn downloads to map 1:1)
+      - ${HOST_HOME:-/root}:${HOST_HOME:-/root}
+      # Host Docker socket (optional, if deployment scripts trigger docker commands)
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Capabilities for OpenVPN management
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun

@@ -1,16 +1,16 @@
 module deploy-tool-go
 
-go 1.26.1
+go 1.23.0
 
 require (
 	github.com/creack/pty v1.1.24
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
-	golang.org/x/crypto v0.50.0
+	golang.org/x/crypto v0.35.0
 )
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )
