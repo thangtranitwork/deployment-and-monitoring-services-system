@@ -62,6 +62,9 @@ export interface MountConfig {
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
   dragXpBonus: number;
   dropRate: number; // Percentage probability in Gacha
+  buffName: string;
+  buffDescription: string;
+  breakthroughBonus?: number;
   description: string;
   auraColor: string;
   elementParticles: string[];
@@ -77,7 +80,9 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'thanh_phong_lang.png',
     rarity: 'common',
     dragXpBonus: 5,
-    dropRate: 15.0,
+    dropRate: 8.0,
+    buffName: 'Tật Phong Thần Hành',
+    buffDescription: '+5 XP / lần kéo thả Thỏ',
     description: 'Bạch lang cuộn vầng phong khí, phi hành nhanh như chớp lốc.',
     auraColor: '#38bdf8',
     elementParticles: ['💨', '🌀', '✨']
@@ -91,7 +96,9 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'ngoc_linh_loc.png',
     rarity: 'common',
     dragXpBonus: 8,
-    dropRate: 12.0,
+    dropRate: 6.0,
+    buffName: 'Mộc Linh Dưỡng Tâm',
+    buffDescription: '+8 XP / lần kéo & Bồ đề dưỡng khí',
     description: 'Hươu tiên sừng ngọc lục bảo tỏa ánh thuần thanh linh khí.',
     auraColor: '#4ade80',
     elementParticles: ['🍃', '🌿', '✨']
@@ -105,7 +112,9 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'kim_van_ho.png',
     rarity: 'uncommon',
     dragXpBonus: 12,
-    dropRate: 8.0,
+    dropRate: 4.0,
+    buffName: 'Kim Cương Bạt Nhụy',
+    buffDescription: '+12 XP / kéo & Triển khai Đan Điền gia tăng',
     description: 'Thần hổ mang bạch kim văn, khí tức dạt dào thối luyện đan điền.',
     auraColor: '#fbbf24',
     elementParticles: ['✨', '🔥', '🌾']
@@ -119,7 +128,10 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'cuu_vi_ho.png',
     rarity: 'uncommon',
     dragXpBonus: 15,
-    dropRate: 5.0,
+    dropRate: 2.5,
+    buffName: 'Cửu Vĩ Âm Dương',
+    buffDescription: '+15 XP / kéo & Tăng +3% Tỉ lệ Độ Kiếp vĩnh viễn',
+    breakthroughBonus: 0.03,
     description: 'Cáo chín đuôi bồng bềnh hoa nguyệt, ảo mộng tam giới.',
     auraColor: '#c084fc',
     elementParticles: ['🔮', '💜', '✨']
@@ -133,7 +145,9 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'thanh_lan_long.png',
     rarity: 'rare',
     dragXpBonus: 20,
-    dropRate: 3.0,
+    dropRate: 1.5,
+    buffName: 'Long Vực Cam Lồ',
+    buffDescription: '+20 XP / kéo & Gia trì 15% Đan Dược thần hiệu',
     description: 'Thần long mình xanh ngọc uốn lượn cưỡi mây đạp sóng.',
     auraColor: '#06b6d4',
     elementParticles: ['🌊', '💧', '☁️']
@@ -147,7 +161,10 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'tu_dien_loi_ung.png',
     rarity: 'rare',
     dragXpBonus: 25,
-    dropRate: 2.0,
+    dropRate: 1.0,
+    buffName: 'Cuồng Lôi Thối Thể',
+    buffDescription: '+25 XP / kéo & Tăng +5% Tỉ lệ Độ Kiếp thành công',
+    breakthroughBonus: 0.05,
     description: 'Đại ưng cuồng lôi cánh tím, xé rách tầng mây giáng lôi đình.',
     auraColor: '#a855f7',
     elementParticles: ['⚡', '🌩️', '💜']
@@ -161,7 +178,9 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'thien_ma_tinh_van.png',
     rarity: 'legendary',
     dragXpBonus: 30,
-    dropRate: 1.0,
+    dropRate: 0.5,
+    buffName: 'Súc Địa Thành Thốn',
+    buffDescription: '+30 XP / kéo & Multi-deploy nhận X2 Linh Lực',
     description: 'Long mã sừng rồng vảy vàng, vó đạp thái dương khí.',
     auraColor: '#fef08a',
     elementParticles: ['🌤️', '✨', '⚡']
@@ -175,7 +194,10 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'huyen_vu_linh_quy.png',
     rarity: 'legendary',
     dragXpBonus: 35,
-    dropRate: 0.8,
+    dropRate: 0.35,
+    buffName: 'Huyền Vũ Hộ Tâm',
+    buffDescription: '+35 XP / kéo & Tăng +8% Tỉ lệ Độ Kiếp & Bảo hộ kinh mạch',
+    breakthroughBonus: 0.08,
     description: 'Linh quy mang mai Bát Quái, rắn tiên cuộn quanh bất tử.',
     auraColor: '#3b82f6',
     elementParticles: ['🛡️', '☯️', '🌊']
@@ -189,7 +211,10 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'thai_co_chien_ky_lan.png',
     rarity: 'supreme',
     dragXpBonus: 45,
-    dropRate: 0.4,
+    dropRate: 0.15,
+    buffName: 'Cửu Trùng Thiên Kiếp',
+    buffDescription: '+45 XP / kéo & Tăng hẳn +12% Tỉ lệ Độ Kiếp vĩnh viễn',
+    breakthroughBonus: 0.12,
     description: 'Thượng cổ Lôi Long vảy lam thẫm gia trì cửu trùng thiên kiếp.',
     auraColor: '#eab308',
     elementParticles: ['⚡', '🌩️', '🔥']
@@ -203,7 +228,10 @@ export const MOUNT_CONFIG: MountConfig[] = [
     spriteFile: 'ky_lan_ngu_sac.png',
     rarity: 'supreme',
     dragXpBonus: 50,
-    dropRate: 0.2,
+    dropRate: 0.08,
+    buffName: 'Vạn Cổ Hồng Hoang',
+    buffDescription: '+50 XP / kéo & Tăng +15% Tỉ lệ Độ Kiếp & Phúc duyên vô lượng',
+    breakthroughBonus: 0.15,
     description: 'Kỳ Lân bồ đề tỏa liên hoa ngát hương, công đức vô lượng.',
     auraColor: '#2dd4bf',
     elementParticles: ['☯️', '🌸', '✨']
@@ -235,7 +263,7 @@ export const AnimatedMountSprite: React.FC<{
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        transform: `scaleX(${direction === 'left' ? 1 : -1})`,
+        transform: `scaleX(${direction === 'right' ? 1 : -1})`,
         filter: `drop-shadow(0 0 14px ${mount.auraColor})`
       }}
     >
@@ -384,6 +412,13 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'pill_30', title: 'Dược Vương Tái Thế', category: 'activity', icon: '🧪', description: 'Nuốt tổng cộng 30 viên đan dược bất kỳ', rewardText: '+1 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 1 } },
   { id: 'pill_100', title: 'Thần Dược Tông Chủ', category: 'activity', icon: '👑', description: 'Nuốt tổng cộng 100 viên đan dược', rewardText: '+2 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 2 } },
   { id: 'pill_300', title: 'Bách Đan Chi Tôn', category: 'activity', icon: '🔥', description: 'Nuốt tổng cộng 300 viên đan dược', rewardText: '+5 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 5 } },
+  { id: 'mount_owner_1', title: 'Ngự Thần Thú Tố', category: 'activity', icon: '🐴', description: 'Sở hữu 1 Thú Cưỡi Tiên Gia đầu tiên', rewardText: '+2 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 2 } },
+  { id: 'mount_owner_3', title: 'Tam Đại Linh Thú', category: 'activity', icon: '🐾', description: 'Thu phục đủ 3 Thú Cưỡi Tiên Gia', rewardText: '+1 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 1 } },
+  { id: 'mount_owner_5', title: 'Ngũ Hành Thần Thú', category: 'activity', icon: '🌟', description: 'Thu phục đủ 5 Thú Cưỡi Tiên Gia', rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
+  { id: 'mount_owner_10', title: 'Vạn Cổ Ngự Thần Tông', category: 'activity', icon: '👑', description: 'Thu phục trọn bộ 10 Thú Cưỡi Tiên Gia', rewardText: '+3 🔱 Hộ Kiếp Phù & +1,000 Linh Thạch', reward: { itemId: 'talisman', itemAmount: 3 } },
+  { id: 'pet_1', title: 'Sơ Thử Vuốt Ve', category: 'activity', icon: '🥰', description: 'Vuốt ve Thỏ Tiên lần đầu tiên', rewardText: '+1 💊 Tụ Linh Đan & +50 💎', reward: { itemId: 'basic', itemAmount: 1 } },
+  { id: 'pet_10', title: 'Tiên Tình Thâm Hậu', category: 'activity', icon: '❤️', description: 'Vuốt ve Thỏ Tiên 10 lần', rewardText: '+1 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 1 } },
+  { id: 'pet_50', title: 'Linh Thú Tri Âm', category: 'activity', icon: '✨', description: 'Vuốt ve Thỏ Tiên 50 lần', rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
 
   // Secret (20)
   { id: 'secret_fail_kiep', title: 'Thiên Lôi Thối Thể', category: 'secret', icon: '⚡', description: 'Độ Kiếp thất bại lần đầu tiên', hint: 'Trải qua thử thách sấm sét bất thành...', isSecret: true, rewardText: '+2 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 2 } },
@@ -405,6 +440,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'secret_multi_deploy_master', title: 'Vạn Giới Triệu Hồi', category: 'secret', icon: '🌌', description: 'Thực hiện 3 lần Multi-Deploy', hint: 'Điều khiển đồng thời nhiều đại trận 3 lần...', isSecret: true, rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
   { id: 'secret_marathon', title: 'Bất Tĩnh Bế Quan', category: 'secret', icon: '🧘‍♀️', description: 'Bế quan liên tục trong phiên làm việc đủ 100 phút', hint: 'Thiền định trong 1 phiên lâu dài...', isSecret: true, rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
   { id: 'secret_devops_guru', title: 'DevOps Đạo Tổ', category: 'secret', icon: '⚔️', description: 'Tích lũy 30 lần deploy thành công', hint: 'Trở thành huyền thoại triển khai...', isSecret: true, rewardText: '+2 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 2 } },
+  { id: 'secret_mount_supreme', title: 'Thượng Cổ Thần Phục', category: 'secret', icon: '🐉', description: 'Sở hữu Thú Cưỡi phẩm Supreme (Bạch Ngọc Kỳ Lân hoặc Cửu Thiên Lôi Long)', hint: 'Thu phục thần thú tối cao phẩm Supreme...', isSecret: true, rewardText: '+2 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 2 } },
+  { id: 'secret_mount_gacha_5', title: 'Bí Cảnh Linh Thú', category: 'secret', icon: '🔮', description: 'Quay Gacha Rương Linh Thú tích lũy đủ 5 lần', hint: 'Khám phá bí cảnh Linh Thú 5 lần...', isSecret: true, rewardText: '+200 Linh Thạch', reward: { spiritStones: 200 } },
+  { id: 'secret_pet_100', title: 'Thần Thố Sủng Ái', category: 'secret', icon: '👑', description: 'Vuốt ve Thỏ Tiên 100 lần', hint: 'Bày tỏ tình cảm vuốt ve Thỏ 100 lần...', isSecret: true, rewardText: '+2 🔱 Hộ Kiếp Phù & +500 💎', reward: { itemId: 'talisman', itemAmount: 2 } },
   { id: 'secret_supreme_immortal', title: 'Độc Tôn Tam Giới', category: 'secret', icon: '🏆', description: 'Mở khóa hơn 50 thành tựu các loại', hint: 'Chinh phục hơn nửa chặng đường thành tựu...', isSecret: true, rewardText: '+5 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 5 } }
 ];
 
@@ -559,6 +597,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [inventory, setInventory]                           = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 2, great: loadSaved().inventory?.great ?? 1, talisman: loadSaved().inventory?.talisman ?? 1 }));
   const [totalMinutes, setTotalMinutes]                     = useState<number>(() => loadSaved().totalMinutes ?? 0);
   const [totalDrags, setTotalDrags]                         = useState<number>(() => loadSaved().totalDrags ?? 0);
+  const [totalPets, setTotalPets]                           = useState<number>(() => loadSaved().totalPets ?? 0);
+  const [lastPetRewardTime, setLastPetRewardTime]           = useState<number>(() => loadSaved().lastPetRewardTime ?? 0);
   const [totalDeploys, setTotalDeploys]                     = useState<number>(() => loadSaved().totalDeploys ?? 0);
   const [totalPillsConsumed, setTotalPillsConsumed]         = useState<number>(() => loadSaved().totalPillsConsumed ?? 0);
   const [deployedServices, setDeployedServices]             = useState<string[]>(() => loadSaved().deployedServices ?? []);
@@ -616,7 +656,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const baseSuccessRate       = getSuccessRate(currentLevel);
   const talismanBonus         = isTalismanActive ? (talismanCfg.buffSuccessBonus ?? 0) : 0;
   const pityBonus             = failCountAtCurrentLevel * 0.05;
-  const effectiveSuccessRate  = Math.min(0.95, baseSuccessRate + talismanBonus + pityBonus);
+  const mountBonus            = activeMountConfig?.breakthroughBonus ?? 0;
+  const effectiveSuccessRate  = Math.min(0.95, baseSuccessRate + talismanBonus + pityBonus + mountBonus);
   const currentSuccessRatePercent = Math.round(effectiveSuccessRate * 100);
 
   const prevReq = currentLevelInfo.reqXp;
@@ -634,6 +675,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         inventory,
         totalMinutes,
         totalDrags,
+        totalPets,
+        lastPetRewardTime,
         totalDeploys,
         totalPillsConsumed,
         deployedServices,
@@ -650,7 +693,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         lastSessionTime: Date.now()
       }));
     } catch { /* noop */ }
-  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount]);
+  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalPets, lastPetRewardTime, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount]);
 
   useEffect(() => {
     const tick = () => setTalismanCountdown(Math.max(0, Math.ceil((talismanBuffExpiry - Date.now()) / 1000)));
@@ -814,7 +857,21 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
     const unlockedSkins = LEVEL_CONFIG.filter(l => xp >= l.reqXp).length;
     if (unlockedSkins >= 5) { unlockAchievement('secret_skin_collector'); unlockAchievement('secret_treasure_master'); }
-  }, [currentLevel, xp, breakthroughSuccessCount, breakthroughFailCount, failCountAtCurrentLevel, totalDeploys, deployedServices.length, totalMinutes, totalDrags, totalPillsConsumed, multiDeployCount, totalInventory, unlockedAchievements.length]);
+
+    if (ownedMounts.length >= 1) unlockAchievement('mount_owner_1');
+    if (ownedMounts.length >= 3) unlockAchievement('mount_owner_3');
+    if (ownedMounts.length >= 5) unlockAchievement('mount_owner_5');
+    if (ownedMounts.length >= 10) unlockAchievement('mount_owner_10');
+    if (gachaSpinCount >= 5) unlockAchievement('secret_mount_gacha_5');
+    const hasSupremeMount = ownedMounts.some(id => {
+      const cfg = MOUNT_CONFIG.find(m => m.id === id);
+      return cfg?.rarity === 'supreme';
+    });
+    if (totalPets >= 1) unlockAchievement('pet_1');
+    if (totalPets >= 10) unlockAchievement('pet_10');
+    if (totalPets >= 50) unlockAchievement('pet_50');
+    if (totalPets >= 100) unlockAchievement('secret_pet_100');
+  }, [currentLevel, xp, breakthroughSuccessCount, breakthroughFailCount, failCountAtCurrentLevel, totalDeploys, deployedServices.length, totalMinutes, totalDrags, totalPets, totalPillsConsumed, multiDeployCount, totalInventory, unlockedAchievements.length, ownedMounts.length, gachaSpinCount]);
 
   const addXP = (amount: number, reasonText?: string) => {
     setXp(prevXp => {
@@ -971,15 +1028,19 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     if (isDeploying || isDismissed || isDragging) return;
     let tid: NodeJS.Timeout;
     const next = () => {
-      const r = Math.random(); const dir = directionRef.current;
+      const r = Math.random();
+      const randomDir = Math.random() < 0.5 ? 'left' : 'right';
+      setDirection(randomDir);
+
       if (state === 'idle') {
-        if (r < 0.45) { setState(dir === 'left' ? 'walk_left' : 'walk_right'); setBubbleText('🐰 Tuần du sơn thủy, tìm Linh Thảo...'); tid = setTimeout(next, Math.random() * 6000 + 8000); }
-        else if (r < 0.65) { setState('sleep'); addXP(3); setBubbleText('🧘 Tọa thiền bế quan... Khô Thiền Cảnh... Zzz'); tid = setTimeout(next, Math.random() * 8000 + 10000); }
-        else if (r < 0.8) { setState('eat'); setBubbleText('🐰 Nhặt được Linh Dược ven đường!'); tid = setTimeout(next, Math.random() * 4000 + 5000); }
-        else { setState(dir === 'left' ? 'jump_left' : 'jump_right'); const alt = [12, 45, 95, 140][Math.floor(Math.random() * 4)]; setPosYBottom(alt); setBubbleText(alt > 12 ? '⚔️ Ngự kiếm phi hành lên cao!' : '✨ Vạn Kiếm Quy Tông!'); tid = setTimeout(next, 4000); }
-      } else if (state.startsWith('walk')) {
-        if (r < 0.5) { setState('idle'); setBubbleText('🐰 Ngưng thần dưỡng khí...'); tid = setTimeout(next, Math.random() * 4000 + 4000); }
-        else if (r < 0.75) { setState(dir === 'left' ? 'jump_left' : 'jump_right'); if (Math.random() > 0.5) setPosYBottom([12, 50, 110][Math.floor(Math.random() * 3)]); setBubbleText('🚀 Nhảy vút qua Thiên Hà!'); tid = setTimeout(next, 4000); }
+        if (r < 0.35) { setState(randomDir === 'left' ? 'walk_left' : 'walk_right'); setBubbleText('🐰 Tuần du sơn thủy, tìm Linh Thảo...'); tid = setTimeout(next, Math.random() * 6000 + 8000); }
+        else if (r < 0.55) { setState(randomDir === 'left' ? 'run_left' : 'run_right'); setBubbleText('⚡ Thăng hoa thần tốc, tuần tra vạn giới!'); tid = setTimeout(next, Math.random() * 4000 + 4000); }
+        else if (r < 0.70) { setState('sleep'); addXP(3); setBubbleText('🧘 Tọa thiền bế quan... Khô Thiền Cảnh... Zzz'); tid = setTimeout(next, Math.random() * 8000 + 10000); }
+        else if (r < 0.85) { setState('eat'); setBubbleText('🐰 Nhặt được Linh Dược ven đường!'); tid = setTimeout(next, Math.random() * 4000 + 5000); }
+        else { setState(randomDir === 'left' ? 'jump_left' : 'jump_right'); setBubbleText('⚔️ Ngự kiếm phi hành!'); tid = setTimeout(next, 4000); }
+      } else if (state.startsWith('walk') || state.startsWith('run')) {
+        if (r < 0.4) { setState('idle'); setBubbleText('🐰 Ngưng thần dưỡng khí...'); tid = setTimeout(next, Math.random() * 4000 + 4000); }
+        else if (r < 0.7) { setState(randomDir === 'left' ? 'jump_left' : 'jump_right'); setBubbleText('🚀 Nhảy vút qua Thiên Hà!'); tid = setTimeout(next, 4000); }
         else { setState('eat'); setBubbleText('🐰 Nhặt được Linh Dược!'); tid = setTimeout(next, 5000); }
       } else if (state === 'sleep') {
         if (r < 0.6) { setState('idle'); setBubbleText('🥱 Xuất quan! Thu hoạch linh khí xong...'); tid = setTimeout(next, 4000); }
@@ -994,13 +1055,28 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   // Pointer Interaction (+5 Spirit Stones per drag + Mount Bonus XP)
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault(); let dragged = false;
+    let lastX = e.clientX;
     dragStartRef.current = { startX: e.clientX, startY: e.clientY, initPosX: posX, initPosY: posYBottom };
 
     const onMove = (me: PointerEvent) => {
       const dx = me.clientX - dragStartRef.current.startX;
       const dy = me.clientY - dragStartRef.current.startY;
+      const stepX = me.clientX - lastX;
+      lastX = me.clientX;
+
+      if (Math.abs(stepX) > 2) {
+        const newDir = stepX < 0 ? 'left' : 'right';
+        if (newDir !== directionRef.current) {
+          setDirection(newDir);
+          setState(newDir === 'left' ? 'walk_left' : 'walk_right');
+        }
+      }
+
       if (!dragged && Math.hypot(dx, dy) > 6) {
-        dragged = true; setIsDragging(true); setState(directionRef.current === 'left' ? 'jump_left' : 'jump_right');
+        dragged = true; setIsDragging(true);
+        const initialDir = stepX < 0 ? 'left' : directionRef.current;
+        setDirection(initialDir);
+        setState(initialDir === 'left' ? 'walk_left' : 'walk_right');
         const mountName = activeMountConfig ? activeMountConfig.name : 'Bổn Thỏ';
         setBubbleText(`🎈 Cưỡi ${mountName}! Đại nhân bế Thỏ phi hành...`);
       }
@@ -1026,7 +1102,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
         if (newDrags % 5 === 0) grantItem('basic', 1, `🏅 5 lần ngự kiếm! +1 💊 Tụ Linh Đan!`);
       } else {
-        setShowInventory(p => !p);
+        setState('dance');
+        setTotalPets(p => p + 1);
+        const now = Date.now();
+        const elapsed = now - lastPetRewardTime;
+        const PET_COOLDOWN_MS = 5 * 60 * 1000;
+
+        if (elapsed >= PET_COOLDOWN_MS) {
+          setLastPetRewardTime(now);
+          addSpiritStones(15);
+          addXP(20, `🥰 Bổn Thỏ nhận quà vuốt ve! (+20 XP & +15 💎)`);
+        } else {
+          const remSec = Math.ceil((PET_COOLDOWN_MS - elapsed) / 1000);
+          const min = Math.floor(remSec / 60);
+          const sec = remSec % 60;
+          setBubbleText(`🥰 Vuốt ve sướng quá nhảy múa! ⏱️ Hồi quà vuốt ve sau ${min}p${sec}s`);
+        }
       }
     };
 
@@ -1038,7 +1129,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const bgX = -(frame * MASCOT_SIZE);
 
   const getVerticalOffset = () => {
-    if (state.startsWith('jump') || isDragging) return [0,-20,-42,-62,-75,-70,-50,-28,-10,0][frame % 10];
+    if (isDragging) return 0;
+    if (state.startsWith('jump')) return [0,-20,-42,-62,-75,-70,-50,-28,-10,0][frame % 10];
     if (state.startsWith('walk') || state.startsWith('run')) return [0,-2,-4,-2,0,-2,-4,-2,0,0][frame % 10];
     if (state === 'idle') return [0,-1,-3,-1][frame % 4];
     return 0;
@@ -1052,8 +1144,6 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       ach.description.toLowerCase().includes(achSearchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
-
-  const isAirborneOrDragging = isDragging || posYBottom > 40 || state.startsWith('jump');
 
   return (
     <>
@@ -1237,14 +1327,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         <div
           className="relative transition-transform duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
           style={{ transform: `translateY(${currentOffsetY}px)`, width: `${MASCOT_SIZE}px`, height: `${MASCOT_SIZE}px` }}
-          title="Nhấp chuột mở Túi Đan 🎒 | KÉO THẢ để bay cùng Thú Cưỡi 🐴"
+          title="NHẤP CHUỘT để Vuốt Ve Thỏ 🐰 (+10 XP & +5 💎) | KÉO THẢ để bay cùng Thú Cưỡi 🐴"
         >
           {activeTreasureId && <TreasureOrbit treasureId={activeTreasureId} isDeploying={isDeploying} />}
 
-          {/* Render Active Flying Mount Underneath Mascot when Dragging or Airborne */}
-          {activeMountId && isAirborneOrDragging && (
-            <div style={{ position: 'absolute', bottom: '-28px', zIndex: -2 }}>
-              <AnimatedMountSprite mountId={activeMountId} size={90} direction={direction} />
+          {/* Render Active Flying Mount Underneath Mascot ONLY when Dragging */}
+          {activeMountId && isDragging && (
+            <div style={{ position: 'absolute', top: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: -2, pointerEvents: 'none' }}>
+              <AnimatedMountSprite mountId={activeMountId} size={92} direction={direction} />
             </div>
           )}
 
@@ -1512,6 +1602,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                             </div>
                             <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {m.element} • +{m.dragXpBonus} XP/kéo
+                            </div>
+                            <div style={{ fontSize: '9.5px', color: '#fde68a', fontWeight: 800, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              ⚡ {m.buffName}: <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{m.buffDescription}</span>
                             </div>
                             <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '1px' }}>
                               {isOwned ? `Tỉ lệ Gacha: ${m.dropRate}%` : 'Chưa sở hữu (Quay Rương)'}
