@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Service, WorkspaceItem } from '../types';
 
 interface DeploymentPanelProps {
@@ -28,8 +28,14 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
   onRefresh,
   onOpenLogs
 }) => {
-  const [deployMsg, setDeployMsg] = useState<string>('');
+  const [deployMsg, setDeployMsg] = useState<string>(selectedService?.last_commit || '');
   const [msgIndex, setMsgIndex] = useState<number>(-1);
+
+  // Sync deploy message to latest commit by default whenever service or its commit changes
+  useEffect(() => {
+    setDeployMsg(selectedService?.last_commit || '');
+    setMsgIndex(-1);
+  }, [selectedService?.name, selectedService?.last_commit]);
 
   const hasScript = selectedService ? (
     currentEnv === 'Development' ? selectedService.has_dev :
@@ -58,12 +64,6 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
     const nextIdx = msgIndex - 1 < 0 ? commitSuggestions.length - 1 : msgIndex - 1;
     setMsgIndex(nextIdx);
     setDeployMsg(commitSuggestions[nextIdx]);
-  };
-
-  const handleUseLastCommit = () => {
-    if (selectedService?.last_commit) {
-      setDeployMsg(selectedService.last_commit);
-    }
   };
 
   return (
@@ -137,17 +137,8 @@ export const DeploymentPanel: React.FC<DeploymentPanelProps> = ({
 
           {/* Deploy Message Input & History Controls */}
           <div className="flex-1 max-w-xl flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
+            <div>
               <div className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider">DEPLOY MESSAGE</div>
-              {selectedService?.last_commit && (
-                <button
-                  type="button"
-                  onClick={handleUseLastCommit}
-                  className="text-[10px] text-[#38bdf8] hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  ⚡ Use Last Commit
-                </button>
-              )}
             </div>
 
             <div className="flex items-center gap-1.5">

@@ -19,7 +19,7 @@ interface LevelInfo {
 }
 
 // ─── Item System ───────────────────────────────────────────────────────────────
-type ItemId = 'basic' | 'recover' | 'great' | 'talisman';
+type ItemId = 'basic' | 'recover' | 'great' | 'talisman' | 'revive';
 
 interface ItemConfig {
   id: ItemId;
@@ -27,7 +27,7 @@ interface ItemConfig {
   emoji: string;
   xpValue: number;
   maxStack: number;
-  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
   description: string;
   isBuff?: boolean;
   buffDurationMs?: number;
@@ -36,9 +36,127 @@ interface ItemConfig {
 
 export const ITEM_CONFIG: ItemConfig[] = [
   { id: 'basic', name: 'Tụ Linh Đan', emoji: '💊', xpValue: 8, maxStack: 999, rarity: 'common', description: '+8 Linh Lực • Nhận: tỉ lệ may mắn khi treo máy, kéo thả Thỏ' },
-  { id: 'recover', name: 'Hồi Phục Đan', emoji: '🍃', xpValue: 20, maxStack: 999, rarity: 'uncommon', description: '+20 Linh Lực • Nhận: deploy thành công, treo máy may mắn' },
-  { id: 'great', name: 'Đại Hoàn Đan', emoji: '🌸', xpValue: 50, maxStack: 999, rarity: 'rare', description: '+50 Linh Lực • Nhận: Độ Kiếp thành công, mốc deploy & thời gian' },
-  { id: 'talisman', name: 'Hộ Kiếp Phù', emoji: '🔱', xpValue: 0, maxStack: 99, rarity: 'legendary', isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, description: '+25% tỉ lệ Độ Kiếp trong 5 phút • Nhận: mốc deploy & bế quan cao cấp' }
+  { id: 'recover', name: 'Hồi Phục Đan', emoji: '🍃', xpValue: 20, maxStack: 999, rarity: 'uncommon', description: '+20 Linh Lực • Nhận: deploy thành công, Lò Bát Quái' },
+  { id: 'great', name: 'Đại Hoàn Đan', emoji: '🌸', xpValue: 50, maxStack: 999, rarity: 'rare', description: '+50 Linh Lực • Nhận: Độ Kiếp thành công, Lò Bát Quái' },
+  { id: 'talisman', name: 'Hộ Kiếp Phù', emoji: '🔱', xpValue: 0, maxStack: 99, rarity: 'legendary', isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, description: '+25% tỉ lệ Độ Kiếp trong 5 phút • Luyện từ Lò Bát Quái' },
+  { id: 'revive', name: 'Cửu Chuyển Hoàn Hồn Đan', emoji: '🔮', xpValue: 100, maxStack: 99, rarity: 'supreme', isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.35, description: '+35% Tỉ lệ Độ Kiếp & Bảo hộ 100% không tổn hại XP khi thất bại (10 phút) • Luyện từ Lò Bát Quái' }
+];
+
+// ─── Xianxia Raw Herbal & Mineral Alchemy Ingredients ─────────────────────────
+export type HerbId =
+  | 'herb_lingzhi'
+  | 'herb_ginseng'
+  | 'mineral_iron'
+  | 'herb_lotus'
+  | 'herb_fire_fruit'
+  | 'mineral_crystal'
+  | 'herb_bamboo'
+  | 'herb_dragon_grass'
+  | 'mineral_gold'
+  | 'herb_phoenix_flower'
+  | 'mineral_star_stone'
+  | 'herb_immortal_root';
+
+export interface HerbConfig {
+  id: HerbId;
+  name: string;
+  emoji: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
+  dropChance: number;
+  description: string;
+}
+
+export const HERB_CONFIG: HerbConfig[] = [
+  { id: 'herb_lingzhi',        name: 'Linh Tuyền Thảo',      emoji: '🌿', rarity: 'common',    dropChance: 0.12,  description: 'Thảo dược ven bờ linh tuyền hấp thụ khí cơ (Tỉ lệ rớt 12%/phút)' },
+  { id: 'herb_ginseng',        name: 'Bách Niên Nhân Sâm',  emoji: '🪵', rarity: 'common',    dropChance: 0.10,  description: 'Nhân sâm trăm tuổi hút linh khí đất trời (Tỉ lệ rớt 10%/phút)' },
+  { id: 'mineral_iron',        name: 'Huyền Thiết Quặng',    emoji: '🪨', rarity: 'common',    dropChance: 0.09,  description: 'Quặng sắt linh khí chứa hắc kim cổ xưa (Tỉ lệ rớt 9%/phút)' },
+  { id: 'herb_lotus',          name: 'Cửu Phẩm Băng Liên',   emoji: '🪷', rarity: 'uncommon',  dropChance: 0.07,  description: 'Băng liên sen tuyết ngàn năm trên đỉnh tuyết sơn (Tỉ lệ rớt 7%/phút)' },
+  { id: 'herb_fire_fruit',     name: 'Xích Diệm Hỏa Quả',   emoji: '🍎', rarity: 'uncommon',  dropChance: 0.06,  description: 'Hỏa quả ngưng tụ từ cực dương hỏa (Tỉ lệ rớt 6%/phút)' },
+  { id: 'mineral_crystal',     name: 'Thạch Anh Linh Tinh',  emoji: '💎', rarity: 'uncommon',  dropChance: 0.05,  description: 'Tinh thể ngọc bích phát sáng linh quang (Tỉ lệ rớt 5%/phút)' },
+  { id: 'herb_bamboo',         name: 'Ninh Sương Trúc Chồi', emoji: '🎍', rarity: 'rare',      dropChance: 0.035, description: 'Trúc tiên đọng sương mai lúc rạng đông (Tỉ lệ rớt 3.5%/phút)' },
+  { id: 'herb_dragon_grass',   name: 'Long Kế Thảo',        emoji: '🐉', rarity: 'rare',      dropChance: 0.025, description: 'Cỏ thiêng thấm huyết mạch linh long (Tỉ lệ rớt 2.5%/phút)' },
+  { id: 'mineral_gold',        name: 'Thái Cổ Kim Tinh',    emoji: '🌟', rarity: 'rare',      dropChance: 0.02,  description: 'Tinh quặng vàng Thái Cổ chói lọi (Tỉ lệ rớt 2%/phút)' },
+  { id: 'herb_phoenix_flower', name: 'Phượng Hoàng Hỏa Hoa', emoji: '🌺', rarity: 'legendary', dropChance: 0.01,  description: 'Hoa lửa thần phượng tắm từ biển lửa (Tỉ lệ rớt 1%/phút)' },
+  { id: 'mineral_star_stone',  name: 'Cửu Thiên Tinh Thạch', emoji: '🌌', rarity: 'legendary', dropChance: 0.007, description: 'Đá thiên thạch rơi từ cửu trùng thiên (Tỉ lệ rớt 0.7%/phút)' },
+  { id: 'herb_immortal_root',  name: 'Hỗn Nguyên Thần Căn',  emoji: '👑', rarity: 'supreme',   dropChance: 0.003, description: 'Rễ cây thần Thái Cổ thuở khai thiên lập địa (Tỉ lệ rớt 0.3%/phút)' }
+];
+
+export type IngredientId = ItemId | HerbId;
+
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  emoji: string;
+  resultItemId: ItemId;
+  resultAmount: number;
+  ingredients: { id: IngredientId; amount: number }[];
+  spiritStonesCost: number;
+  successRate: number;
+  description: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
+}
+
+export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  {
+    id: 'craft_basic',
+    name: 'Luyện Tụ Linh Đan',
+    emoji: '💊',
+    resultItemId: 'basic',
+    resultAmount: 1,
+    ingredients: [{ id: 'herb_lingzhi', amount: 3 }, { id: 'herb_ginseng', amount: 2 }],
+    spiritStonesCost: 10,
+    successRate: 0.95,
+    description: 'Chế tạo 1x Tụ Linh Đan (+8 XP) từ 3x Linh Tuyền Thảo + 2x Bách Niên Nhân Sâm & 10 Linh Thạch (Thành công 95%).',
+    rarity: 'common'
+  },
+  {
+    id: 'craft_recover',
+    name: 'Luyện Hồi Phục Đan',
+    emoji: '🍃',
+    resultItemId: 'recover',
+    resultAmount: 1,
+    ingredients: [{ id: 'herb_lotus', amount: 3 }, { id: 'herb_fire_fruit', amount: 2 }, { id: 'mineral_iron', amount: 2 }],
+    spiritStonesCost: 30,
+    successRate: 0.85,
+    description: 'Chế tạo 1x Hồi Phục Đan (+20 XP) từ 3x Cửu Phẩm Băng Liên + 2x Xích Diệm Hỏa Quả + 2x Huyền Thiết Quặng & 30 Linh Thạch (Thành công 85%).',
+    rarity: 'uncommon'
+  },
+  {
+    id: 'craft_great',
+    name: 'Luyện Đại Hoàn Đan',
+    emoji: '🌸',
+    resultItemId: 'great',
+    resultAmount: 1,
+    ingredients: [{ id: 'herb_dragon_grass', amount: 3 }, { id: 'herb_bamboo', amount: 2 }, { id: 'mineral_gold', amount: 2 }],
+    spiritStonesCost: 80,
+    successRate: 0.75,
+    description: 'Chế tạo 1x Đại Hoàn Đan (+50 XP) từ 3x Long Kế Thảo + 2x Ninh Sương Trúc Chồi + 2x Thái Cổ Kim Tinh & 80 Linh Thạch (Thành công 75%).',
+    rarity: 'rare'
+  },
+  {
+    id: 'craft_talisman',
+    name: 'Luyện Hộ Kiếp Phù',
+    emoji: '🔱',
+    resultItemId: 'talisman',
+    resultAmount: 1,
+    ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'mineral_star_stone', amount: 2 }],
+    spiritStonesCost: 150,
+    successRate: 0.65,
+    description: 'Chế tạo 1x Hộ Kiếp Phù (+25% Độ Kiếp) từ 2x Phượng Hoàng Hỏa Hoa + 2x Cửu Thiên Tinh Thạch & 150 Linh Thạch (Thành công 65%).',
+    rarity: 'legendary'
+  },
+  {
+    id: 'craft_revive',
+    name: 'Cửu Chuyển Hoàn Hồn Đan',
+    emoji: '🔮',
+    resultItemId: 'revive',
+    resultAmount: 1,
+    ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'mineral_star_stone', amount: 3 }, { id: 'herb_phoenix_flower', amount: 3 }],
+    spiritStonesCost: 400,
+    successRate: 0.50,
+    description: 'Đan Cực Phẩm! Bảo hộ 100% không tổn hại XP khi Độ Kiếp thất bại & +35% Tỉ lệ Độ Kiếp từ 2x Hỗn Nguyên Thần Căn + 3x Cửu Thiên Tinh Thạch + 3x Phượng Hoàng Hỏa Hoa & 400 Linh Thạch (Thành công 50%).',
+    rarity: 'supreme'
+  }
 ];
 
 const RARITY_COLORS: Record<string, string> = {
@@ -419,6 +537,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'pet_1', title: 'Sơ Thử Vuốt Ve', category: 'activity', icon: '🥰', description: 'Vuốt ve Thỏ Tiên lần đầu tiên', rewardText: '+1 💊 Tụ Linh Đan & +50 💎', reward: { itemId: 'basic', itemAmount: 1 } },
   { id: 'pet_10', title: 'Tiên Tình Thâm Hậu', category: 'activity', icon: '❤️', description: 'Vuốt ve Thỏ Tiên 10 lần', rewardText: '+1 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 1 } },
   { id: 'pet_50', title: 'Linh Thú Tri Âm', category: 'activity', icon: '✨', description: 'Vuốt ve Thỏ Tiên 50 lần', rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
+  { id: 'craft_1', title: 'Luyện Đan Sơ Cấp', category: 'activity', icon: '🧪', description: 'Chế tạo đan dược trong Lò Bát Quái lần đầu tiên', rewardText: '+1 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 1 } },
+  { id: 'craft_10', title: 'Dược Tông Đại Sư', category: 'activity', icon: '🔥', description: 'Luyện chế đan dược 10 lần trong Lò Bát Quái', rewardText: '+2 🌸 Đại Hoàn Đan', reward: { itemId: 'great', itemAmount: 2 } },
+  { id: 'craft_revive', title: 'Cửu Chuyển Thần Đan', category: 'activity', icon: '🔮', description: 'Luyện thành công Cửu Chuyển Hoàn Hồn Đan cực phẩm', rewardText: '+2 🔱 Hộ Kiếp Phù & +500 💎', reward: { itemId: 'talisman', itemAmount: 2 } },
+  { id: 'forge_1', title: 'Rèn Thần Binh', category: 'activity', icon: '🔨', description: 'Nâng cấp Pháp Bảo Hộ Thể lên Cấp 2 lần đầu', rewardText: '+100 💎 Linh Thạch', reward: { spiritStones: 100 } },
+  { id: 'forge_max', title: 'Đại La Pháp Bảo', category: 'activity', icon: '✨', description: 'Nâng cấp 1 Pháp Bảo Hộ Thể lên Cấp 10 Tối Cao', rewardText: '+3 🔱 Hộ Kiếp Phù & +1,000 💎', reward: { itemId: 'talisman', itemAmount: 3 } },
 
   // Secret (20)
   { id: 'secret_fail_kiep', title: 'Thiên Lôi Thối Thể', category: 'secret', icon: '⚡', description: 'Độ Kiếp thất bại lần đầu tiên', hint: 'Trải qua thử thách sấm sét bất thành...', isSecret: true, rewardText: '+2 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 2 } },
@@ -443,8 +566,97 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'secret_mount_supreme', title: 'Thượng Cổ Thần Phục', category: 'secret', icon: '🐉', description: 'Sở hữu Thú Cưỡi phẩm Supreme (Bạch Ngọc Kỳ Lân hoặc Cửu Thiên Lôi Long)', hint: 'Thu phục thần thú tối cao phẩm Supreme...', isSecret: true, rewardText: '+2 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 2 } },
   { id: 'secret_mount_gacha_5', title: 'Bí Cảnh Linh Thú', category: 'secret', icon: '🔮', description: 'Quay Gacha Rương Linh Thú tích lũy đủ 5 lần', hint: 'Khám phá bí cảnh Linh Thú 5 lần...', isSecret: true, rewardText: '+200 Linh Thạch', reward: { spiritStones: 200 } },
   { id: 'secret_pet_100', title: 'Thần Thố Sủng Ái', category: 'secret', icon: '👑', description: 'Vuốt ve Thỏ Tiên 100 lần', hint: 'Bày tỏ tình cảm vuốt ve Thỏ 100 lần...', isSecret: true, rewardText: '+2 🔱 Hộ Kiếp Phù & +500 💎', reward: { itemId: 'talisman', itemAmount: 2 } },
+  { id: 'secret_craft_god', title: 'Đạo Tổ Luyện Đan', category: 'secret', icon: '👑', description: 'Luyện chế đan dược 50 lần trong Lò Bát Quái', hint: 'Khái niệm Luyện Đan Tông Sư 50 lần...', isSecret: true, rewardText: '+5 🔱 Hộ Kiếp Phù & +2,000 💎', reward: { itemId: 'talisman', itemAmount: 5 } },
+  { id: 'craft_fail_1', title: '💥 Nổ Lò Sơ Cấp', category: 'activity', icon: '💥', description: 'Luyện đan thất bại bị nổ lò 1 lần', rewardText: '+1 💊 Tụ Linh Đan', reward: { itemId: 'basic', itemAmount: 1 } },
+  { id: 'craft_fail_5', title: '💣 Đạo Tổ Nổ Lò', category: 'activity', icon: '💣', description: 'Luyện đan thất bại bị nổ lò 5 lần', rewardText: '+2 🍃 Hồi Phục Đan', reward: { itemId: 'recover', itemAmount: 2 } },
+  { id: 'secret_forge_fail', title: '🌩️ Lôi Kiếp Rèn Thần Binh', category: 'secret', icon: '⚡', description: 'Rèn Pháp Bảo thất bại do lôi điện bạo tạc 1 lần', hint: 'Thử thách độ may mắn khi rèn thần binh...', isSecret: true, rewardText: '+50 💎 Linh Thạch', reward: { spiritStones: 50 } },
   { id: 'secret_supreme_immortal', title: 'Độc Tôn Tam Giới', category: 'secret', icon: '🏆', description: 'Mở khóa hơn 50 thành tựu các loại', hint: 'Chinh phục hơn nửa chặng đường thành tựu...', isSecret: true, rewardText: '+5 🔱 Hộ Kiếp Phù', reward: { itemId: 'talisman', itemAmount: 5 } }
 ];
+
+const AnimatedFurnaceSprite: React.FC<{ isCrafting?: boolean; size?: number }> = ({ isCrafting = true, size = 180 }) => {
+  const [frameIndex, setFrameIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isCrafting) return;
+    const interval = setInterval(() => {
+      setFrameIndex(f => (f + 1) % 4);
+    }, 180);
+    return () => clearInterval(interval);
+  }, [isCrafting]);
+
+  const col = frameIndex % 2;
+  const row = Math.floor(frameIndex / 2);
+
+  return (
+    <div
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        overflow: 'hidden',
+        position: 'relative',
+        filter: 'drop-shadow(0 0 30px rgba(239,68,68,0.95)) drop-shadow(0 0 15px rgba(245,158,11,0.85))'
+      }}
+    >
+      <img
+        src="/dan_lo_than_khi.png"
+        alt="Đan Lô Thần Khí"
+        style={{
+          width: `${size * 2}px`,
+          height: `${size * 2}px`,
+          position: 'absolute',
+          left: `-${col * size}px`,
+          top: `-${row * size}px`,
+          imageRendering: 'smooth',
+          maxWidth: 'none'
+        }}
+      />
+    </div>
+  );
+};
+
+// ─── Animated Thunder Anvil Forge Component (4-Frame Sprite Sheet) ───────────────
+const AnimatedThunderAnvil: React.FC<{ isForging?: boolean; size?: number }> = ({ isForging = true, size = 180 }) => {
+  const [frameIndex, setFrameIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isForging) return;
+    const interval = setInterval(() => {
+      setFrameIndex(f => (f + 1) % 4);
+    }, 180);
+    return () => clearInterval(interval);
+  }, [isForging]);
+
+  const col = frameIndex % 2;
+  const row = Math.floor(frameIndex / 2);
+
+  return (
+    <div
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        overflow: 'hidden',
+        position: 'relative',
+        filter: isForging
+          ? 'drop-shadow(0 0 32px rgba(56,189,248,0.95)) drop-shadow(0 0 16px rgba(168,85,247,0.85))'
+          : 'drop-shadow(0 0 18px rgba(56,189,248,0.6))'
+      }}
+    >
+      <img
+        src="/de_ren_loi_dinh.png"
+        alt="Đe Rèn Lôi Đình"
+        style={{
+          width: `${size * 2}px`,
+          height: `${size * 2}px`,
+          position: 'absolute',
+          left: `-${col * size}px`,
+          top: `-${row * size}px`,
+          imageRendering: 'smooth',
+          maxWidth: 'none'
+        }}
+      />
+    </div>
+  );
+};
 
 // ─── Deploy Voice Lines ────────────────────────────────────────────────────────
 export const getDeployCommentary = (serviceName: string, multiServices?: string[]): string => {
@@ -501,6 +713,29 @@ export const getSuccessRate = (level: number): number => {
   return rates[level] ?? 0.10;
 };
 
+// Tính % EXP buff của Pháp Bảo: Mộc Linh Kiếm (id 1) = 0.05%, id 2 = 0.10%, ..., id 17 = 0.85%. Cấp n nhân n lần.
+export const getTreasureExpBonusPercent = (treasureId: number, level: number = 1): number => {
+  const safeId = Math.max(1, Math.min(17, treasureId));
+  const safeLevel = Math.max(1, Math.min(10, level));
+  return Number((safeId * 0.05 * safeLevel).toFixed(3));
+};
+
+// Tỉ lệ thành công khi rèn nâng cấp Pháp Bảo (Cấp càng cao tỉ lệ thất bại càng cao)
+export const getTreasureUpgradeSuccessRate = (targetLevel: number): number => {
+  const rates: Record<number, number> = {
+    2: 0.95,
+    3: 0.85,
+    4: 0.75,
+    5: 0.65,
+    6: 0.55,
+    7: 0.45,
+    8: 0.35,
+    9: 0.25,
+    10: 0.15
+  };
+  return rates[targetLevel] ?? 0.10;
+};
+
 export const MASCOT_SIZE = 80;
 export const BUNNY_STATE_ROW_INDEX: Record<BunnyState, number> = { idle: 0, walk_right: 1, walk_left: 2, jump_right: 3, jump_left: 4, sleep: 5, eat: 6, run_right: 7, run_left: 8, dance: 9 };
 
@@ -521,20 +756,30 @@ export const TreasureSprite: React.FC<{ treasureId: number; size?: number; class
   return <div className={`select-none pointer-events-none ${className}`} style={{ width: `${size}px`, height: `${size}px`, flexShrink: 0, flexGrow: 0, backgroundImage: `url(/treasures/${safeTreasureId}.png)`, backgroundSize: `${size * 10}px ${size}px`, backgroundPosition: `${bgX}px 0px`, backgroundRepeat: 'no-repeat', backgroundColor: 'transparent', imageRendering: 'pixelated', ...style }} />;
 };
 
-export const TreasureOrbit: React.FC<{ treasureId: number; isDeploying?: boolean; }> = ({ treasureId, isDeploying }) => {
+export const TreasureOrbit: React.FC<{ treasureId: number; treasureLevel?: number; isDeploying?: boolean; }> = ({ treasureId, treasureLevel = 1, isDeploying }) => {
   const [angle, setAngle] = useState(0);
   useEffect(() => {
     let animId: number; let lastTime = performance.now();
-    const update = (now: number) => { const delta = (now - lastTime) / 1000; lastTime = now; const speed = isDeploying ? 3.5 : 1.5; setAngle((prev) => (prev + speed * delta) % (Math.PI * 2)); animId = requestAnimationFrame(update); };
+    const update = (now: number) => { const delta = (now - lastTime) / 1000; lastTime = now; const speed = isDeploying ? 3.5 : 1.5 + (treasureLevel - 1) * 0.1; setAngle((prev) => (prev + speed * delta) % (Math.PI * 2)); animId = requestAnimationFrame(update); };
     animId = requestAnimationFrame(update); return () => cancelAnimationFrame(animId);
-  }, [isDeploying]);
+  }, [isDeploying, treasureLevel]);
   const radiusX = 64; const radiusY = 22;
   const offsetX = Math.cos(angle) * radiusX; const offsetY = Math.sin(angle) * radiusY - 14;
   const isFront = Math.sin(angle) >= 0; const zIndex = isFront ? 30 : -1;
   const scale = 0.8 + (Math.sin(angle) + 1) * 0.25; const opacity = 0.8 + (Math.sin(angle) + 1) * 0.1;
+
+  const auraGlow = treasureLevel >= 8
+    ? 'drop-shadow(0 0 22px rgba(192,132,252,0.95)) drop-shadow(0 0 10px rgba(245,158,11,0.9))'
+    : treasureLevel >= 4
+    ? 'drop-shadow(0 0 16px rgba(56,189,248,0.85))'
+    : isDeploying ? 'drop-shadow(0 0 16px rgba(245,158,11,0.9))' : 'drop-shadow(0 0 10px rgba(245,158,11,0.5))';
+
   return (
-    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) scale(${scale})`, zIndex, opacity, transition: 'transform 0.05s linear', filter: isDeploying ? 'drop-shadow(0 0 16px rgba(245,158,11,0.9))' : 'drop-shadow(0 0 10px rgba(245,158,11,0.5))', pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) scale(${scale})`, zIndex, opacity, transition: 'transform 0.05s linear', filter: auraGlow, pointerEvents: 'none' }}>
       <TreasureSprite treasureId={treasureId} size={50} />
+      {treasureLevel >= 8 && (
+        <div style={{ position: 'absolute', inset: '-6px', borderRadius: '50%', border: '1.5px dashed #c084fc', animation: 'spin 6s linear infinite', opacity: 0.85 }} />
+      )}
     </div>
   );
 };
@@ -594,7 +839,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [xp, setXp]                                         = useState<number>(() => loadSaved().xp ?? 0);
   const [activeSkin, setActiveSkin]                         = useState<string>(() => loadSaved().activeSkin ?? 'none');
   const [activeTreasureId, setActiveTreasureId]             = useState<number>(() => loadSaved().activeTreasureId ?? 1);
-  const [inventory, setInventory]                           = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 2, great: loadSaved().inventory?.great ?? 1, talisman: loadSaved().inventory?.talisman ?? 1 }));
+  const [inventory, setInventory]                           = useState<Inventory>(() => ({ basic: loadSaved().inventory?.basic ?? 5, recover: loadSaved().inventory?.recover ?? 2, great: loadSaved().inventory?.great ?? 1, talisman: loadSaved().inventory?.talisman ?? 1, revive: loadSaved().inventory?.revive ?? 0 }));
   const [totalMinutes, setTotalMinutes]                     = useState<number>(() => loadSaved().totalMinutes ?? 0);
   const [totalDrags, setTotalDrags]                         = useState<number>(() => loadSaved().totalDrags ?? 0);
   const [totalPets, setTotalPets]                           = useState<number>(() => loadSaved().totalPets ?? 0);
@@ -618,6 +863,18 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [gachaSpinCount, setGachaSpinCount]                 = useState<number>(() => loadSaved().gachaSpinCount ?? 0);
   const [recentGachaRewards, setRecentGachaRewards]         = useState<{ type: 'mount' | 'item'; name: string; icon: string; rarity: string }[] | null>(null);
 
+  const [treasureLevels, setTreasureLevels]                 = useState<Record<number, number>>(() => loadSaved().treasureLevels ?? {});
+  const [craftCount, setCraftCount]                         = useState<number>(() => loadSaved().craftCount ?? 0);
+  const [craftFailCount, setCraftFailCount]                 = useState<number>(() => loadSaved().craftFailCount ?? 0);
+  const [herbsInventory, setHerbsInventory]                 = useState<Record<HerbId, number>>(() => loadSaved().herbsInventory ?? {});
+  const [isCraftingAnim, setIsCraftingAnim]                 = useState(false);
+  const [activeCraftingRecipe, setActiveCraftingRecipe]     = useState<CraftingRecipe | null>(null);
+  const [craftingResult, setCraftingResult]                 = useState<{ success: boolean; message: string; pillName: string; pillEmoji: string } | null>(null);
+
+  const [isForgingAnim, setIsForgingAnim]                   = useState(false);
+  const [activeForgingTreasureId, setActiveForgingTreasureId] = useState<number | null>(null);
+  const [forgingResult, setForgingResult]                   = useState<{ success: boolean; message: string; targetLevel: number; newBonus: number } | null>(null);
+
   // Modal achievements search & filter
   const [achSearchQuery, setAchSearchQuery]                 = useState('');
   const [achCategoryFilter, setAchCategoryFilter]           = useState<string>('all');
@@ -625,7 +882,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   // UI State
   const [isLevelUpAnim, setIsLevelUpAnim]                   = useState(false);
   const [showCostumePicker, setShowCostumePicker]           = useState(false);
-  const [modalTab, setModalTab]                             = useState<'skins' | 'treasures' | 'mounts' | 'achievements'>('skins');
+  const [modalTab, setModalTab]                             = useState<'skins' | 'treasures' | 'mounts' | 'crafting' | 'achievements'>('skins');
   const [recentAchievementToast, setRecentAchievementToast] = useState<Achievement | null>(null);
   const [showInventory, setShowInventory]                   = useState(false);
   const [state, setState]                                   = useState<BunnyState>('idle');
@@ -690,10 +947,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         ownedMounts,
         activeMountId,
         gachaSpinCount,
+        treasureLevels,
+        craftCount,
+        herbsInventory,
         lastSessionTime: Date.now()
       }));
     } catch { /* noop */ }
-  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalPets, lastPetRewardTime, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount]);
+  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalPets, lastPetRewardTime, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount, treasureLevels, craftCount, herbsInventory]);
 
   useEffect(() => {
     const tick = () => setTalismanCountdown(Math.max(0, Math.ceil((talismanBuffExpiry - Date.now()) / 1000)));
@@ -790,6 +1050,174 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     }
   };
 
+  const getIngredientQty = (id: IngredientId): number => {
+    if (ITEM_CONFIG.some(i => i.id === id)) return inventory[id as ItemId] || 0;
+    return herbsInventory[id as HerbId] || 0;
+  };
+
+  const getIngredientInfo = (id: IngredientId) => {
+    const pill = ITEM_CONFIG.find(i => i.id === id);
+    if (pill) return { name: pill.name, emoji: pill.emoji, qty: inventory[pill.id as ItemId] || 0 };
+    const herb = HERB_CONFIG.find(h => h.id === id);
+    if (herb) return { name: herb.name, emoji: herb.emoji, qty: herbsInventory[herb.id as HerbId] || 0 };
+    return { name: id, emoji: '📦', qty: 0 };
+  };
+
+  const getMaxCraftCount = (recipe: CraftingRecipe): number => {
+    let max = Math.floor(spiritStones / recipe.spiritStonesCost);
+    recipe.ingredients.forEach(ing => {
+      const available = getIngredientQty(ing.id);
+      max = Math.min(max, Math.floor(available / ing.amount));
+    });
+    return Math.max(0, max);
+  };
+
+  const handleCraftPill = (recipe: CraftingRecipe, requestedCount: number = 1) => {
+    const maxAfford = getMaxCraftCount(recipe);
+    if (maxAfford < 1) {
+      if (spiritStones < recipe.spiritStonesCost) {
+        setBubbleText(`😢 Không đủ Linh Thạch! Cần ${recipe.spiritStonesCost} 💎 Linh Thạch!`);
+      } else {
+        setBubbleText(`😢 Thiếu nguyên liệu dược liệu/quặng để chế tạo đan dược!`);
+      }
+      return;
+    }
+
+    const actualCount = Math.min(requestedCount, maxAfford);
+    const totalStones = recipe.spiritStonesCost * actualCount;
+
+    addSpiritStones(-totalStones);
+
+    recipe.ingredients.forEach(ing => {
+      const totalIngAmount = ing.amount * actualCount;
+      if (ITEM_CONFIG.some(i => i.id === ing.id)) {
+        setInventory(prev => ({ ...prev, [ing.id as ItemId]: Math.max(0, (prev[ing.id as ItemId] || 0) - totalIngAmount) }));
+      } else {
+        setHerbsInventory(prev => ({ ...prev, [ing.id as HerbId]: Math.max(0, (prev[ing.id as HerbId] || 0) - totalIngAmount) }));
+      }
+    });
+
+    setActiveCraftingRecipe(recipe);
+    setIsCraftingAnim(true);
+    setCraftingResult(null);
+
+    setTimeout(() => {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < actualCount; i++) {
+        if (Math.random() <= recipe.successRate) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        setInventory(prev => ({
+          ...prev,
+          [recipe.resultItemId]: (prev[recipe.resultItemId] || 0) + (recipe.resultAmount * successCount)
+        }));
+        setCraftCount(c => {
+          const nextCount = c + successCount;
+          if (nextCount >= 1) unlockAchievement('craft_1');
+          if (nextCount >= 10) unlockAchievement('craft_10');
+          if (nextCount >= 50) unlockAchievement('secret_craft_god');
+          return nextCount;
+        });
+        if (recipe.resultItemId === 'revive') unlockAchievement('craft_revive');
+      }
+
+      if (failCount > 0) {
+        setCraftFailCount(f => {
+          const next = f + failCount;
+          if (next >= 1) unlockAchievement('craft_fail_1');
+          if (next >= 5) unlockAchievement('craft_fail_5');
+          return next;
+        });
+        unlockAchievement('secret_tro_dan');
+        addXP(2 * failCount, `🌪️ Tro Đan (x${failCount}): Nổ lò nhưng ngộ ra quy luật (+${2 * failCount} XP)`);
+      }
+
+      const isOverallSuccess = successCount > 0;
+      const resultMessage = actualCount > 1
+        ? `🔥 LUYỆN BÁT QUÁI HÀNG LOẠT (x${actualCount})\n✅ Thành công: ${successCount * recipe.resultAmount}x ${recipe.name}\n💥 Nổ lò thất bại: ${failCount}x (Nhận ${failCount}x Tro Đan +${failCount * 2} XP)`
+        : isOverallSuccess
+          ? `🔥 LUYỆN ĐAN THÀNH CÔNG! Ngưng tụ tinh hoa đất trời thành ${recipe.resultAmount}x ${recipe.name}!`
+          : `💥 THẤT BẠI NỔ LÒ! Dược lực không cân bằng bùng khói đen! Mất nguyên liệu & nhận 1x Tro Đan (+2 XP)!`;
+
+      setCraftingResult({
+        success: isOverallSuccess,
+        message: resultMessage,
+        pillName: recipe.name,
+        pillEmoji: recipe.emoji
+      });
+
+      if (successCount > 0 && failCount === 0) {
+        setBubbleText(`🔥 Nổi lửa Bát Quái! Luyện thành công x${actualCount} [${recipe.name}]! 🔮✨`);
+      } else if (successCount > 0 && failCount > 0) {
+        setBubbleText(`🔥 Luyện đan x${actualCount}: Thu hoạch ${successCount}x [${recipe.name}] & ${failCount}x Tro Đan! 🌪️`);
+      } else {
+        setBubbleText(`💥 NỔ LÒ BÁT QUÁI! Luyện x${actualCount} [${recipe.name}] thất bại hoàn toàn! 🌪️`);
+      }
+    }, 2600);
+  };
+
+  const handleUpgradeTreasure = (treasureId: number) => {
+    const currentLvl = treasureLevels[treasureId] || 1;
+    if (currentLvl >= 10) {
+      setBubbleText(`✨ Pháp Bảo này đã đạt Cấp 10 Tối Cao!`);
+      return;
+    }
+    const cost = currentLvl * 100;
+    if (spiritStones < cost) {
+      setBubbleText(`😢 Cần ${cost} 💎 Linh Thạch để rèn Pháp Bảo!`);
+      return;
+    }
+
+    const nextLvl = currentLvl + 1;
+    const successRate = getTreasureUpgradeSuccessRate(nextLvl);
+    const targetTreasure = LEVEL_CONFIG.find(l => l.treasureId === treasureId);
+    const treasureName = targetTreasure?.skinName || 'Pháp Bảo';
+
+    // Trừ Linh Thạch và bật animation rèn Đe Lôi Đình
+    addSpiritStones(-cost);
+    setActiveForgingTreasureId(treasureId);
+    setIsForgingAnim(true);
+    setForgingResult(null);
+
+    setTimeout(() => {
+      const isSuccess = Math.random() < successRate;
+      const newBonus = getTreasureExpBonusPercent(treasureId, nextLvl);
+
+      if (isSuccess) {
+        setTreasureLevels(prev => {
+          const next = { ...prev, [treasureId]: nextLvl };
+          if (nextLvl >= 2) unlockAchievement('forge_1');
+          if (nextLvl >= 10) unlockAchievement('forge_max');
+          return next;
+        });
+
+        setForgingResult({
+          success: true,
+          message: `⚡ LÔI QUANG ĐẠI THÀNH! [${treasureName}] đã tôi luyện đột phá Cấp ${nextLvl} (+${newBonus}% EXP)!`,
+          targetLevel: nextLvl,
+          newBonus
+        });
+        setBubbleText(`🔨 Rèn [${treasureName}] lên Cấp ${nextLvl} đại thành công! Buff: +${newBonus}% EXP! ⚡✨`);
+      } else {
+        unlockAchievement('secret_forge_fail');
+        setForgingResult({
+          success: false,
+          message: `🌩️ LÔI ĐÌNH BẠO TẠC! Rèn [${treasureName}] lên Cấp ${nextLvl} thất bại! Tiêu hao ${cost} 💎 Linh Thạch nhưng cấp độ bảo toàn. Hãy thử lại!`,
+          targetLevel: currentLvl,
+          newBonus: getTreasureExpBonusPercent(treasureId, currentLvl)
+        });
+        setBubbleText(`🌩️ Lôi điện bạo tạc! Rèn [${treasureName}] lên Cấp ${nextLvl} thất bại! 😢`);
+      }
+    }, 2400);
+  };
+
   // Achievement Engine
   const unlockAchievement = (achId: string) => {
     setUnlockedAchievements(prev => {
@@ -874,8 +1302,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   }, [currentLevel, xp, breakthroughSuccessCount, breakthroughFailCount, failCountAtCurrentLevel, totalDeploys, deployedServices.length, totalMinutes, totalDrags, totalPets, totalPillsConsumed, multiDeployCount, totalInventory, unlockedAchievements.length, ownedMounts.length, gachaSpinCount]);
 
   const addXP = (amount: number, reasonText?: string) => {
+    // Chỉ nhận buff EXP từ Pháp Bảo đang mặc (activeTreasureId) ở cấp độ tương ứng
+    const currentTreasureLvl = treasureLevels[activeTreasureId] || 1;
+    const bonusPercent = getTreasureExpBonusPercent(activeTreasureId, currentTreasureLvl);
+    const boostedAmount = Number((amount * (1 + bonusPercent / 100)).toFixed(2));
+
     setXp(prevXp => {
-      let newXp = prevXp + amount;
+      let newXp = Number((prevXp + boostedAmount).toFixed(2));
       const prevLvl = (LEVEL_CONFIG.slice().reverse().find(l => prevXp >= l.reqXp) ?? LEVEL_CONFIG[0]).level;
       const nextLvlInfo = LEVEL_CONFIG.find(l => l.level === prevLvl + 1);
       if (nextLvlInfo && newXp >= nextLvlInfo.reqXp) {
@@ -962,17 +1395,32 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     }
   };
 
-  // Idle Time Rewards (80% Raw Linh Khí, 20% Pill Drop, +10 Spirit Stones per minute)
+  // Idle Time Rewards (Herbal/Mineral Drops & Spirit Stones per minute)
   useEffect(() => {
     const id = setInterval(() => {
       setTotalMinutes(m => m + 1);
       addSpiritStones(10);
+
+      // Roll Herbal & Mineral drops each minute (tối đa 1 loại / phút, có tỉ lệ không rơi)
       const roll = Math.random();
-      if (roll < 0.12) grantItem('basic', 1, '💊 1 phút Linh Khí: Nhận 1 Tụ Linh Đan & +10 💎!');
-      else if (roll < 0.17) grantItem('recover', 1, '🍃 1 phút Linh Khí: Nhận 1 Hồi Phục Đan & +10 💎!');
-      else if (roll < 0.19) grantItem('great', 1, '🌸 Linh quang chợt lóe: Nhận 1 Đại Hoàn Đan & +10 💎!');
-      else if (roll < 0.20) grantItem('talisman', 1, '🔱 Thần minh chiếu cố: Nhận 1 Hộ Kiếp Phù & +10 💎!');
-      else addXP(5, '✨ 1 phút Ngộ Đạo: Hấp thu Linh Khí thiên địa (+5 XP & +10 💎)');
+      let cumulative = 0;
+      let pickedHerb: HerbConfig | null = null;
+
+      for (const herb of HERB_CONFIG) {
+        cumulative += herb.dropChance;
+        if (roll < cumulative) {
+          pickedHerb = herb;
+          break;
+        }
+      }
+
+      if (pickedHerb) {
+        const qty = Math.random() < 0.2 ? 2 : 1;
+        setHerbsInventory(prev => ({ ...prev, [pickedHerb.id]: (prev[pickedHerb.id] || 0) + qty }));
+        setBubbleText(`🌿 Bế quan kỳ ngộ! Thu hoạch: ${pickedHerb.emoji} ${pickedHerb.name} x${qty}! ✨ (+10 💎)`);
+      } else {
+        addXP(5, '✨ 1 phút Bế Quan: Hấp thu Linh Khí thiên địa (+5 XP & +10 💎)');
+      }
     }, 60_000);
     return () => clearInterval(id);
   }, []);
@@ -1165,14 +1613,204 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         </>
       )}
 
+      {/* ── ALCHEMY CRAFTING ANIMATION MODAL ── */}
+      {isCraftingAnim && activeCraftingRecipe && (
+        <div
+          className="mascot-modal fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          onClick={e => e.stopPropagation()}
+        >
+          <div
+            style={{
+              background: 'radial-gradient(circle at center, rgba(35,10,15,0.98), rgba(8,10,16,0.99))',
+              border: '2px solid rgba(239,68,68,0.6)',
+              borderRadius: '24px',
+              padding: '28px',
+              maxWidth: '440px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 0 80px rgba(239,68,68,0.45)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header Title */}
+            <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '18px', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔥 LÒ LUYỆN ĐAN BÁT QUÁI HỎA 🔥</span>
+            </div>
+
+            <div style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600 }}>
+              Đang luyện chế: <span style={{ color: RARITY_COLORS[activeCraftingRecipe.rarity], fontWeight: 800 }}>{activeCraftingRecipe.emoji} {activeCraftingRecipe.name}</span>
+            </div>
+
+            {/* Furnace Sprite Animation Container */}
+            <div style={{ position: 'relative', margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <AnimatedFurnaceSprite isCrafting={!craftingResult} size={160} />
+              
+              {!craftingResult && (
+                <div style={{ position: 'absolute', inset: -12, borderRadius: '50%', border: '2px dashed rgba(239,68,68,0.5)', animation: 'spin 6s linear infinite', pointerEvents: 'none' }} />
+              )}
+            </div>
+
+            {/* Progress / Status text */}
+            {!craftingResult ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '13px', color: '#fca5a5', fontWeight: 700, animation: 'pulse 1s infinite' }}>
+                  🔥 Chân Hỏa tôi luyện... Ngưng tụ đan khí...
+                </div>
+                <div style={{ fontSize: '12px', color: '#94a3b8', background: 'rgba(0,0,0,0.3)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  Tỉ lệ thành công: <strong style={{ color: activeCraftingRecipe.successRate >= 0.7 ? '#86efac' : activeCraftingRecipe.successRate >= 0.4 ? '#fde047' : '#f87171' }}>{Math.round(activeCraftingRecipe.successRate * 100)}%</strong>
+                  <span style={{ color: '#64748b', marginLeft: '6px' }}>(Hao hụt nếu bạo đan: 50% NVL)</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
+                <div
+                  style={{
+                    padding: '12px 18px', borderRadius: '14px', width: '100%',
+                    background: craftingResult.success ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                    border: `1px solid ${craftingResult.success ? '#10b981' : '#ef4444'}`,
+                    color: craftingResult.success ? '#86efac' : '#fca5a5',
+                    fontSize: '13px', fontWeight: 700
+                  }}
+                >
+                  <div style={{ fontSize: '16px', fontWeight: 900, marginBottom: '4px' }}>
+                    {craftingResult.success ? '✨ ĐAN THÀNH XUẤT LÔ ✨' : '💥 ĐAN LÔ BẠO TẠC 💥'}
+                  </div>
+                  <div>{craftingResult.message}</div>
+                </div>
+
+                <button
+                  onClick={() => { setIsCraftingAnim(false); setCraftingResult(null); }}
+                  style={{
+                    background: craftingResult.success ? 'linear-gradient(135deg,#10b981,#059669)' : 'linear-gradient(135deg,#ef4444,#dc2626)',
+                    color: '#fff', padding: '10px 24px', borderRadius: '12px', fontWeight: 900, fontSize: '13px',
+                    border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', width: '100%'
+                  }}
+                >
+                  XÁC NHẬN
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── THUNDER ANVIL FORGING ANIMATION MODAL ── */}
+      {isForgingAnim && activeForgingTreasureId && (
+        <div
+          className="mascot-modal fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+          onClick={e => e.stopPropagation()}
+        >
+          <div
+            style={{
+              background: 'radial-gradient(circle at center, rgba(15,25,50,0.98), rgba(4,7,16,0.99))',
+              border: '2px solid rgba(56,189,248,0.6)',
+              borderRadius: '24px',
+              padding: '28px',
+              maxWidth: '450px',
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 0 80px rgba(56,189,248,0.4)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header Title */}
+            <div style={{ color: '#38bdf8', fontWeight: 900, fontSize: '17px', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>⚡ ĐE RÈN THẦN KHÍ LÔI ĐÌNH ⚡</span>
+            </div>
+
+            {(() => {
+              const targetTreasure = LEVEL_CONFIG.find(l => l.treasureId === activeForgingTreasureId);
+              const currentLvl = treasureLevels[activeForgingTreasureId] || 1;
+              const targetLvl = currentLvl + 1;
+              const successRate = getTreasureUpgradeSuccessRate(targetLvl);
+              const nextBonus = getTreasureExpBonusPercent(activeForgingTreasureId, targetLvl);
+
+              return (
+                <>
+                  <div style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <TreasureSprite treasureId={activeForgingTreasureId} size={28} />
+                    <span>Rèn: <strong style={{ color: '#38bdf8' }}>{targetTreasure?.skinName}</strong> (Cấp {currentLvl} ➔ <span style={{ color: '#86efac' }}>Cấp {targetLvl}</span>)</span>
+                  </div>
+
+                  {/* Thunder Anvil Sprite Container */}
+                  <div style={{ position: 'relative', margin: '10px 0', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <AnimatedThunderAnvil isForging={!forgingResult} size={180} />
+                    {!forgingResult && (
+                      <div style={{ position: 'absolute', inset: -14, borderRadius: '50%', border: '2px dashed rgba(56,189,248,0.5)', animation: 'spin 5s linear infinite', pointerEvents: 'none' }} />
+                    )}
+                  </div>
+
+                  {/* Progress / Status text */}
+                  {!forgingResult ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontSize: '13px', color: '#7dd3fc', fontWeight: 700, animation: 'pulse 1s infinite' }}>
+                        ⚡ Dẫn Cửu Thiên Lôi Điện... Tôi luyện thần binh...
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', background: 'rgba(0,0,0,0.35)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.2)' }}>
+                        Tỉ lệ thành công: <strong style={{ color: successRate >= 0.7 ? '#86efac' : successRate >= 0.4 ? '#fde047' : '#f87171' }}>{Math.round(successRate * 100)}%</strong>
+                        <span style={{ color: '#64748b', marginLeft: '6px' }}>(Thất bại: {Math.round((1 - successRate) * 100)}%)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
+                      <div
+                        style={{
+                          padding: '12px 18px', borderRadius: '14px', width: '100%',
+                          background: forgingResult.success ? 'rgba(56,189,248,0.15)' : 'rgba(239,68,68,0.15)',
+                          border: `1px solid ${forgingResult.success ? '#38bdf8' : '#ef4444'}`,
+                          color: forgingResult.success ? '#7dd3fc' : '#fca5a5',
+                          fontSize: '13px', fontWeight: 700
+                        }}
+                      >
+                        <div style={{ fontSize: '16px', fontWeight: 900, marginBottom: '4px' }}>
+                          {forgingResult.success ? '✨ KHAI QUANG ĐẠI THÀNH ✨' : '⚡ LÔI ĐIỆN BẠO TẠC ⚡'}
+                        </div>
+                        <div>{forgingResult.message}</div>
+                        {forgingResult.success && (
+                          <div style={{ fontSize: '12px', color: '#86efac', marginTop: '4px', fontWeight: 800 }}>
+                            ⭐ Buff hiệu quả: Tăng {nextBonus}% EXP nhận được khi đeo!
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => { setIsForgingAnim(false); setForgingResult(null); }}
+                        style={{
+                          background: forgingResult.success ? 'linear-gradient(135deg,#0284c7,#0369a1)' : 'linear-gradient(135deg,#ef4444,#dc2626)',
+                          color: '#fff', padding: '10px 24px', borderRadius: '12px', fontWeight: 900, fontSize: '13px',
+                          border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.4)', width: '100%'
+                        }}
+                      >
+                        XÁC NHẬN
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* ── Bunny + Bubble ── */}
       <div
-        className={`fixed z-[95] flex flex-col items-center select-none ${isDragging ? 'cursor-grabbing transition-none' : 'cursor-grab transition-all duration-300 ease-linear'}`}
+        className={`mascot-root fixed z-[95] flex flex-col items-center select-none ${isDragging ? 'cursor-grabbing transition-none' : 'cursor-grab transition-all duration-300 ease-linear'}`}
         style={{ left: `${posX}%`, bottom: `${posYBottom}px`, transform: 'translateX(-50%)' }}
         onPointerDown={handlePointerDown}
       >
         {/* Speech Bubble */}
         <div
+          className="mascot-bubble"
           style={{
             position: 'relative', marginBottom: '8px', padding: '6px 12px',
             borderRadius: '12px', background: 'rgba(10,13,22,0.96)',
@@ -1226,30 +1864,35 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             >
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                 <span>{isTribulationLevel ? `🌩️ ĐỘ KIẾP (${currentSuccessRatePercent}%)` : '✨ ĐỘT PHÁ'}</span>
-                {failCountAtCurrentLevel > 0 && <span style={{ fontSize: '8.5px', color: '#7f1d1d', fontWeight: 900 }}>+${failCountAtCurrentLevel * 5}% Tích Tụ</span>}
+                {failCountAtCurrentLevel > 0 && <span style={{ fontSize: '8.5px', color: '#7f1d1d', fontWeight: 900 }}>+{failCountAtCurrentLevel * 5}% Tích Tụ</span>}
                 {isTalismanActive && <span style={{ fontSize: '8.5px', color: '#854d0e', fontWeight: 800 }}>🔱 +25% Phù</span>}
               </div>
             </button>
-          ) : (
+          ) : null}
+
+          {/* Bag Button */}
+          {!isReadyToBreakthrough && (
             <button
               onClick={e => { e.stopPropagation(); setShowInventory(p => !p); }}
               onPointerDown={e => e.stopPropagation()}
-              title="Mở túi Linh Đan"
+              title="Mở Túi Trữ Vật (Dùng Đan Dược & Quản lý Dược Liệu)"
               style={{
                 background: totalInventory > 0 ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)',
                 border: `1px solid ${totalInventory > 0 ? 'rgba(245,158,11,0.5)' : 'rgba(100,116,139,0.3)'}`,
-                borderRadius: '8px', padding: '2px 8px',
-                fontSize: '11px', fontWeight: 700, color: totalInventory > 0 ? '#fbbf24' : '#94a3b8',
-                cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px'
+                borderRadius: '8px', padding: '2px 6px',
+                fontSize: '10px', fontWeight: 800,
+                color: totalInventory > 0 ? '#fde68a' : '#94a3b8',
+                cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px'
               }}
             >
-              <Package style={{ width: '13px', height: '13px', color: totalInventory > 0 ? '#fbbf24' : '#94a3b8' }} />
-              <span>{totalInventory}</span>
+              <Package style={{ width: '12px', height: '12px' }} />
+              {totalInventory > 0 && <span>{totalInventory}</span>}
             </button>
           )}
 
+          {/* Dismiss button */}
           <button onClick={e => { e.stopPropagation(); setIsDismissed(true); }} onPointerDown={e => e.stopPropagation()} title="Ẩn Thỏ" style={{ color: '#64748b', cursor: 'pointer', padding: '2px', borderRadius: '50%', background: 'none', border: 'none', flexShrink: 0 }}>
-            <X style={{ width: '11px', height: '11px' }} />
+            <X style={{ width: '12px', height: '12px' }} />
           </button>
           <div style={{ position: 'absolute', bottom: '-5px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: '8px', height: '8px', background: 'rgba(10,13,22,0.96)', borderRight: '1px solid rgba(245,158,11,0.45)', borderBottom: '1px solid rgba(245,158,11,0.45)' }} />
         </div>
@@ -1257,23 +1900,28 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         {/* ── Inventory Panel ── */}
         {showInventory && !isReadyToBreakthrough && (
           <div
+            className="mascot-inventory"
             style={{
               position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
-              marginBottom: '12px', background: 'rgba(10,13,22,0.97)',
-              border: '1px solid rgba(245,158,11,0.4)', borderRadius: '14px',
-              padding: '12px', width: '250px', zIndex: 200,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.8)', backdropFilter: 'blur(16px)'
+              marginBottom: '12px', background: 'rgba(10,13,22,0.98)',
+              border: '1.5px solid rgba(245,158,11,0.5)', borderRadius: '18px',
+              padding: '16px 18px', width: 'min(640px, calc(100vw - 24px))', zIndex: 200,
+              boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 20px rgba(245,158,11,0.2)', backdropFilter: 'blur(20px)'
             }}
             onPointerDown={e => e.stopPropagation()}
           >
-            <div style={{ color: '#fbbf24', fontWeight: 800, fontSize: '11px', marginBottom: '8px', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🎒 Túi Trữ Vật — Linh Đan</span>
-              <span style={{ fontSize: '9.5px', color: '#38bdf8', fontWeight: 800 }}>💎 {spiritStones}</span>
+            <div style={{ color: '#fbbf24', fontWeight: 900, fontSize: '13px', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(245,158,11,0.25)', paddingBottom: '8px' }}>
+              <span>🎒 TÚI TRỮ VẬT TIÊN GIA</span>
+              <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 800, background: 'rgba(56,189,248,0.12)', padding: '3px 10px', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.3)' }}>💎 {spiritStones} Linh Thạch</span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ color: '#fde68a', fontWeight: 800, fontSize: '11px', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              💊 Linh Đan Đã Tích Nạp
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '2px' }}>
               {ITEM_CONFIG.map(item => {
-                const qty = inventory[item.id];
+                const qty = inventory[item.id] || 0;
                 const isTalismItem = item.isBuff;
                 const isActive = isTalismItem && isTalismanActive;
                 const disabled = qty === 0 || isActive;
@@ -1285,25 +1933,25 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                     title={item.description}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '8px',
-                      background: isActive ? 'rgba(253,224,71,0.12)' : disabled ? 'rgba(30,35,50,0.6)' : 'rgba(245,158,11,0.08)',
-                      border: `1px solid ${isActive ? '#fde047aa' : disabled ? 'rgba(100,116,139,0.25)' : RARITY_COLORS[item.rarity] + '55'}`,
-                      borderRadius: '10px', padding: '7px 10px',
+                      background: isActive ? 'rgba(253,224,71,0.15)' : disabled ? 'rgba(30,35,50,0.5)' : 'rgba(245,158,11,0.1)',
+                      border: `1px solid ${isActive ? '#fde047aa' : disabled ? 'rgba(100,116,139,0.2)' : RARITY_COLORS[item.rarity] + '66'}`,
+                      borderRadius: '10px', padding: '6px 10px',
                       cursor: disabled ? 'not-allowed' : 'pointer', width: '100%',
                       opacity: (disabled && !isActive) ? 0.5 : 1, transition: 'all 0.15s',
-                      boxShadow: isActive ? '0 0 12px rgba(253,224,71,0.4)' : 'none'
+                      boxShadow: isActive ? '0 0 14px rgba(253,224,71,0.45)' : 'none'
                     }}
                   >
                     <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.emoji}</span>
-                    <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ color: RARITY_COLORS[item.rarity], fontWeight: 700, fontSize: '11px' }}>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                      <div style={{ color: RARITY_COLORS[item.rarity], fontWeight: 800, fontSize: '11.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {item.name}
-                        {isActive && <span style={{ color: '#fde047', fontSize: '9px', marginLeft: '4px' }}>● HIỆU LỰC</span>}
+                        {isActive && <span style={{ color: '#fde047', fontSize: '9px', marginLeft: '4px', background: 'rgba(253,224,71,0.2)', padding: '1px 4px', borderRadius: '4px' }}>● DÙNG</span>}
                       </div>
-                      <div style={{ color: '#94a3b8', fontSize: '9.5px', marginTop: '1px' }}>
-                        {item.isBuff ? (isActive ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s • +25% Độ Kiếp` : `Kích hoạt: +25% Độ Kiếp / 5 phút`) : `+${item.xpValue} Linh Lực`}
+                      <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.isBuff ? (isActive ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s` : `+${(item.buffSuccessBonus || 0.25) * 100}% Độ Kiếp`) : `+${item.xpValue} Linh Lực`}
                       </div>
                     </div>
-                    <div style={{ background: qty > 0 ? RARITY_COLORS[item.rarity] + '33' : 'rgba(100,116,139,0.2)', color: qty > 0 ? RARITY_COLORS[item.rarity] : '#94a3b8', border: `1px solid ${qty > 0 ? RARITY_COLORS[item.rarity] + '55' : 'transparent'}`, borderRadius: '8px', padding: '2px 8px', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>
+                    <div style={{ background: qty > 0 ? RARITY_COLORS[item.rarity] + '33' : 'rgba(100,116,139,0.2)', color: qty > 0 ? RARITY_COLORS[item.rarity] : '#94a3b8', border: `1px solid ${qty > 0 ? RARITY_COLORS[item.rarity] + '66' : 'transparent'}`, borderRadius: '8px', padding: '2px 8px', fontSize: '11.5px', fontWeight: 800, flexShrink: 0 }}>
                       {qty}
                     </div>
                   </button>
@@ -1311,13 +1959,44 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
               })}
             </div>
 
-            <div style={{ marginTop: '10px', borderTop: '1px solid rgba(245,158,11,0.15)', paddingTop: '8px' }}>
-              <div style={{ color: '#94a3b8', fontSize: '9px', lineHeight: '1.55' }}>
-                <div>💎 <strong style={{ color: '#38bdf8' }}>Linh Thạch:</strong> Quay rương gacha mở Thú Cưỡi</div>
-                <div>💊 <strong style={{ color: '#93c5fd' }}>Tụ Linh Đan:</strong> Tỉ lệ treo máy, kéo thả Thỏ 5 lần</div>
-                <div>🍃 <strong style={{ color: '#86efac' }}>Hồi Phục Đan:</strong> Deploy thành công, treo máy may mắn</div>
-                <div>🌸 <strong style={{ color: '#f9a8d4' }}>Đại Hoàn Đan:</strong> Độ Kiếp thành công, mốc thiền/deploy</div>
-                <div>🔱 <strong style={{ color: '#fde047' }}>Hộ Kiếp Phù:</strong> Mốc deploy & bế quan lâu dài</div>
+            {/* Dược Liệu & Quặng Tiên Gia section */}
+            <div style={{ marginTop: '12px', borderTop: '1px solid rgba(245,158,11,0.2)', paddingTop: '10px' }}>
+              <div style={{ color: '#6ee7b7', fontWeight: 800, fontSize: '11px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                🌿 Kho Dược Liệu & Quặng (Dùng Luyện Đan)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', maxHeight: '200px', overflowY: 'auto', paddingRight: '2px' }}>
+                {HERB_CONFIG.map(herb => {
+                  const count = herbsInventory[herb.id] || 0;
+                  return (
+                    <div
+                      key={herb.id}
+                      title={herb.description}
+                      style={{
+                        background: count > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.25)',
+                        border: `1px solid ${count > 0 ? '#10b98166' : 'rgba(255,255,255,0.06)'}`,
+                        borderRadius: '8px', padding: '5px 7px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        opacity: count > 0 ? 1 : 0.45,
+                        minWidth: 0
+                      }}
+                    >
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: RARITY_COLORS[herb.rarity], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+                        {herb.emoji} {herb.name}
+                      </span>
+                      <span style={{ fontSize: '11px', fontWeight: 900, color: count > 0 ? '#86efac' : '#64748b', marginLeft: '4px', background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: '4px', flexShrink: 0 }}>
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ marginTop: '12px', borderTop: '1px solid rgba(245,158,11,0.15)', paddingTop: '8px' }}>
+              <div style={{ color: '#94a3b8', fontSize: '10px', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div>💎 <strong style={{ color: '#38bdf8' }}>Linh Thạch:</strong> Quay rương Gacha Thần Thú & Rèn Pháp Bảo</div>
+                <div>🌿 <strong style={{ color: '#6ee7b7' }}>Dược Liệu & Quặng:</strong> Rớt tối đa 1 loại / 1 phút bế quan (có tỉ lệ trượt)</div>
+                <div>🧪 <strong style={{ color: '#f59e0b' }}>Lò Bát Quái:</strong> Dùng Dược Liệu chế đan dược & Hộ Kiếp Phù</div>
               </div>
             </div>
           </div>
@@ -1325,11 +2004,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
         {/* ── Bunny Sprite + Orbiting Cultivation Treasure + Flying Mount ── */}
         <div
-          className="relative transition-transform duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
-          style={{ transform: `translateY(${currentOffsetY}px)`, width: `${MASCOT_SIZE}px`, height: `${MASCOT_SIZE}px` }}
+          className="mascot-sprite-box relative transition-transform duration-200 hover:scale-110 active:scale-95 flex items-center justify-center"
+          style={{ transform: `translateY(${currentOffsetY}px)`, width: `${MASCOT_SIZE}px`, height: `${MASCOT_SIZE}px`, backgroundColor: 'transparent' }}
           title="NHẤP CHUỘT để Vuốt Ve Thỏ 🐰 (+10 XP & +5 💎) | KÉO THẢ để bay cùng Thú Cưỡi 🐴"
         >
-          {activeTreasureId && <TreasureOrbit treasureId={activeTreasureId} isDeploying={isDeploying} />}
+          {activeTreasureId && <TreasureOrbit treasureId={activeTreasureId} treasureLevel={treasureLevels[activeTreasureId] || 1} isDeploying={isDeploying} />}
 
           {/* Render Active Flying Mount Underneath Mascot ONLY when Dragging */}
           {activeMountId && isDragging && (
@@ -1420,6 +2099,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                   🐴 Thú Cưỡi Gacha ({ownedMounts.length}/10)
                 </button>
 
+                <button onClick={() => setModalTab('crafting')} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: modalTab === 'crafting' ? 'rgba(245,158,11,0.22)' : 'transparent', border: `1px solid ${modalTab === 'crafting' ? '#10b981' : 'rgba(255,255,255,0.1)'}`, borderRadius: '10px', padding: '8px 14px', fontSize: '12px', fontWeight: 800, color: modalTab === 'crafting' ? '#6ee7b7' : '#94a3b8', cursor: 'pointer' }}>
+                  <Sparkles style={{ width: '14px', height: '14px', color: modalTab === 'crafting' ? '#10b981' : '#64748b' }} />
+                  🧪 Lò Luyện Đan
+                </button>
+
                 <button onClick={() => setModalTab('achievements')} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: modalTab === 'achievements' ? 'rgba(245,158,11,0.22)' : 'transparent', border: `1px solid ${modalTab === 'achievements' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`, borderRadius: '10px', padding: '8px 14px', fontSize: '12px', fontWeight: 800, color: modalTab === 'achievements' ? '#fde68a' : '#94a3b8', cursor: 'pointer' }}>
                   <Trophy style={{ width: '14px', height: '14px', color: modalTab === 'achievements' ? '#fbbf24' : '#64748b' }} />
                   🏆 Thành Tựu ({unlockedAchievements.length}/{ACHIEVEMENTS.length})
@@ -1452,7 +2136,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                     </div>
                     <div style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 600, marginTop: '3px', display: 'flex', gap: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       <span>🥋 Thân Pháp: <strong style={{ color: '#fde68a' }}>{activeSkinInfo.name}</strong></span>
-                      <span>🔮 Pháp Bảo: <strong style={{ color: '#38bdf8' }}>{activeTreasureInfo.skinName}</strong></span>
+                      <span>🔮 Pháp Bảo: <strong style={{ color: '#38bdf8' }}>{activeTreasureInfo.skinName}</strong> <span style={{ color: '#86efac', fontSize: '10.5px' }}>(Cấp {treasureLevels[activeTreasureId] || 1}: +{getTreasureExpBonusPercent(activeTreasureId, treasureLevels[activeTreasureId] || 1)}% EXP)</span></span>
                       <span>🐴 Thú Cưỡi: <strong style={{ color: '#c084fc' }}>{activeMountConfig ? `${activeMountConfig.emoji} ${activeMountConfig.name}` : 'Không'}</strong></span>
                     </div>
                   </div>
@@ -1507,34 +2191,185 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             {/* TAB 2: Treasures Grid */}
             {modalTab === 'treasures' && (
               <>
-                <div style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(56,189,248,0.85)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  DANH SÁCH 17 PHÁP BẢO HỘ THỂ
+                <div style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(56,189,248,0.85)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>DANH SÁCH 17 PHÁP BẢO HỘ THỂ (MỖI CẤP TĂNG BUFF EXP)</span>
+                  <span style={{ color: '#38bdf8' }}>💎 {spiritStones} Linh Thạch</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(245px, 1fr))', gap: '10px', maxHeight: '460px', overflowY: 'auto', overflowX: 'hidden', paddingRight: '4px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '10px', maxHeight: '460px', overflowY: 'auto', overflowX: 'hidden', paddingRight: '4px' }}>
                   {LEVEL_CONFIG.map(lvl => {
                     const unlocked = xp >= lvl.reqXp;
                     const equipped = activeTreasureId === lvl.treasureId;
+                    const tLvl = treasureLevels[lvl.treasureId] || 1;
+                    const upgradeCost = tLvl * 100;
+                    const canAfford = spiritStones >= upgradeCost && tLvl < 10;
+                    const currentBonus = getTreasureExpBonusPercent(lvl.treasureId, tLvl);
+                    const nextBonus = getTreasureExpBonusPercent(lvl.treasureId, tLvl + 1);
+
                     return (
-                      <button
+                      <div
                         key={lvl.treasureId}
-                        disabled={!unlocked}
-                        onClick={() => { if (unlocked) { setActiveTreasureId(lvl.treasureId); setShowCostumePicker(false); setBubbleText(`✨ Đã ngự Pháp Bảo [${lvl.skinName}]! 🔮`); } }}
                         style={{
-                          padding: '10px 12px', borderRadius: '12px', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 12px', borderRadius: '12px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px',
                           background: equipped ? 'rgba(56,189,248,0.18)' : unlocked ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.35)',
                           border: `1px solid ${equipped ? '#38bdf8' : unlocked ? 'rgba(56,189,248,0.25)' : 'rgba(255,255,255,0.04)'}`,
-                          color: equipped ? '#bae6fd' : unlocked ? '#e2e8f0' : '#4b5563', cursor: unlocked ? 'pointer' : 'not-allowed', opacity: unlocked ? 1 : 0.5
+                          opacity: unlocked ? 1 : 0.5
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                          <TreasureSprite treasureId={lvl.treasureId} size={42} />
-                          <div style={{ overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 800, fontSize: '12px', color: equipped ? '#38bdf8' : unlocked ? '#f1f5f9' : '#64748b' }}>{lvl.skinName}</div>
-                            <div style={{ fontSize: '10.5px', color: unlocked ? '#94a3b8' : '#475569' }}>{unlocked ? `Cảnh Giới Lv.${lvl.level}` : `Khóa (${lvl.reqXp} XP)`}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                            <TreasureSprite treasureId={lvl.treasureId} size={42} />
+                            <div style={{ overflow: 'hidden' }}>
+                              <div style={{ fontWeight: 800, fontSize: '12px', color: equipped ? '#38bdf8' : unlocked ? '#f1f5f9' : '#64748b' }}>{lvl.skinName}</div>
+                              <div style={{ fontSize: '10.5px', color: unlocked ? '#38bdf8' : '#475569', fontWeight: 700 }}>
+                                ⚡ Cấp {tLvl}/10 <span style={{ color: '#86efac' }}>(+{currentBonus}% EXP)</span>
+                              </div>
+                            </div>
+                          </div>
+                          {unlocked && (
+                            <button
+                              onClick={() => { setActiveTreasureId(lvl.treasureId); setBubbleText(`✨ Đã ngự [${lvl.skinName}]! Nhận buff +${currentBonus}% EXP 🔮`); }}
+                              style={{ background: equipped ? '#38bdf8' : 'rgba(56,189,248,0.15)', color: equipped ? '#000' : '#38bdf8', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 900, border: 'none', cursor: 'pointer' }}
+                            >
+                              {equipped ? 'Đang Ngự' : 'Ngự'}
+                            </button>
+                          )}
+                        </div>
+
+                        {unlocked && tLvl < 10 && (() => {
+                          const nextRate = getTreasureUpgradeSuccessRate(tLvl + 1);
+                          const ratePercent = Math.round(nextRate * 100);
+                          const rateColor = ratePercent >= 70 ? '#86efac' : ratePercent >= 45 ? '#fde047' : '#f87171';
+
+                          return (
+                            <button
+                              onClick={() => handleUpgradeTreasure(lvl.treasureId)}
+                              disabled={!canAfford}
+                              style={{
+                                width: '100%', padding: '6px 8px', borderRadius: '8px', fontWeight: 800, fontSize: '10.5px',
+                                background: canAfford ? 'linear-gradient(135deg,#0284c7,#0369a1)' : 'rgba(100,116,139,0.2)',
+                                border: `1px solid ${canAfford ? '#38bdf8' : 'transparent'}`,
+                                color: canAfford ? '#fff' : '#64748b', cursor: canAfford ? 'pointer' : 'not-allowed',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                              }}
+                            >
+                              <span>🔨 Rèn Cấp {tLvl + 1} (+{nextBonus}% EXP)</span>
+                              <span style={{ color: canAfford ? rateColor : '#64748b', fontSize: '9.5px', background: 'rgba(0,0,0,0.35)', padding: '2px 6px', borderRadius: '4px' }}>
+                                {ratePercent}% TC • {upgradeCost} 💎
+                              </span>
+                            </button>
+                          );
+                        })()}
+                        {unlocked && tLvl >= 10 && (
+                          <div style={{ fontSize: '10px', color: '#c084fc', fontWeight: 800, textAlign: 'center', background: 'rgba(192,132,252,0.12)', padding: '4px', borderRadius: '6px' }}>
+                            ✨ PHÁP BẢO TỐI CAO (CẤP 10: +{currentBonus}% EXP) — HÀO QUANG 3D
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* TAB 4: Lò Luyện Đan Bát Quái */}
+            {modalTab === 'crafting' && (
+              <>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#10b981', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>🧪 LÒ LUYỆN ĐAN BÁT QUÁI TIÊN GIA</span>
+                  <span style={{ color: '#38bdf8', fontSize: '12px' }}>💎 Linh Thạch: {spiritStones}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', maxHeight: '460px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {CRAFTING_RECIPES.map(recipe => {
+                    const canAffordStones = spiritStones >= recipe.spiritStonesCost;
+                    const canAffordItems = recipe.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount);
+                    const canCraft = canAffordStones && canAffordItems;
+
+                    return (
+                      <div
+                        key={recipe.id}
+                        style={{
+                          padding: '12px', borderRadius: '14px', textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '10px',
+                          background: 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${RARITY_COLORS[recipe.rarity]}55`,
+                          boxShadow: `0 0 15px ${RARITY_COLORS[recipe.rarity]}20`
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '24px' }}>{recipe.emoji}</span>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '13px', color: RARITY_COLORS[recipe.rarity] }}>{recipe.name}</div>
+                              <div style={{ fontSize: '10px', color: '#94a3b8' }}>Chế tạo {recipe.resultAmount}x {ITEM_CONFIG.find(i => i.id === recipe.resultItemId)?.name}</div>
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '10.5px', color: '#cbd5e1', marginBottom: '8px', lineHeight: '1.4' }}>
+                            {recipe.description}
+                          </div>
+
+                          <div style={{ fontSize: '10px', color: '#94a3b8', background: 'rgba(0,0,0,0.3)', padding: '6px 8px', borderRadius: '8px' }}>
+                            <div style={{ fontWeight: 700, color: '#fde68a', marginBottom: '3px' }}>Nguyên Liệu Dược Liệu/Quặng Cần:</div>
+                            {recipe.ingredients.map(ing => {
+                              const info = getIngredientInfo(ing.id);
+                              const hasEnough = info.qty >= ing.amount;
+                              return (
+                                <div key={ing.id} style={{ color: hasEnough ? '#86efac' : '#ef4444', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>{info.emoji} {info.name} x{ing.amount}</span>
+                                  <span>({info.qty}/{ing.amount})</span>
+                                </div>
+                              );
+                            })}
+                            <div style={{ color: canAffordStones ? '#38bdf8' : '#ef4444', display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+                              <span>💎 Linh Thạch</span>
+                              <span>{recipe.spiritStonesCost} 💎</span>
+                            </div>
                           </div>
                         </div>
-                        {equipped ? <span style={{ background: '#38bdf8', color: '#000', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 900 }}>Ngự</span> : unlocked ? <span style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', padding: '3px 8px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 800 }}>Ngự</span> : <Lock style={{ width: '13px', height: '13px', color: '#475569' }} />}
-                      </button>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <button
+                            disabled={!canCraft}
+                            onClick={() => handleCraftPill(recipe, 1)}
+                            style={{
+                              width: '100%', padding: '8px', borderRadius: '8px', fontWeight: 800, fontSize: '11px',
+                              background: canCraft ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'rgba(100,116,139,0.2)',
+                              border: `1px solid ${canCraft ? '#f87171' : 'transparent'}`,
+                              color: canCraft ? '#fff' : '#64748b', cursor: canCraft ? 'pointer' : 'not-allowed',
+                              boxShadow: canCraft ? '0 0 12px rgba(239,68,68,0.4)' : 'none'
+                            }}
+                          >
+                            {canCraft ? '🔥 LUYỆN ĐAN (x1)' : 'Thiếu Nguyên Liệu / Linh Thạch'}
+                          </button>
+
+                          {canCraft && (
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                onClick={() => handleCraftPill(recipe, 5)}
+                                style={{ flex: 1, padding: '5px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 800, background: 'rgba(239,68,68,0.18)', border: '1px solid #ef444466', color: '#fca5a5', cursor: 'pointer' }}
+                              >
+                                🔥 x5
+                              </button>
+                              <button
+                                onClick={() => handleCraftPill(recipe, 10)}
+                                style={{ flex: 1, padding: '5px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 800, background: 'rgba(239,68,68,0.18)', border: '1px solid #ef444466', color: '#fca5a5', cursor: 'pointer' }}
+                              >
+                                🔥 x10
+                              </button>
+                              {(() => {
+                                const maxAfford = getMaxCraftCount(recipe);
+                                return (
+                                  <button
+                                    onClick={() => handleCraftPill(recipe, maxAfford)}
+                                    style={{ flex: 1.2, padding: '5px', borderRadius: '6px', fontSize: '9.5px', fontWeight: 900, background: 'linear-gradient(135deg,#f59e0b,#d97706)', border: '1px solid #fde68a', color: '#000', cursor: 'pointer' }}
+                                  >
+                                    ⚡ MAX (x{maxAfford})
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

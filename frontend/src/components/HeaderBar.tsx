@@ -36,12 +36,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   return (
     <header className="relative z-50 px-6 py-4 flex justify-between items-center border-b border-[#232a3f]/75 bg-[#111520]/75 backdrop-blur-md shrink-0 pointer-events-auto">
       <div className="flex items-center gap-2.5 font-bold text-xl text-[#f1f5f9]">
-        <img src="/favicon.ico" alt="Logo" className="w-6 h-6 shrink-0" />
+        <img src="/app-logo.png" alt="IDS Logo" className="w-8 h-8 shrink-0 object-contain hover:scale-110 transition-transform filter drop-shadow(0 0 6px rgba(56,189,248,0.5))" />
         <span>
           <span className="text-[#10b981]">Internal</span> Deploy System
         </span>
         <span className="text-[11px] opacity-50 font-normal ml-1.5 px-2 py-0.5 rounded bg-white/5 border border-[#232a3f]/75">
-          v2.2.0
+          v2.3.0
         </span>
       </div>
 

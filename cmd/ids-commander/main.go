@@ -125,6 +125,8 @@ func main() {
 	mux.HandleFunc("/api/logs", handleLogs)
 	mux.HandleFunc("/api/accounts", handleAccounts)
 	mux.HandleFunc("/api/accounts/delete", handleDeleteAccount)
+	mux.HandleFunc("/api/vpn/diagnostics", handleVPNDiagnostics)
+	mux.HandleFunc("/api/vpn/killall", handleVPNKillAll)
 
 	startVPNMonitor()
 

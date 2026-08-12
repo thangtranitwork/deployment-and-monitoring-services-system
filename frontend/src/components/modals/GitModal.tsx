@@ -445,8 +445,8 @@ export const GitModal: React.FC<GitModalProps> = ({
         </div>
 
         {/* Navigation Tabs Bar & Clean Search Box */}
-        <div className="px-6 py-3 border-b border-white/10 bg-black/20 flex justify-between items-center shrink-0">
-          <div className="flex gap-2">
+        <div className="px-6 py-3 border-b border-[#232a3f]/75 bg-[#0a0d14]/70 flex justify-between items-center shrink-0">
+          <div className="segmented-tab-container flex items-center bg-slate-100 dark:bg-[#070a12] p-1 rounded-xl border border-slate-200/90 dark:border-[#232a3f]/70 shadow-inner">
             {[
               { id: 'branches', label: 'Branches (Q)', count: branches.length },
               { id: 'commits', label: 'Commits (W)', count: commits.length },
@@ -459,14 +459,22 @@ export const GitModal: React.FC<GitModalProps> = ({
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id as any)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all cursor-pointer outline-none focus:outline-none ${
+                  className={`segmented-tab-btn px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
                     isActive
-                      ? 'bg-emerald-500 text-white shadow-md'
-                      : 'bg-white/5 text-[#94a3b8] hover:text-white hover:bg-white/10'
+                      ? 'segmented-tab-active bg-white text-emerald-700 dark:bg-[#131d2e] dark:text-[#34d399] shadow-sm border border-slate-200/80 dark:border-[#10b981]/40'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-[#94a3b8] dark:hover:text-white border border-transparent'
                   }`}
                 >
-                  {t.label}
-                  {t.count > 0 && <span className="ml-1.5 opacity-80 text-[10px]">({t.count})</span>}
+                  <span>{t.label}</span>
+                  {t.count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                      isActive
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-[#10b981]/20 dark:text-emerald-300'
+                        : 'bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-slate-300'
+                    }`}>
+                      {t.count}
+                    </span>
+                  )}
                 </button>
               );
             })}

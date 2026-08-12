@@ -6,37 +6,76 @@ interface MultiDeployModalProps {
   isOpen: boolean;
   onClose: () => void;
   services: Service[];
-  onTriggerMultiDeploy: (selectedServices: string[], env: string, msg: string) => void;
+  onTriggerMultiDeploy?: (selectedServices: string[], env: string, msg: string, gitResetMode?: string) => void;
+  activeWorkspaceId?: string;
+  onDeployComplete?: () => void;
 }
 
 export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
   isOpen,
   onClose,
   services,
-  onTriggerMultiDeploy
+  onTriggerMultiDeploy,
+  activeWorkspaceId,
+  onDeployComplete
 }) => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [targetEnv, setTargetEnv] = useState<string>('Development');
   const [deployMsg, setDeployMsg] = useState<string>('');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [msgIdx, setMsgIdx] = useState<number>(-1);
+  const [gitResetMode, setGitResetMode] = useState<string>('none');
 
-  // Live Console state
+  // Live Console state - always starts as false (Selection View) when modal is opened
   const [showConsoleGrid, setShowConsoleGrid] = useState<boolean>(false);
   const [deployingServices, setDeployingServices] = useState<string[]>([]);
   const [serviceLogs, setServiceLogs] = useState<Record<string, { status: 'pending' | 'deploying' | 'success' | 'failed'; log: string }>>({});
 
+  // Reset to Selection View whenever modal opens
   useEffect(() => {
-    const saved = localStorage.getItem('ids_multi_deploy_selected');
+    if (isOpen) {
+      setShowConsoleGrid(false);
+    }
+  }, [isOpen]);
+
+  // Load workspace-isolated selection and environment
+  useEffect(() => {
+    if (!isOpen) return;
+    const selectedKey = activeWorkspaceId ? `ids_multi_deploy_selected_${activeWorkspaceId}` : 'ids_multi_deploy_selected';
+    const envKey = activeWorkspaceId ? `ids_multi_deploy_env_${activeWorkspaceId}` : 'ids_multi_deploy_env';
+
+    const savedEnv = localStorage.getItem(envKey);
+    if (savedEnv) {
+      setTargetEnv(savedEnv);
+    }
+
+    const saved = localStorage.getItem(selectedKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) setSelectedServices(parsed);
+        if (Array.isArray(parsed)) {
+          // Only select services that exist in the current workspace
+          const valid = parsed.filter(name => services.some(s => s.name === name));
+          setSelectedServices(valid);
+          return;
+        }
       } catch (e) {
         // ignore
       }
     }
-  }, []);
+    setSelectedServices([]);
+
+    const savedMode = localStorage.getItem('lastGitResetMode');
+    if (savedMode) {
+      setGitResetMode(savedMode);
+    }
+  }, [activeWorkspaceId, isOpen, services]);
+
+  const handleTargetEnvChange = (env: string) => {
+    setTargetEnv(env);
+    const envKey = activeWorkspaceId ? `ids_multi_deploy_env_${activeWorkspaceId}` : 'ids_multi_deploy_env';
+    localStorage.setItem(envKey, env);
+  };
 
   const commitSuggestions = useMemo(() => {
     const list: string[] = [];
@@ -87,7 +126,8 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
     if (!eligible) return;
     setSelectedServices(prev => {
       const next = prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name];
-      localStorage.setItem('ids_multi_deploy_selected', JSON.stringify(next));
+      const selectedKey = activeWorkspaceId ? `ids_multi_deploy_selected_${activeWorkspaceId}` : 'ids_multi_deploy_selected';
+      localStorage.setItem(selectedKey, JSON.stringify(next));
       return next;
     });
   };
@@ -96,12 +136,127 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
     const eligibleNames = eligibleFilteredServices.map(s => s.name);
     const combined = Array.from(new Set([...selectedServices, ...eligibleNames]));
     setSelectedServices(combined);
-    localStorage.setItem('ids_multi_deploy_selected', JSON.stringify(combined));
+    const selectedKey = activeWorkspaceId ? `ids_multi_deploy_selected_${activeWorkspaceId}` : 'ids_multi_deploy_selected';
+    localStorage.setItem(selectedKey, JSON.stringify(combined));
   };
 
   const handleClearAll = () => {
     setSelectedServices([]);
-    localStorage.removeItem('ids_multi_deploy_selected');
+    const selectedKey = activeWorkspaceId ? `ids_multi_deploy_selected_${activeWorkspaceId}` : 'ids_multi_deploy_selected';
+    localStorage.removeItem(selectedKey);
+  };
+
+  const handleToggleGitResetMode = (mode: string) => {
+    const nextMode = gitResetMode === mode ? 'none' : mode;
+    setGitResetMode(nextMode);
+    localStorage.setItem('lastGitResetMode', nextMode);
+  };
+
+  const deploySingleService = async (name: string, env: string, message: string, resetMode: string) => {
+    const isNoDeploy = resetMode === 'reset_staging_no_deploy' || resetMode === 'reset_main_no_deploy';
+    setServiceLogs(prev => ({
+      ...prev,
+      [name]: {
+        status: 'deploying',
+        log: `🚀 [${new Date().toLocaleTimeString()}] Starting ${isNoDeploy ? 'Git Reset' : 'deployment'} for [${name}] on ${env}...\n`
+      }
+    }));
+
+    try {
+      const res = await fetch('/api/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: name,
+          env: env,
+          message: message,
+          git_reset_mode: resetMode !== 'none' ? resetMode : undefined,
+          reset_staging: resetMode === 'reset_staging_deploy',
+          workspace_id: activeWorkspaceId
+        })
+      });
+
+      if (res.status === 401) {
+        setServiceLogs(prev => ({
+          ...prev,
+          [name]: {
+            status: 'failed',
+            log: (prev[name]?.log || '') + '\n❌ Access Denied: Invalid production password.\n'
+          }
+        }));
+        return;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        setServiceLogs(prev => ({
+          ...prev,
+          [name]: {
+            status: 'failed',
+            log: (prev[name]?.log || '') + `\n❌ [Error]: ${errText || 'Action failed.'}\n`
+          }
+        }));
+        return;
+      }
+
+      if (!res.body) {
+        setServiceLogs(prev => ({
+          ...prev,
+          [name]: {
+            status: 'failed',
+            log: (prev[name]?.log || '') + '\n❌ Failed to read deployment stream.\n'
+          }
+        }));
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let hasError = false;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const events = chunk.split('\n\n');
+        for (const event of events) {
+          const trimmed = event.trimStart();
+          if (trimmed.startsWith('data: ')) {
+            const content = trimmed.slice(6);
+            if (content.includes('❌') || content.includes('[ERROR]') || content.includes('Aborting')) {
+              hasError = true;
+            }
+            if (content.trim() !== '[EOF]') {
+              setServiceLogs(prev => ({
+                ...prev,
+                [name]: {
+                  status: hasError ? 'failed' : 'deploying',
+                  log: (prev[name]?.log || '') + content + '\n'
+                }
+              }));
+            }
+          }
+        }
+      }
+
+      setServiceLogs(prev => ({
+        ...prev,
+        [name]: {
+          status: hasError ? 'failed' : 'success',
+          log: (prev[name]?.log || '') + (hasError ? '\n❌ Finished with errors.' : '\n✅ Process completed successfully!')
+        }
+      }));
+    } catch (err: any) {
+      setServiceLogs(prev => ({
+        ...prev,
+        [name]: {
+          status: 'failed',
+          log: (prev[name]?.log || '') + `\n❌ Network Error: ${err.message || 'Request failed'}\n`
+        }
+      }));
+    } finally {
+      onDeployComplete?.();
+    }
   };
 
   const handleStartDeploy = () => {
@@ -111,67 +266,33 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
     const initialLogs: Record<string, { status: 'pending' | 'deploying' | 'success' | 'failed'; log: string }> = {};
     selectedServices.forEach(name => {
       initialLogs[name] = {
-        status: 'deploying',
-        log: `🚀 [${new Date().toLocaleTimeString()}] Initiating deployment for [${name}] on ${targetEnv}...\n`
+        status: 'pending',
+        log: `⏳ [${new Date().toLocaleTimeString()}] Queued [${name}] (Git Mode: ${gitResetMode})...\n`
       };
     });
     setServiceLogs(initialLogs);
     setShowConsoleGrid(true);
 
-    onTriggerMultiDeploy(selectedServices, targetEnv, deployMsg);
+    if (onTriggerMultiDeploy) {
+      onTriggerMultiDeploy(selectedServices, targetEnv, deployMsg, gitResetMode);
+    }
 
-    selectedServices.forEach((name, idx) => {
-      setTimeout(() => {
-        setServiceLogs(prev => ({
-          ...prev,
-          [name]: {
-            status: 'success',
-            log: prev[name]?.log + `[Output]: Service [${name}] deployed successfully!\n✅ Completed at ${new Date().toLocaleTimeString()}`
-          }
-        }));
-      }, (idx + 1) * 1200);
+    // Execute real deployment calls in parallel
+    selectedServices.forEach(name => {
+      deploySingleService(name, targetEnv, deployMsg, gitResetMode);
     });
   };
 
   const handleRetrySingle = (name: string) => {
-    setServiceLogs(prev => ({
-      ...prev,
-      [name]: {
-        status: 'deploying',
-        log: `🔄 [${new Date().toLocaleTimeString()}] Retrying deployment for [${name}]...\n`
-      }
-    }));
-
-    setTimeout(() => {
-      setServiceLogs(prev => ({
-        ...prev,
-        [name]: {
-          status: 'success',
-          log: prev[name]?.log + `✅ Retried deployment for [${name}] completed successfully!`
-        }
-      }));
-    }, 1000);
+    deploySingleService(name, targetEnv, deployMsg, gitResetMode);
   };
 
   const handleRetryAllFailed = () => {
     Object.keys(serviceLogs).forEach(name => {
       if (serviceLogs[name]?.status === 'failed') {
-        handleRetrySingle(name);
+        deploySingleService(name, targetEnv, deployMsg, gitResetMode);
       }
     });
-  };
-
-  const handleTriggerGitReset = async (mode: string) => {
-    try {
-      await fetch('/api/git/rollback/all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode })
-      });
-      alert(`Triggered Git Reset mode: ${mode}`);
-    } catch (e) {
-      alert(`Git Reset mode ${mode} submitted.`);
-    }
   };
 
   if (!isOpen) return null;
@@ -207,21 +328,21 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
           </div>
 
           {/* Top Control Panel */}
-          <div className="p-6 border-b border-white/10 bg-black/20 space-y-4">
+          <div className="multi-deploy-top-panel p-6 border-b border-white/10 bg-black/20 space-y-4">
             <div className="grid grid-cols-12 gap-4 items-end">
               
               {/* Environment Glass Pill Selector */}
               <div className="col-span-3">
                 <label className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-widest block mb-1.5">Target Environment</label>
-                <div className="flex p-1 bg-black/40 rounded-xl border border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]">
+                <div className="multi-deploy-pill-container flex p-1 bg-black/40 rounded-xl border border-white/10 shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]">
                   {['Development', 'Staging', 'Production'].map(env => (
                     <button
                       key={env}
                       type="button"
-                      onClick={() => setTargetEnv(env)}
+                      onClick={() => handleTargetEnvChange(env)}
                       className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer ${
                         targetEnv === env
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_2px_10px_rgba(16,185,129,0.35)]'
+                          ? 'bg-emerald-600 text-white shadow-[0_2px_10px_rgba(16,185,129,0.35)]'
                           : 'text-[#94a3b8] hover:text-white'
                       }`}
                     >
@@ -278,38 +399,68 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             </div>
 
             {/* Git Reset Modes & Selection Toolbar */}
-            <div className="flex justify-between items-center pt-3 border-t border-white/10">
-              {/* Git Actions Glass Pills */}
-              <div className="flex items-center gap-2">
+            <div className="flex justify-between items-center pt-3 border-t border-white/10 flex-wrap gap-2">
+              {/* Git Actions Glass Pills - All neutral when inactive, only selected one illuminates */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wider mr-1">Git Actions:</span>
                 <button
                   type="button"
-                  onClick={() => handleTriggerGitReset('deploy_staging')}
-                  className="h-7 px-3 text-[11px] font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-all cursor-pointer active:scale-95"
+                  onClick={() => handleToggleGitResetMode('reset_staging_deploy')}
+                  className={`git-mode-btn h-7 px-3 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                    gitResetMode === 'reset_staging_deploy'
+                      ? 'active bg-emerald-600 text-white border-emerald-500 font-bold shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                      : 'bg-white/5 border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Reset Staging branch and deploy"
                 >
                   🚀 Deploy Staging
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTriggerGitReset('reset_staging')}
-                  className="h-7 px-3 text-[11px] font-semibold rounded-lg bg-white/5 border border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10 transition-all cursor-pointer active:scale-95"
+                  onClick={() => handleToggleGitResetMode('reset_staging_no_deploy')}
+                  className={`git-mode-btn h-7 px-3 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                    gitResetMode === 'reset_staging_no_deploy'
+                      ? 'active bg-amber-500 text-white border-amber-400 font-bold shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                      : 'bg-white/5 border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Reset Staging branch without deploying"
                 >
                   🔄 Reset Staging
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTriggerGitReset('deploy_main')}
-                  className="h-7 px-3 text-[11px] font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-all cursor-pointer active:scale-95"
+                  onClick={() => handleToggleGitResetMode('reset_main_deploy')}
+                  className={`git-mode-btn h-7 px-3 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                    gitResetMode === 'reset_main_deploy'
+                      ? 'active bg-emerald-600 text-white border-emerald-500 font-bold shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                      : 'bg-white/5 border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Reset Main branch and deploy"
                 >
                   🚀 Deploy Main
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTriggerGitReset('reset_main')}
-                  className="h-7 px-3 text-[11px] font-semibold rounded-lg bg-white/5 border border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10 transition-all cursor-pointer active:scale-95"
+                  onClick={() => handleToggleGitResetMode('reset_main_no_deploy')}
+                  className={`git-mode-btn h-7 px-3 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 ${
+                    gitResetMode === 'reset_main_no_deploy'
+                      ? 'active bg-amber-500 text-white border-amber-400 font-bold shadow-[0_0_12px_rgba(245,158,11,0.5)]'
+                      : 'bg-white/5 border-white/10 text-[#94a3b8] hover:text-white hover:bg-white/10'
+                  }`}
+                  title="Reset Main branch without deploying"
                 >
                   🔄 Reset Main
                 </button>
+                {gitResetMode !== 'none' && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleGitResetMode(gitResetMode)}
+                    className="text-[10px] text-rose-400 hover:text-rose-300 px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 cursor-pointer"
+                    title="Clear Git Mode"
+                  >
+                    ✕ Clear Mode
+                  </button>
+                )}
               </div>
 
               {/* Selection Controls */}
@@ -337,8 +488,8 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             </div>
           </div>
 
-          {/* Cards Bento Grid (Haptic Double-Bezel Design) */}
-          <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5 bg-[#05070c]">
+          {/* Cards Bento Grid */}
+          <div className="multi-deploy-grid-bg flex-1 overflow-y-auto p-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5 bg-[#05070c]">
             {filteredServices.map(svc => {
               const eligible = isEligible(svc, targetEnv);
               const isSelected = selectedServices.includes(svc.name);
@@ -348,17 +499,17 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
                 <div
                   key={svc.name}
                   onClick={() => toggleSelectService(svc.name, eligible)}
-                  className={`group relative p-4 rounded-2xl border transition-all duration-300 flex flex-col justify-between select-none ${
+                  className={`multi-service-card group relative p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between select-none ${
                     !eligible
-                      ? 'opacity-40 border-white/5 bg-black/40 cursor-not-allowed'
+                      ? 'is-disabled opacity-50 border-white/5 bg-black/40 cursor-not-allowed'
                       : isSelected
-                      ? 'border-emerald-500 bg-emerald-500/15 shadow-[0_0_30px_rgba(16,185,129,0.25),inset_0_1px_1px_rgba(255,255,255,0.2)] cursor-pointer scale-[1.01]'
-                      : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/50 hover:shadow-[0_8px_20px_rgba(0,0,0,0.4)] cursor-pointer'
+                      ? 'is-selected border-emerald-500 bg-emerald-500/15 shadow-[0_0_25px_rgba(16,185,129,0.25)] cursor-pointer scale-[1.01]'
+                      : 'is-eligible border-white/10 bg-white/[0.03] hover:bg-white/[0.07] hover:border-emerald-500/50 hover:shadow-md cursor-pointer'
                   }`}
                 >
                   {/* Card Inner Core Highlights */}
                   <div className="flex justify-between items-start gap-1">
-                    <span className="font-bold text-xs text-white group-hover:text-emerald-300 transition-colors truncate">
+                    <span className="service-title font-bold text-xs text-white group-hover:text-emerald-300 transition-colors truncate">
                       {svc.name}
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
@@ -382,7 +533,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
                   {/* Branch & Commit details */}
                   <div className="my-2 space-y-1">
                     <div className="flex justify-between items-center text-[10.5px]">
-                      <span className="font-mono text-emerald-400 font-semibold truncate">
+                      <span className="service-branch font-mono text-emerald-400 font-semibold truncate">
                         🌿 {svc.branch}
                       </span>
                       {svc.staged_changes ? (
@@ -391,7 +542,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
                         </span>
                       ) : null}
                     </div>
-                    <div className="text-[10px] text-[#94a3b8] truncate font-sans line-clamp-1">
+                    <div className="service-commit text-[10px] text-[#94a3b8] truncate font-sans line-clamp-1">
                       {svc.last_commit || '—'}
                     </div>
                   </div>
@@ -414,7 +565,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
           </div>
 
           {/* Modal Footer with Button-in-Button Architecture */}
-          <div className="px-7 py-4 border-t border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-md">
+          <div className="multi-deploy-footer px-7 py-4 border-t border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-md">
             <button
               onClick={onClose}
               className="px-5 py-2 text-xs font-semibold rounded-full border border-white/10 bg-white/5 text-[#94a3b8] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
@@ -422,16 +573,26 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
               Cancel
             </button>
 
-            {/* Nested CTA Deploy Button */}
+            {/* Nested CTA Deploy Button - Always vibrant Green */}
             <button
               type="button"
               disabled={selectedServices.length === 0}
               onClick={handleStartDeploy}
-              className="group px-7 py-2.5 text-xs font-bold rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white flex items-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:brightness-110 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:hover:scale-100"
+              className="btn-multi-deploy-cta group px-7 py-2.5 text-xs font-bold rounded-full text-white flex items-center gap-3 bg-emerald-600 hover:bg-emerald-500 shadow-[0_4px_18px_rgba(16,185,129,0.45)] border border-emerald-400/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:hover:scale-100"
             >
-              <span>Deploy Selected ({selectedServices.length})</span>
-              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs group-hover:translate-x-0.5 transition-transform">
-                🚀
+              <span className="text-white font-bold">
+                {gitResetMode === 'reset_staging_no_deploy'
+                  ? `Reset Staging Only (${selectedServices.length})`
+                  : gitResetMode === 'reset_main_no_deploy'
+                  ? `Reset Main Only (${selectedServices.length})`
+                  : gitResetMode === 'reset_staging_deploy'
+                  ? `Deploy Staging + Reset (${selectedServices.length})`
+                  : gitResetMode === 'reset_main_deploy'
+                  ? `Deploy Main + Reset (${selectedServices.length})`
+                  : `Deploy Selected (${selectedServices.length})`}
+              </span>
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs group-hover:translate-x-0.5 transition-transform text-white">
+                {gitResetMode.includes('no_deploy') ? '🔄' : '🚀'}
               </div>
             </button>
           </div>
@@ -439,11 +600,11 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
       ) : (
         /* View 2: Live Multi-Deploy Console Modal (Auto Grid Matrix View) */
         <div className="relative w-[96vw] max-w-[1800px] h-[92vh] max-h-[92vh] bg-[#07090e]/90 border border-white/10 rounded-[1.75rem] shadow-2xl flex flex-col overflow-hidden text-[#f1f5f9]">
-          <div className="px-7 py-4 border-b border-white/10 flex justify-between items-center bg-black/40">
+          <div className="px-7 py-4 border-b border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-md shrink-0">
             <div className="flex items-center gap-3">
               <span className="text-base font-bold text-emerald-400">⚡ Live Multi-Deploy Matrix Console</span>
               <span className="text-xs px-3 py-1 rounded-full bg-white/10 text-white font-mono font-bold">
-                {deployingServices.length} Services Active
+                {deployingServices.length} Active {deployingServices.length === 1 ? 'Service' : 'Services'}
               </span>
             </div>
 
@@ -451,7 +612,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
               <button
                 type="button"
                 onClick={handleRetryAllFailed}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full hover:bg-amber-500/30 cursor-pointer transition-all"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full hover:bg-amber-500/30 cursor-pointer transition-all active:scale-95"
               >
                 Retry Failed
               </button>
@@ -459,9 +620,9 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConsoleGrid(false)}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-white/10 border border-white/10 rounded-full hover:bg-white/20 text-white cursor-pointer transition-all"
+                className="px-3.5 py-1.5 text-xs font-semibold bg-white/10 border border-white/10 rounded-full hover:bg-white/20 text-white cursor-pointer transition-all flex items-center gap-1.5 active:scale-95"
               >
-                🔲 Selection View
+                ← Selection View
               </button>
 
               <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/15 text-[#94a3b8] hover:text-white flex items-center justify-center transition-all cursor-pointer">
@@ -470,12 +631,27 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto bg-[#05070c]">
+          {/* Dynamic Auto-Layout Grid Matrix */}
+          <div className={`flex-1 p-6 ${
+            deployingServices.length <= 1
+              ? 'grid grid-cols-1 h-full gap-4'
+              : deployingServices.length === 2
+              ? 'grid grid-cols-1 md:grid-cols-2 h-full gap-4'
+              : deployingServices.length === 3
+              ? 'grid grid-cols-1 md:grid-cols-3 h-full gap-4'
+              : deployingServices.length === 4
+              ? 'grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 h-full gap-4'
+              : deployingServices.length === 5 || deployingServices.length === 6
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 md:grid-rows-2 h-full gap-4'
+              : deployingServices.length <= 8
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 md:grid-rows-2 h-full gap-4'
+              : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[280px] gap-4 overflow-y-auto'
+          } bg-[#05070c] overflow-hidden`}>
             {deployingServices.map(name => {
               const item = serviceLogs[name] || { status: 'deploying', log: '' };
               return (
-                <div key={name} className="border border-white/10 rounded-2xl bg-[#080b12] flex flex-col overflow-hidden h-[280px] shadow-lg">
-                  <div className="px-4 py-2.5 bg-black/40 border-b border-white/10 flex justify-between items-center font-mono text-xs">
+                <div key={name} className="border border-white/10 rounded-2xl bg-[#080b12] flex flex-col overflow-hidden h-full min-h-[220px] shadow-lg transition-all duration-300 hover:border-emerald-500/40">
+                  <div className="px-4 py-2.5 bg-black/40 border-b border-white/10 flex justify-between items-center font-mono text-xs shrink-0">
                     <span className="font-bold text-white truncate">{name}</span>
                     <div className="flex items-center gap-2">
                       <span className={`text-[9.5px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
@@ -495,7 +671,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
                     </div>
                   </div>
 
-                  <pre className="flex-1 p-3.5 font-mono text-[11px] text-[#38bdf8] overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                  <pre className="flex-1 p-3.5 font-mono text-[11px] text-[#38bdf8] overflow-y-auto whitespace-pre-wrap leading-relaxed bg-black/30">
                     {item.log || 'Waiting for output logs...'}
                   </pre>
                 </div>
@@ -503,9 +679,9 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             })}
           </div>
 
-          <div className="px-7 py-4 border-t border-white/10 flex justify-between items-center bg-black/40">
-            <span className="text-xs text-[#94a3b8]">Press <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-white text-[11px]">Esc</kbd> to close console view.</span>
-            <button onClick={onClose} className="px-5 py-2 text-xs font-bold rounded-full bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer shadow-lg transition-all">
+          <div className="px-7 py-4 border-t border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-md shrink-0">
+            <span className="text-xs text-[#94a3b8]">Press <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-white text-[11px]">Esc</kbd> or click button to close console view.</span>
+            <button onClick={onClose} className="px-5 py-2 text-xs font-bold rounded-full bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer shadow-lg transition-all active:scale-95">
               Close Console View
             </button>
           </div>

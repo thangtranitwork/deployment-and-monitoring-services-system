@@ -17,8 +17,8 @@ export const CyberLoader: React.FC<CyberLoaderProps> = React.memo(({
   iconSlugs
 }) => {
   const containerClasses = fullScreen
-    ? 'fixed inset-0 z-[9999] bg-[#030508]/80 backdrop-blur-3xl flex flex-col items-center justify-center p-6 text-white transition-all duration-300'
-    : 'flex flex-col items-center justify-center p-6 w-full text-white select-none';
+    ? 'cyber-loader-root cyber-loader-fullscreen fixed inset-0 z-[9999] bg-[#030508]/92 backdrop-blur-3xl flex flex-col items-center justify-center p-6 text-white transition-all duration-300 select-none'
+    : 'cyber-loader-root flex flex-col items-center justify-center p-6 w-full text-white select-none bg-transparent';
 
   const cloudSizeMap = {
     sm: 'w-44 h-44',
@@ -30,12 +30,18 @@ export const CyberLoader: React.FC<CyberLoaderProps> = React.memo(({
   return (
     <div className={containerClasses}>
       {/* 3D Interactive Tech Icon Cloud Sphere */}
-      <div className={`relative ${cloudSizeMap[size]} flex items-center justify-center overflow-hidden`}>
+      <div
+        className={`cyber-loader-cloud relative ${cloudSizeMap[size]} flex items-center justify-center overflow-hidden bg-transparent`}
+        style={{ background: 'transparent', backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+      >
         <IconCloud iconSlugs={iconSlugs} />
       </div>
 
       {/* Cyber Soundwave Spectrum Equalizer */}
-      <div className="flex items-end gap-1.5 h-5 mt-4">
+      <div
+        className="cyber-loader-soundwave flex items-end gap-1.5 h-5 mt-4 bg-transparent"
+        style={{ background: 'transparent', backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+      >
         {[40, 75, 100, 60, 90, 45, 80, 50, 95, 30, 85, 65].map((h, i) => (
           <div
             key={i}
@@ -51,8 +57,11 @@ export const CyberLoader: React.FC<CyberLoaderProps> = React.memo(({
 
       {/* Futuristic HUD Scanning Status Labels */}
       {title && (
-        <div className="mt-4 flex flex-col items-center space-y-1 text-center max-w-md">
-          <div className="text-xs font-mono font-bold tracking-widest text-emerald-400 uppercase flex items-center gap-2">
+        <div
+          className="cyber-loader-labels mt-4 flex flex-col items-center space-y-1 text-center max-w-md bg-transparent"
+          style={{ background: 'transparent', backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}
+        >
+          <div className="cyber-loader-title text-xs font-mono font-bold tracking-widest text-emerald-400 uppercase flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="relative">
               {title}
@@ -62,7 +71,7 @@ export const CyberLoader: React.FC<CyberLoaderProps> = React.memo(({
           </div>
 
           {subtitle && (
-            <div className="text-[11px] font-sans text-[#94a3b8] font-medium tracking-wide">
+            <div className="cyber-loader-subtitle text-[11px] font-sans text-slate-400 dark:text-[#94a3b8] font-medium tracking-wide">
               {subtitle}
             </div>
           )}

@@ -1,6 +1,6 @@
-# 🚀 Internal Deploy System (IDS) - v2.2.0
+# 🚀 Internal Deploy System (IDS) - v2.3.0
 
-A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 112 achievements, 10 Xianxia Spirit Mounts (1280x128 10-frame RGBA sprite sheets), unique mount buffs, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, full X/Y screen drag positioning, dynamic motion direction flipping, and bunny petting interactions.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 118 achievements, Pill Crafting Alchemy Altar, 10-level Artifact Forge with 3D Bát Quái glowing auras, 10 Xianxia Spirit Mounts, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, full X/Y screen drag positioning, dynamic motion direction flipping, and bunny petting interactions.
 
 ---
 
@@ -104,6 +104,41 @@ A comprehensive suite of 13 local developer utility tools:
 - **DNS Dig / Whois / GeoIP**: Run DNS record queries (A, AAAA, MX, CNAME), TCP WHOIS port 43 lookup, and GeoIP location checks.
 - **WebSocket Client**: Test ws/wss connections, filter console message logs, and send custom payloads.
 - **SQL Preview & Schema**: Auto-fetch database table schema with a **100% Read-Only Simulation Engine** that parses `UPDATE`, `INSERT`, `DELETE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data**.
+
+## 🌟 What's New in v2.3.0
+
+### 🧪 Lò Luyện Đan Bát Quái (Pill Crafting Altar)
+- **Alchemy Altar Modal**: Dedicated animated Pixel-Art Alchemy Furnace modal featuring fiery red atmospheric glow effects.
+- **12 Xianxia Raw Ingredients**: Drops 12 herbal and mineral ingredients (`U Minh Thảo`, `Tử Linh Chi`, `Bách Niên Hà Thủ Ô`, `Huyết Tinh Thảo`, `Bắc Cực Hàn Băng`, `Cửu Diệp Ngọc Thảo`, `Thiên Lôi Trúc`, `Huyền Minh Thạch`, `Thái Dương Thần Thảo`, `Long Tu Thảo`, `Thần Mộc Tiên Chi`, `Cửu Thiên Thần Thạch`) during idle progression.
+- **Batch Pill Crafting Engine**: Instant batch crafting with `x1`, `x5`, `x10`, and `Max` multipliers.
+- **Pill Recipes & Dynamic Success Rates**:
+  - `3x Tụ Linh Đan + 20 💎` ➔ `1x Hồi Phục Đan` (+20 XP)
+  - `3x Hồi Phục Đan + 50 💎` ➔ `1x Đại Hoàn Đan` (+50 XP)
+  - `2x Đại Hoàn Đan + 100 💎` ➔ `1x Hộ Kiếp Phù` (+25% Tribulation rate)
+  - **Supreme Pill (Cửu Chuyển Hoàn Hồn Đan)**: `3x Đại Hoàn Đan + 1x Hộ Kiếp Phù + 300 💎` ➔ `1x Cửu Chuyển Hoàn Hồn Đan` *(100% XP loss protection on Tribulation failure & +35% Tribulation success rate)*.
+
+### 🔨 Đe Rèn Lôi Đình (Thunder Artifact Forge - Lv.1 ➔ Lv.10)
+- **Artifact Leveling**: Upgrade each of the 17 Guardian Artifacts (Treasures) from Lv.1 to Lv.10 using Spirit Stones.
+- **Permanent XP Multipliers**: Each level across owned artifacts grants a permanent +1% XP gain boost.
+- **3D Bát Quái Glowing Auras**: Artifacts at Lv.8+ render a rotating 3D Bát Quái dashed ring and glowing aura around the mascot.
+
+### 🚀 Multi-Service Matrix Deployment Engine
+- **Auto-Layout Dynamic Live Console**: Matrix console automatically calculates the optimal layout (1 column, 2 columns, 3 columns, 2x2 grid, 3x2 grid) filling 100% of the screen height without dead space.
+- **Workspace-Isolated Selections**: Selected services and environments are saved strictly per Workspace ID, preventing cross-workspace contamination.
+- **Single-Select Git Reset Actions**: Mutually exclusive selection for `🚀 Deploy Staging`, `🔄 Reset Staging`, `🚀 Deploy Main`, and `🔄 Reset Main`.
+- **Automatic State Fallback**: Go backend `restoreGitState` automatically stashes local changes, resets to target branch, executes deployment, and cleanly restores previous branch and stashed changes on both success and failure.
+
+### 🎨 Visual & UI Overhaul (Light Theme & Sticker Logo)
+- **Transparent Anime Sticker Logo**: Clean, transparent sticker-style IDS logo and favicon.
+- **Glare-Free Light Mode Redesign**: High-contrast slate-neutral background (`#f1f5f9`) with crisp white card surfaces (`#ffffff`), hairline borders (`#cbd5e1`), and rich emerald green action buttons.
+- **VPN Profile Credentials**: Save and delete credentials with profile-specific defaults.
+- **Expanded Storage Bag**: Enlarged Inventory Bag (Túi Trữ Vật) to 420px with optimized item grids.
+
+### 🏆 118 Total Achievements & Version Release
+- **6 New Crafting & Artifact Achievements**: `Luyện Đan Sơ Cấp`, `Dược Tông Đại Sư`, `Cửu Chuyển Thần Đan`, `Rèn Thần Binh`, `Đại La Pháp Bảo`, `Đạo Tổ Luyện Đan`.
+- **System Version Update**: Updated to `v2.3.0`.
+
+---
 
 ## 🌟 What's New in v2.2.0
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -32,6 +33,27 @@ type VPNSavedAccount struct {
 	Label    string `json:"label"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type VPNProcessInfo struct {
+	PID     string `json:"pid"`
+	User    string `json:"user"`
+	CPU     string `json:"cpu"`
+	Mem     string `json:"mem"`
+	Stat    string `json:"stat"`
+	Start   string `json:"start"`
+	Command string `json:"command"`
+}
+
+type VPNDiagnosticsResponse struct {
+	ProcessCount    int              `json:"process_count"`
+	HasConflict     bool             `json:"has_conflict"`
+	ConflictMessage string           `json:"conflict_message,omitempty"`
+	Processes       []VPNProcessInfo `json:"processes"`
+	Interfaces      []string         `json:"interfaces"`
+	Routes          []string         `json:"routes"`
+	RawReport       string           `json:"raw_report"`
+	CheckedAt       string           `json:"checked_at"`
 }
 
 type VPNState struct {
@@ -355,6 +377,12 @@ func startVPN(configPath, username, password string, saveCreds bool) error {
 		return fmt.Errorf("VPN is already active or connecting")
 	}
 
+	// Proactively and reliably clean up any existing OpenVPN daemons to prevent multi-process leaks
+	_ = exec.Command("sudo", "killall", "-9", "openvpn").Run()
+	_ = exec.Command("sudo", "pkill", "-9", "-x", "openvpn").Run()
+	_ = exec.Command("sudo", "pkill", "-9", "-f", "openvpn").Run()
+	time.Sleep(300 * time.Millisecond)
+
 	vpnState.Status = "connecting"
 	vpnState.ActiveConfig = configPath
 	vpnState.ErrorMsg = ""
@@ -387,7 +415,14 @@ func startVPN(configPath, username, password string, saveCreds bool) error {
 	vpnState.Lock()
 	vpnState.tempAuthFile = tmpFile.Name()
 
-	cmd := exec.Command("sudo", "openvpn", "--config", configPath, "--auth-user-pass", tmpFile.Name(), "--disable-dco")
+	cmd := exec.Command("sudo", "openvpn",
+		"--config", configPath,
+		"--auth-user-pass", tmpFile.Name(),
+		"--disable-dco",
+		"--management", "127.0.0.1", "11195",
+		"--management-signal",
+	)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	vpnState.cmd = cmd
 	vpnState.Unlock()
 
@@ -463,25 +498,63 @@ func startVPN(configPath, username, password string, saveCreds bool) error {
 	return nil
 }
 
+func sendOpenVPNManagementSignal(command string) bool {
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:11195", 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	_, _ = fmt.Fprintf(conn, "%s\n", command)
+	time.Sleep(200 * time.Millisecond)
+	return true
+}
+
 func stopVPN() error {
 	vpnState.Lock()
-	defer vpnState.Unlock()
-
-	if vpnState.cmd == nil {
-		vpnState.Status = "disconnected"
+	if vpnState.cmd == nil && vpnState.Status == "disconnected" {
+		vpnState.Unlock()
 		return nil
 	}
 
 	vpnState.Status = "disconnecting"
-	vpnBroadcaster.Broadcast("SYSTEM: Disconnect signal sent...")
+	cmd := vpnState.cmd
+	vpnState.Unlock()
 
-	err := vpnState.cmd.Process.Signal(syscall.SIGTERM)
-	if err != nil {
-		log.Printf("Failed to SIGTERM VPN process: %v, falling back to Kill", err)
-		err = vpnState.cmd.Process.Kill()
+	vpnBroadcaster.Broadcast("SYSTEM: Đang ngắt kết nối VPN...")
+
+	// 1. Send graceful shutdown signal via OpenVPN Management Port (No sudo required)
+	_ = sendOpenVPNManagementSignal("signal SIGTERM")
+	_ = sendOpenVPNManagementSignal("signal SIGINT")
+	_ = sendOpenVPNManagementSignal("kill")
+
+	// 2. Terminate the sudo process group
+	if cmd != nil && cmd.Process != nil {
+		if pgid, err := syscall.Getpgid(cmd.Process.Pid); err == nil {
+			_ = syscall.Kill(-pgid, syscall.SIGTERM)
+		}
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+		_ = cmd.Process.Kill()
 	}
 
-	return err
+	// 3. Fallback kill (if sudoers allows)
+	_ = exec.Command("sudo", "killall", "-9", "openvpn").Run()
+	_ = exec.Command("sudo", "pkill", "-9", "-x", "openvpn").Run()
+	_ = exec.Command("sudo", "pkill", "-9", "-f", "openvpn").Run()
+	_ = exec.Command("pkill", "-9", "-x", "openvpn").Run()
+	time.Sleep(300 * time.Millisecond)
+
+	vpnState.Lock()
+	vpnState.Status = "disconnected"
+	vpnState.IPAddress = ""
+	vpnState.Interface = ""
+	vpnState.ErrorMsg = ""
+	vpnState.Latency = ""
+	vpnState.cmd = nil
+	vpnState.Unlock()
+
+	cleanupTempAuth()
+	vpnBroadcaster.Broadcast("SYSTEM: Đã ngắt kết nối VPN thành công.")
+	return nil
 }
 
 func parseLogLine(line string) {
@@ -841,4 +914,192 @@ func startVPNMonitor() {
 			}
 		}
 	}()
+}
+
+// ─── OpenVPN Diagnostics & Conflict Inspection Engine ────────────────────────
+func getVPNDiagnostics() *VPNDiagnosticsResponse {
+	resp := &VPNDiagnosticsResponse{
+		Processes:  make([]VPNProcessInfo, 0),
+		Interfaces: make([]string, 0),
+		Routes:     make([]string, 0),
+		CheckedAt:  time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	var sb strings.Builder
+	sb.WriteString("=================================================================\n")
+	sb.WriteString("               🔍 KIỂM TRA TRẠNG THÁI OPENVPN                    \n")
+	sb.WriteString("=================================================================\n\n")
+
+	// 1. Process Check
+	sb.WriteString("1️⃣  [TIẾN TRÌNH OPENVPN]\n")
+	out, err := exec.Command("ps", "-eo", "pid,user,%cpu,%mem,stat,start,args").Output()
+	if err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "PID") {
+				continue
+			}
+			fields := strings.Fields(trimmed)
+			if len(fields) >= 7 {
+				cmdStr := strings.Join(fields[6:], " ")
+				cmdLower := strings.ToLower(cmdStr)
+				firstArg := strings.ToLower(fields[6])
+
+				// Only count actual OpenVPN daemon processes, not the sudo parent launcher wrapper
+				isDaemon := (firstArg == "openvpn" ||
+					strings.HasSuffix(firstArg, "/openvpn") ||
+					(strings.Contains(cmdLower, "openvpn --config") && !strings.HasPrefix(firstArg, "sudo"))) &&
+					!strings.Contains(cmdLower, "pkill") &&
+					!strings.Contains(cmdLower, "killall") &&
+					!strings.Contains(cmdLower, "ids-commander") &&
+					!strings.Contains(cmdLower, "grep") &&
+					!strings.Contains(cmdLower, "vscode")
+
+				if isDaemon {
+					resp.Processes = append(resp.Processes, VPNProcessInfo{
+						PID:     fields[0],
+						User:    fields[1],
+						CPU:     fields[2],
+						Mem:     fields[3],
+						Stat:    fields[4],
+						Start:   fields[5],
+						Command: cmdStr,
+					})
+				}
+			}
+		}
+	}
+
+	resp.ProcessCount = len(resp.Processes)
+	if resp.ProcessCount == 0 {
+		sb.WriteString("   ⚠️  Không có tiến trình OpenVPN nào đang chạy.\n")
+	} else {
+		if resp.ProcessCount > 1 {
+			resp.HasConflict = true
+			resp.ConflictMessage = fmt.Sprintf("⚠️ CẢNH BÁO: Phát hiện %d tiến trình OpenVPN đang chạy đồng thời! Các tiến trình này xung đột chiếm quyền tunnel và định tuyến, làm chậm hoặc ngắt kết nối mạng.", resp.ProcessCount)
+			sb.WriteString(fmt.Sprintf("   🚨 CẢNH BÁO XUNG ĐỘT: Tìm thấy %d tiến trình OpenVPN đang chạy đồng thời!\n\n", resp.ProcessCount))
+		} else {
+			sb.WriteString(fmt.Sprintf("   ✅ Tìm thấy %d tiến trình OpenVPN đang chạy bình thường:\n\n", resp.ProcessCount))
+		}
+
+		sb.WriteString(fmt.Sprintf("   %-8s %-10s %-6s %-6s %-6s %-8s %s\n", "PID", "USER", "%CPU", "%MEM", "STAT", "START", "COMMAND"))
+		for _, p := range resp.Processes {
+			sb.WriteString(fmt.Sprintf("   %-8s %-10s %-6s %-6s %-6s %-8s %s\n", p.PID, p.User, p.CPU, p.Mem, p.Stat, p.Start, p.Command))
+		}
+	}
+
+	sb.WriteString("\n-----------------------------------------------------------------\n")
+
+	// 2. Network Interface Check
+	sb.WriteString("2️⃣  [GIAO DIỆN MẠNG VPN (tun/utun)]\n")
+	ifaceOut, err := exec.Command("ip", "-o", "addr", "show").Output()
+	if err != nil {
+		ifaceOut, _ = exec.Command("ifconfig").Output()
+	}
+
+	if len(ifaceOut) > 0 {
+		for _, l := range strings.Split(string(ifaceOut), "\n") {
+			lTrim := strings.TrimSpace(l)
+			if lTrim == "" {
+				continue
+			}
+			lLower := strings.ToLower(lTrim)
+			if strings.Contains(lLower, "tun") || strings.Contains(lLower, "utun") || strings.Contains(lLower, "10.2.") {
+				resp.Interfaces = append(resp.Interfaces, lTrim)
+				sb.WriteString(fmt.Sprintf("   🌐 %s\n", lTrim))
+			}
+		}
+	}
+
+	if len(resp.Interfaces) == 0 {
+		sb.WriteString("   ⚠️  Chưa tìm thấy IP tunnel 10.2.x.x hoặc interface tun/utun đang hoạt động.\n")
+	}
+
+	sb.WriteString("\n-----------------------------------------------------------------\n")
+
+	// 3. Routing Table Check
+	sb.WriteString("3️⃣  [ĐỊNH TUYẾN TỚI SERVER BSHIP & NỘI BỘ]\n")
+	routeOut, err := exec.Command("ip", "route", "show").Output()
+	if err != nil {
+		routeOut, _ = exec.Command("netstat", "-nr", "-f", "inet").Output()
+	}
+
+	if len(routeOut) > 0 {
+		for _, l := range strings.Split(string(routeOut), "\n") {
+			lTrim := strings.TrimSpace(l)
+			if lTrim == "" {
+				continue
+			}
+			if strings.Contains(lTrim, "171.244.204") ||
+				strings.Contains(lTrim, "14.225.249") ||
+				strings.Contains(lTrim, "10.2.") ||
+				strings.Contains(lTrim, "tun") ||
+				strings.Contains(lTrim, "utun") {
+				resp.Routes = append(resp.Routes, lTrim)
+				sb.WriteString(fmt.Sprintf("   ➡️  %s\n", lTrim))
+			}
+		}
+	}
+
+	if len(resp.Routes) == 0 {
+		sb.WriteString("   ⚠️  Chưa có route nội bộ nào (10.2.x, 171.244.204.x, 14.225.249.x) được nạp vào routing table.\n")
+	} else {
+		sb.WriteString("   ✅ Các tuyến đường nội bộ đã nạp thành công.\n")
+	}
+
+	sb.WriteString("\n=================================================================\n")
+	sb.WriteString("💡 Gợi ý lệnh nhanh:\n")
+	sb.WriteString("   - Tắt toàn bộ VPN:     sudo killall -9 openvpn (hoặc bấm 'Dọn sạch' trên UI)\n")
+	sb.WriteString("=================================================================\n")
+
+	resp.RawReport = sb.String()
+	return resp
+}
+
+func killAllOpenVPNProcesses() (*VPNDiagnosticsResponse, error) {
+	_ = exec.Command("sudo", "pkill", "-9", "-f", "openvpn").Run()
+	_ = exec.Command("sudo", "killall", "-9", "openvpn").Run()
+	time.Sleep(400 * time.Millisecond)
+
+	vpnState.Lock()
+	vpnState.Status = "disconnected"
+	vpnState.IPAddress = ""
+	vpnState.Interface = ""
+	vpnState.ErrorMsg = ""
+	vpnState.Latency = ""
+	vpnState.cmd = nil
+	vpnState.Unlock()
+
+	cleanupTempAuth()
+	vpnBroadcaster.Broadcast("SYSTEM: Đã dọn sạch toàn bộ tiến trình OpenVPN trên hệ thống.")
+
+	return getVPNDiagnostics(), nil
+}
+
+func handleVPNDiagnostics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	diag := getVPNDiagnostics()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(diag)
+}
+
+func handleVPNKillAll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	diag, err := killAllOpenVPNProcesses()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":     "Đã dọn sạch toàn bộ tiến trình OpenVPN thành công",
+		"diagnostics": diag,
+	})
 }

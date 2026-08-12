@@ -392,61 +392,11 @@ export const App: React.FC = () => {
     executeRealDeploy(pendingDeployMsg, password);
   };
 
-  const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string) => {
+  const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string, gitResetMode: string = 'none') => {
     setTerminalTab('deploy');
     setActiveDeployServices(selectedNames);
     setIsDeploying(true);
-    setDeployLogs(`⚡ [${new Date().toLocaleTimeString()}] Initiating parallel multi-deploy for (${selectedNames.length}) services on ${env}...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
-
-    try {
-      const res = await fetch('/api/deploy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          services: selectedNames,
-          env: env,
-          message: msg,
-          workspace_id: activeWorkspaceId
-        })
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        setDeployLogs(prev => prev + `❌ Multi-Deploy Error: ${errText}\n`);
-        return;
-      }
-
-      if (!res.body) {
-        setDeployLogs(prev => prev + '❌ Failed to read multi-deploy stream.\n');
-        return;
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const events = chunk.split('\n\n');
-        for (const event of events) {
-          const trimmed = event.trimStart();
-          if (trimmed.startsWith('data: ')) {
-            const content = trimmed.slice(6);
-            if (content.trim() === '[EOF]') {
-              setDeployLogs(prev => prev + '\n✅ Parallel Multi-Deploy completed!\n');
-            } else {
-              setDeployLogs(prev => prev + content + '\n');
-            }
-          }
-        }
-      }
-    } catch (err: any) {
-      setDeployLogs(prev => prev + `❌ Multi-Deploy Exception: ${err.message}\n`);
-    } finally {
-      setIsDeploying(false);
-      fetchServicesForWorkspace();
-    }
+    setDeployLogs(prev => prev + `⚡ [${new Date().toLocaleTimeString()}] Multi-deploy initiated for (${selectedNames.length}) services on ${env} (Git Mode: ${gitResetMode})...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
   };
 
   const handleSaveSettings = async (newSettings: Settings) => {
@@ -562,9 +512,14 @@ export const App: React.FC = () => {
 
             <MultiDeployModal
               isOpen={isMultiDeployOpen}
-              onClose={() => setIsMultiDeployOpen(false)}
+              onClose={() => {
+                setIsMultiDeployOpen(false);
+                fetchServicesForWorkspace();
+              }}
               services={services}
               onTriggerMultiDeploy={handleTriggerMultiDeploy}
+              activeWorkspaceId={activeWorkspaceId}
+              onDeployComplete={fetchServicesForWorkspace}
             />
 
             <CompareModal
