@@ -1,6 +1,6 @@
-# 🚀 Internal Deploy System (IDS) - v2.1.1
+# 🚀 Internal Deploy System (IDS) - v2.2.0
 
-A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 102 achievements, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, zero pill cooldowns, and real-time multi-deploy reactions.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 112 achievements, 10 Xianxia Spirit Mounts (1280x128 10-frame RGBA sprite sheets), unique mount buffs, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, full X/Y screen drag positioning, dynamic motion direction flipping, and bunny petting interactions.
 
 ---
 
@@ -104,6 +104,24 @@ A comprehensive suite of 13 local developer utility tools:
 - **DNS Dig / Whois / GeoIP**: Run DNS record queries (A, AAAA, MX, CNAME), TCP WHOIS port 43 lookup, and GeoIP location checks.
 - **WebSocket Client**: Test ws/wss connections, filter console message logs, and send custom payloads.
 - **SQL Preview & Schema**: Auto-fetch database table schema with a **100% Read-Only Simulation Engine** that parses `UPDATE`, `INSERT`, `DELETE` queries in memory to display row diffs (`BEFORE` vs `AFTER`) with **zero risk of mutating database data**.
+
+## 🌟 What's New in v2.2.0
+
+### 🐴 10 Xianxia Spirit Mounts System (Flying Mounts)
+- **10 Unique Xianxia Mounts**: Complete collection featuring `Thanh Phong Linh Lang` (Spirit Wolf), `Ngọc Linh Lộc` (Jade Deer), `Kim Văn Linh Hổ` (Golden Tiger), `Cửu Vĩ Linh Hồ` (Nine-Tailed Fox), `Thanh Vân Giao Long` (Azure Dragon), `Tử Điện Lôi Ưng` (Thunder Eagle), `Thiên Lý Long Mã` (Star Pegasus), `Huyền Vũ Linh Quy` (Sacred Tortoise with cyan glowing aura), `Thái Cổ Chiến Kỳ Lân` (War Qilin), and `Bạch Ngọc Kỳ Lân` (Five-Color Qilin).
+- **1280×128 RGBA Sprite Sheets**: High-definition 10-frame horizontal sprite sheet PNG files with true alpha transparency (Alpha = 0).
+- **10 Unique Mount Buffs**: Each mount bestows a distinct passive power (e.g. +3% to +15% permanent Tribulation success rate, X2 Spirit Stones, +15% pill efficiency, multi-deploy multipliers, and drag XP bonuses).
+- **Balanced Gacha Drop Rates**: Rebalanced Gacha probabilities (0.08% to 8.0%) with Bad-Luck Protection Pity guarantee.
+
+### 🎮 Free Screen Dragging & Motion Mechanics
+- **Full Screen X, Y Positioning**: Drag and place the mascot anywhere across the screen. The mascot remains at your exact custom coordinates without automatic altitude resets.
+- **Dynamic Motion Direction Flipping**: Both Mascot and Mount automatically flip horizontally (`scaleX`) to match your dragging movement direction (`left` vs `right`).
+- **100% Randomized Autonomous AI**: Walking, running (`run_left`/`run_right`), and jumping (`jump_left`/`jump_right`) directions are randomly selected with stochastic probabilities.
+
+### 🥰 Mascot Petting Interactions & 112 Achievements
+- **Petting Interaction**: Clicking directly on the bunny triggers a happy múa tiên gia (`dance`) animation with +20 XP & +15 Spirit Stones.
+- **5-Minute Petting Reward Cooldown**: Petting rewards feature a 5-minute cooldown timer with real-time countdown display.
+- **112 Total Achievements**: Expanded achievement system with 10 new Spirit Beast and Petting achievements (`Ngự Thần Thú Tố`, `Vạn Cổ Ngự Thần Tông`, `Sơ Thử Vuốt Ve`, `Thần Thố Sủng Ái`...).
 
 ---
 
