@@ -102,11 +102,11 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     name: 'Luyện Tụ Linh Đan',
     emoji: '💊',
     resultItemId: 'basic',
-    resultAmount: 1,
-    ingredients: [{ id: 'herb_lingzhi', amount: 3 }, { id: 'herb_ginseng', amount: 2 }],
+    resultAmount: 2,
+    ingredients: [{ id: 'herb_lingzhi', amount: 2 }, { id: 'herb_ginseng', amount: 1 }],
     spiritStonesCost: 10,
-    successRate: 0.95,
-    description: 'Chế tạo 1x Tụ Linh Đan (+8 XP) từ 3x Linh Tuyền Thảo + 2x Bách Niên Nhân Sâm & 10 Linh Thạch (Thành công 95%).',
+    successRate: 0.98,
+    description: 'Chế tạo 2x Tụ Linh Đan (+16 XP) từ 2x Linh Tuyền Thảo + 1x Bách Niên Nhân Sâm & 10 Linh Thạch (Thành công 98%).',
     rarity: 'common'
   },
   {
@@ -114,11 +114,11 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     name: 'Luyện Hồi Phục Đan',
     emoji: '🍃',
     resultItemId: 'recover',
-    resultAmount: 1,
-    ingredients: [{ id: 'herb_lotus', amount: 3 }, { id: 'herb_fire_fruit', amount: 2 }, { id: 'mineral_iron', amount: 2 }],
-    spiritStonesCost: 30,
-    successRate: 0.85,
-    description: 'Chế tạo 1x Hồi Phục Đan (+20 XP) từ 3x Cửu Phẩm Băng Liên + 2x Xích Diệm Hỏa Quả + 2x Huyền Thiết Quặng & 30 Linh Thạch (Thành công 85%).',
+    resultAmount: 2,
+    ingredients: [{ id: 'herb_lotus', amount: 2 }, { id: 'herb_fire_fruit', amount: 2 }, { id: 'mineral_iron', amount: 1 }],
+    spiritStonesCost: 25,
+    successRate: 0.90,
+    description: 'Chế tạo 2x Hồi Phục Đan (+40 XP) từ 2x Cửu Phẩm Băng Liên + 2x Xích Diệm Hỏa Quả + 1x Huyền Thiết Quặng & 25 Linh Thạch (Thành công 90%).',
     rarity: 'uncommon'
   },
   {
@@ -127,10 +127,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     emoji: '🌸',
     resultItemId: 'great',
     resultAmount: 1,
-    ingredients: [{ id: 'herb_dragon_grass', amount: 3 }, { id: 'herb_bamboo', amount: 2 }, { id: 'mineral_gold', amount: 2 }],
-    spiritStonesCost: 80,
-    successRate: 0.75,
-    description: 'Chế tạo 1x Đại Hoàn Đan (+50 XP) từ 3x Long Kế Thảo + 2x Ninh Sương Trúc Chồi + 2x Thái Cổ Kim Tinh & 80 Linh Thạch (Thành công 75%).',
+    ingredients: [{ id: 'herb_dragon_grass', amount: 2 }, { id: 'herb_bamboo', amount: 2 }, { id: 'mineral_gold', amount: 1 }],
+    spiritStonesCost: 50,
+    successRate: 0.85,
+    description: 'Chế tạo 1x Đại Hoàn Đan (+50 XP) từ 2x Long Kế Thảo + 2x Ninh Sương Trúc Chồi + 1x Thái Cổ Kim Tinh & 50 Linh Thạch (Thành công 85%).',
     rarity: 'rare'
   },
   {
@@ -139,10 +139,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     emoji: '🔱',
     resultItemId: 'talisman',
     resultAmount: 1,
-    ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'mineral_star_stone', amount: 2 }],
-    spiritStonesCost: 150,
-    successRate: 0.65,
-    description: 'Chế tạo 1x Hộ Kiếp Phù (+25% Độ Kiếp) từ 2x Phượng Hoàng Hỏa Hoa + 2x Cửu Thiên Tinh Thạch & 150 Linh Thạch (Thành công 65%).',
+    ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'mineral_star_stone', amount: 1 }],
+    spiritStonesCost: 100,
+    successRate: 0.75,
+    description: 'Chế tạo 1x Hộ Kiếp Phù (+25% Độ Kiếp) từ 2x Phượng Hoàng Hỏa Hoa + 1x Cửu Thiên Tinh Thạch & 100 Linh Thạch (Thành công 75%).',
     rarity: 'legendary'
   },
   {
@@ -151,10 +151,10 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     emoji: '🔮',
     resultItemId: 'revive',
     resultAmount: 1,
-    ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'mineral_star_stone', amount: 3 }, { id: 'herb_phoenix_flower', amount: 3 }],
-    spiritStonesCost: 400,
-    successRate: 0.50,
-    description: 'Đan Cực Phẩm! Bảo hộ 100% không tổn hại XP khi Độ Kiếp thất bại & +35% Tỉ lệ Độ Kiếp từ 2x Hỗn Nguyên Thần Căn + 3x Cửu Thiên Tinh Thạch + 3x Phượng Hoàng Hỏa Hoa & 400 Linh Thạch (Thành công 50%).',
+    ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'mineral_star_stone', amount: 2 }, { id: 'herb_phoenix_flower', amount: 2 }],
+    spiritStonesCost: 200,
+    successRate: 0.65,
+    description: 'Đan Cực Phẩm! Bảo hộ 100% không tổn hại XP khi Độ Kiếp thất bại & +35% Tỉ lệ Độ Kiếp từ 2x Hỗn Nguyên Thần Căn + 2x Cửu Thiên Tinh Thạch + 2x Phượng Hoàng Hỏa Hoa & 200 Linh Thạch (Thành công 65%).',
     rarity: 'supreme'
   }
 ];
@@ -862,7 +862,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [ownedMounts, setOwnedMounts]                       = useState<string[]>(() => loadSaved().ownedMounts ?? ['wolf']);
   const [activeMountId, setActiveMountId]                   = useState<string | null>(() => loadSaved().activeMountId ?? 'wolf');
   const [gachaSpinCount, setGachaSpinCount]                 = useState<number>(() => loadSaved().gachaSpinCount ?? 0);
-  const [recentGachaRewards, setRecentGachaRewards]         = useState<{ type: 'mount' | 'item'; name: string; icon: string; rarity: string }[] | null>(null);
+  const [recentGachaRewards, setRecentGachaRewards]         = useState<{ type: 'mount' | 'item'; mountId?: string; name: string; icon: string; rarity: string }[] | null>(null);
 
   const [treasureLevels, setTreasureLevels]                 = useState<Record<number, number>>(() => loadSaved().treasureLevels ?? {});
   const [craftCount, setCraftCount]                         = useState<number>(() => loadSaved().craftCount ?? 0);
@@ -985,7 +985,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     }
 
     addSpiritStones(-cost);
-    const newRewards: { type: 'mount' | 'item'; name: string; icon: string; rarity: string }[] = [];
+    const newRewards: { type: 'mount' | 'item'; mountId?: string; name: string; icon: string; rarity: string }[] = [];
     let currentSpinCount = gachaSpinCount;
     let newOwnedMounts = [...ownedMounts];
 
@@ -1001,7 +1001,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         if (!newOwnedMounts.includes(picked.id)) {
           newOwnedMounts.push(picked.id);
         }
-        newRewards.push({ type: 'mount', name: `${picked.name} (BẢO HIỂM 👑)`, icon: picked.emoji, rarity: picked.rarity });
+        newRewards.push({ type: 'mount', mountId: picked.id, name: `${picked.name} (BẢO HIỂM 👑)`, icon: picked.emoji, rarity: picked.rarity });
       } else {
         // Standard Gacha Roll Table
         let accumulatedRate = 0;
@@ -1019,7 +1019,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           if (!newOwnedMounts.includes(wonMount.id)) {
             newOwnedMounts.push(wonMount.id);
           }
-          newRewards.push({ type: 'mount', name: wonMount.name, icon: wonMount.emoji, rarity: wonMount.rarity });
+          newRewards.push({ type: 'mount', mountId: wonMount.id, name: wonMount.name, icon: wonMount.emoji, rarity: wonMount.rarity });
         } else {
           // Consumable Pill Drop
           const itemRoll = Math.random();
@@ -2108,8 +2108,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: recentGachaRewards.length > 1 ? 'repeat(5, 1fr)' : '1fr', gap: '10px', marginBottom: '16px' }}>
               {recentGachaRewards.map((r, idx) => (
                 <div key={idx} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${RARITY_COLORS[r.rarity] || '#f59e0b'}`, borderRadius: '12px', padding: '10px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: recentGachaRewards.length > 1 ? '28px' : '48px' }}>{r.icon}</span>
-                  <span style={{ fontSize: '10px', fontWeight: 800, color: RARITY_COLORS[r.rarity] }}>{r.name}</span>
+                  {r.type === 'mount' && r.mountId ? (
+                    <div style={{ height: recentGachaRewards.length > 1 ? '40px' : '64px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AnimatedMountSprite mountId={r.mountId} size={recentGachaRewards.length > 1 ? 44 : 64} />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: recentGachaRewards.length > 1 ? '28px' : '48px', lineHeight: 1 }}>{r.icon}</span>
+                  )}
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: RARITY_COLORS[r.rarity], textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>{r.name}</span>
                 </div>
               ))}
             </div>
