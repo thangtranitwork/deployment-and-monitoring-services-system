@@ -844,6 +844,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [totalDrags, setTotalDrags]                         = useState<number>(() => loadSaved().totalDrags ?? 0);
   const [totalPets, setTotalPets]                           = useState<number>(() => loadSaved().totalPets ?? 0);
   const [lastPetRewardTime, setLastPetRewardTime]           = useState<number>(() => loadSaved().lastPetRewardTime ?? 0);
+  const [lastRideRewardTime, setLastRideRewardTime]         = useState<number>(() => loadSaved().lastRideRewardTime ?? 0);
   const [totalDeploys, setTotalDeploys]                     = useState<number>(() => loadSaved().totalDeploys ?? 0);
   const [totalPillsConsumed, setTotalPillsConsumed]         = useState<number>(() => loadSaved().totalPillsConsumed ?? 0);
   const [deployedServices, setDeployedServices]             = useState<string[]>(() => loadSaved().deployedServices ?? []);
@@ -934,6 +935,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         totalDrags,
         totalPets,
         lastPetRewardTime,
+        lastRideRewardTime,
         totalDeploys,
         totalPillsConsumed,
         deployedServices,
@@ -953,7 +955,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         lastSessionTime: Date.now()
       }));
     } catch { /* noop */ }
-  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalPets, lastPetRewardTime, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount, treasureLevels, craftCount, herbsInventory]);
+  }, [xp, activeSkin, activeTreasureId, inventory, totalMinutes, totalDrags, totalPets, lastPetRewardTime, lastRideRewardTime, totalDeploys, totalPillsConsumed, deployedServices, unlockedAchievements, talismanBuffExpiry, failCountAtCurrentLevel, breakthroughSuccessCount, breakthroughFailCount, multiDeployCount, spiritStones, ownedMounts, activeMountId, gachaSpinCount, treasureLevels, craftCount, herbsInventory]);
 
   useEffect(() => {
     const tick = () => setTalismanCountdown(Math.max(0, Math.ceil((talismanBuffExpiry - Date.now()) / 1000)));
@@ -1543,12 +1545,27 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       if (dragged) {
         setIsDragging(false); triggerGentleHop();
         const newDrags = totalDrags + 1; setTotalDrags(newDrags);
-        addSpiritStones(5);
-        const mountBonusXp = activeMountConfig ? activeMountConfig.dragXpBonus : 0;
-        const totalEarnedXp = 10 + mountBonusXp;
-        addXP(totalEarnedXp, `🎉 Đáp đất an toàn cùng ${activeMountConfig?.name ?? 'Thỏ'}! (+${totalEarnedXp} XP & +5 💎)`);
 
-        if (newDrags % 5 === 0) grantItem('basic', 1, `🏅 5 lần ngự kiếm! +1 💊 Tụ Linh Đan!`);
+        const now = Date.now();
+        const elapsedRide = now - lastRideRewardTime;
+        const RIDE_COOLDOWN_MS = 60 * 1000; // 60s CD
+
+        if (elapsedRide >= RIDE_COOLDOWN_MS) {
+          setLastRideRewardTime(now);
+          addSpiritStones(5);
+          const mountBonusXp = activeMountConfig ? activeMountConfig.dragXpBonus : 0;
+          const totalEarnedXp = 10 + mountBonusXp;
+          addXP(totalEarnedXp, `🎉 Đáp đất an toàn cùng ${activeMountConfig?.name ?? 'Thỏ'}! (+${totalEarnedXp} XP & +5 💎)`);
+
+          if (newDrags % 5 === 0) grantItem('basic', 1, `🏅 5 lần ngự kiếm! +1 💊 Tụ Linh Đan!`);
+        } else {
+          const remSec = Math.ceil((RIDE_COOLDOWN_MS - elapsedRide) / 1000);
+          const min = Math.floor(remSec / 60);
+          const sec = remSec % 60;
+          const mountName = activeMountConfig ? activeMountConfig.name : 'Thỏ';
+          const cdText = min > 0 ? `${min}p${sec}s` : `${sec}s`;
+          setBubbleText(`🎈 Phù... Bay cùng ${mountName} đã mệt! ⏱️ Hồi quà phi hành sau ${cdText}`);
+        }
       } else {
         setState('dance');
         setTotalPets(p => p + 1);
@@ -1813,10 +1830,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           className="mascot-bubble"
           style={{
             position: 'relative', marginBottom: '8px', padding: '6px 12px',
-            borderRadius: '12px', background: 'rgba(10,13,22,0.96)',
+            borderRadius: '14px', background: 'rgba(10,13,22,0.96)',
             border: '1px solid rgba(245,158,11,0.45)', backdropFilter: 'blur(12px)',
             boxShadow: '0 4px 20px rgba(0,0,0,0.7)', fontSize: '11px',
-            display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap'
+            display: 'flex', alignItems: 'center', gap: '6px',
+            maxWidth: 'min(480px, calc(100vw - 24px))', width: 'max-content'
           }}
         >
           {/* Cảnh Giới Badge */}
@@ -1835,8 +1853,53 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             {currentLevelInfo.name}
           </button>
 
+          {/* Vòng Tròn % XP */}
+          <div
+            onClick={e => { e.stopPropagation(); setShowCostumePicker(p => !p); }}
+            onPointerDown={e => e.stopPropagation()}
+            title={`Linh Lực Tu Vi: ${Math.floor(Math.max(0, xp - prevReq))} / ${nextReq - prevReq} XP (${Math.round(progressPercent)}%)`}
+            style={{
+              position: 'relative', width: '24px', height: '24px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, cursor: 'pointer', borderRadius: '50%',
+              background: 'rgba(10, 13, 22, 0.85)',
+              border: `1px solid ${progressPercent >= 100 ? 'rgba(52,211,153,0.6)' : 'rgba(245,158,11,0.35)'}`,
+              boxShadow: progressPercent >= 100 ? '0 0 10px rgba(52,211,153,0.5)' : '0 0 6px rgba(245,158,11,0.2)'
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" style={{ transform: 'rotate(-90deg)', position: 'absolute', inset: 0 }}>
+              <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" />
+              <circle
+                cx="12" cy="12" r="9" fill="none"
+                stroke={progressPercent >= 100 ? '#34d399' : '#f59e0b'}
+                strokeWidth="2.5"
+                strokeDasharray={56.548}
+                strokeDashoffset={56.548 * (1 - Math.min(100, Math.max(0, progressPercent)) / 100)}
+                strokeLinecap="round"
+                style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
+              />
+            </svg>
+            <span style={{
+              position: 'relative', zIndex: 1,
+              fontSize: Math.round(progressPercent) === 100 ? '6.5px' : '7.5px',
+              fontWeight: 900,
+              color: progressPercent >= 100 ? '#6ee7b7' : '#fde68a',
+              lineHeight: 1
+            }}>
+              {Math.round(progressPercent)}%
+            </span>
+          </div>
+
           {/* Bubble Text */}
-          <span style={{ color: '#fde68a', fontWeight: 500, whiteSpace: 'nowrap', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span
+            title={bubbleText}
+            style={{
+              color: '#fde68a', fontWeight: 500,
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.35,
+              maxHeight: '80px', overflowY: 'auto', flex: '1 1 auto', minWidth: '60px',
+              paddingRight: '2px'
+            }}
+          >
             {bubbleText}
           </span>
 
@@ -1871,24 +1934,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           ) : null}
 
           {/* Bag Button */}
-          {!isReadyToBreakthrough && (
-            <button
-              onClick={e => { e.stopPropagation(); setShowInventory(p => !p); }}
-              onPointerDown={e => e.stopPropagation()}
-              title="Mở Túi Trữ Vật (Dùng Đan Dược & Quản lý Dược Liệu)"
-              style={{
-                background: totalInventory > 0 ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)',
-                border: `1px solid ${totalInventory > 0 ? 'rgba(245,158,11,0.5)' : 'rgba(100,116,139,0.3)'}`,
-                borderRadius: '8px', padding: '2px 6px',
-                fontSize: '10px', fontWeight: 800,
-                color: totalInventory > 0 ? '#fde68a' : '#94a3b8',
-                cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px'
-              }}
-            >
-              <Package style={{ width: '12px', height: '12px' }} />
-              {totalInventory > 0 && <span>{totalInventory}</span>}
-            </button>
-          )}
+          <button
+            onClick={e => { e.stopPropagation(); setShowInventory(p => !p); }}
+            onPointerDown={e => e.stopPropagation()}
+            title="Mở Túi Trữ Vật (Dùng Đan Dược & Quản lý Dược Liệu)"
+            style={{
+              background: totalInventory > 0 ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)',
+              border: `1px solid ${totalInventory > 0 ? 'rgba(245,158,11,0.5)' : 'rgba(100,116,139,0.3)'}`,
+              borderRadius: '8px', padding: '2px 6px',
+              fontSize: '10px', fontWeight: 800,
+              color: totalInventory > 0 ? '#fde68a' : '#94a3b8',
+              cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '3px'
+            }}
+          >
+            <Package style={{ width: '12px', height: '12px' }} />
+            {totalInventory > 0 && <span>{totalInventory}</span>}
+          </button>
 
           {/* Dismiss button */}
           <button onClick={e => { e.stopPropagation(); setIsDismissed(true); }} onPointerDown={e => e.stopPropagation()} title="Ẩn Thỏ" style={{ color: '#64748b', cursor: 'pointer', padding: '2px', borderRadius: '50%', background: 'none', border: 'none', flexShrink: 0 }}>
@@ -1898,7 +1959,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         </div>
 
         {/* ── Inventory Panel ── */}
-        {showInventory && !isReadyToBreakthrough && (
+        {showInventory && (
           <div
             className="mascot-inventory"
             style={{
@@ -2017,13 +2078,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
             </div>
           )}
 
-          {activeSkinInfo.skinId === 'aura'       && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_30px_10px_rgba(245,158,11,0.7)] pointer-events-none" />}
-          {activeSkinInfo.skinId === 'dai_la'     && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_35px_12px_rgba(56,189,248,0.8)] pointer-events-none" />}
-          {activeSkinInfo.skinId === 'hon_nguyen' && <div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_40px_14px_rgba(168,85,247,0.8)] pointer-events-none border-2 border-purple-400" />}
-          {activeSkinInfo.skinId === 'god'        && <><div className="absolute -top-2 -right-3 text-base z-10 animate-ping">☯️</div><div className="absolute inset-0 rounded-full animate-pulse shadow-[0_0_40px_16px_rgba(234,179,8,0.9)] pointer-events-none border-2 border-amber-300" /></>}
+          {/* Active Skin Decorative Emblem */}
+          {activeSkinInfo.skinId === 'god' && (
+            <div className="absolute -top-2 -right-3 text-base z-10 animate-ping pointer-events-none">☯️</div>
+          )}
 
           <div
-            className="bg-no-repeat"
+            className={`bg-no-repeat ${(activeMountId && isDragging) ? '' : (activeSkinInfo.skinId === 'dai_la' || activeSkinInfo.skinId === 'chan_tien' || activeSkinInfo.skinId === 'huyen_tien' ? 'mascot-body-aura-cyan' : activeSkinInfo.skinId === 'hon_nguyen' ? 'mascot-body-aura-purple' : activeSkinInfo.skinId === 'god' ? 'mascot-body-aura-god' : activeSkinInfo.skinId !== 'none' ? 'mascot-body-aura-golden' : '')}`}
             style={{
               width: `${MASCOT_SIZE}px`, height: `${MASCOT_SIZE}px`, flexShrink: 0,
               backgroundImage: `url(/skins/${activeSkinInfo?.level || 1}/${state || 'idle'}.png)`,

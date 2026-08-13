@@ -1102,3 +1102,48 @@ input[type="radio"]:focus {
     background-color: var(--bg-hover);
     box-shadow: 0 0 8px var(--accent-glow);
 }
+
+/* ==========================================================================
+   MASCOT BODY-CONTOUR AURA ANIMATIONS (TRACES EXACT SPRITE SILHOUETTE)
+   ========================================================================== */
+@keyframes mascotAuraGolden {
+    0%, 100% {
+        filter: drop-shadow(0 0 4px #f59e0b) drop-shadow(0 0 10px rgba(245, 158, 11, 0.85)) drop-shadow(0 0 18px rgba(245, 158, 11, 0.45));
+    }
+    50% {
+        filter: drop-shadow(0 0 7px #fde047) drop-shadow(0 0 16px rgba(245, 158, 11, 1)) drop-shadow(0 0 26px rgba(245, 158, 11, 0.7));
+    }
+}
+
+@keyframes mascotAuraCyan {
+    0%, 100% {
+        filter: drop-shadow(0 0 4px #38bdf8) drop-shadow(0 0 12px rgba(56, 189, 248, 0.85)) drop-shadow(0 0 20px rgba(56, 189, 248, 0.45));
+    }
+    50% {
+        filter: drop-shadow(0 0 8px #7dd3fc) drop-shadow(0 0 18px rgba(56, 189, 248, 1)) drop-shadow(0 0 30px rgba(56, 189, 248, 0.75));
+    }
+}
+
+@keyframes mascotAuraPurple {
+    0%, 100% {
+        filter: drop-shadow(0 0 5px #c084fc) drop-shadow(0 0 14px rgba(168, 85, 247, 0.85)) drop-shadow(0 0 22px rgba(168, 85, 247, 0.5));
+    }
+    50% {
+        filter: drop-shadow(0 0 9px #e9d5ff) drop-shadow(0 0 20px rgba(168, 85, 247, 1)) drop-shadow(0 0 32px rgba(168, 85, 247, 0.8));
+    }
+}
+
+@keyframes mascotAuraGod {
+    0%, 100% {
+        filter: drop-shadow(0 0 6px #fde047) drop-shadow(0 0 16px rgba(234, 179, 8, 0.95)) drop-shadow(0 0 28px rgba(245, 158, 11, 0.65));
+    }
+    50% {
+        filter: drop-shadow(0 0 10px #ffffff) drop-shadow(0 0 24px rgba(253, 224, 71, 1)) drop-shadow(0 0 40px rgba(245, 158, 11, 0.9));
+    }
+}
+
+.mascot-body-aura-golden { animation: mascotAuraGolden 2s ease-in-out infinite alternate; }
+.mascot-body-aura-cyan   { animation: mascotAuraCyan 2s ease-in-out infinite alternate; }
+.mascot-body-aura-purple { animation: mascotAuraPurple 2s ease-in-out infinite alternate; }
+.mascot-body-aura-god    { animation: mascotAuraGod 1.8s ease-in-out infinite alternate; }
+
