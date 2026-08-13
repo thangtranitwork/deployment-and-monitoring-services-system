@@ -433,8 +433,9 @@ export const App: React.FC = () => {
   };
 
   return (
-    <Routes>
-      {/* Route 1: Dedicated React SPA Tools Page */}
+    <>
+      <Routes>
+        {/* Route 1: Dedicated React SPA Tools Page */}
       <Route
         path="/tools"
         element={<ToolsPage onBackToDashboard={() => navigate('/')} />}
@@ -484,12 +485,6 @@ export const App: React.FC = () => {
                   isDeploying={isDeploying}
                   onRefresh={fetchServicesForWorkspace}
                   onOpenLogs={handleOpenLogs}
-                />
-
-                <BunnyMascot
-                  isDeploying={isDeploying}
-                  selectedService={selectedService?.name}
-                  activeDeployServices={activeDeployServices}
                 />
 
                 <TerminalView
@@ -572,7 +567,13 @@ export const App: React.FC = () => {
         }
       />
     </Routes>
-  );
+    <BunnyMascot
+      isDeploying={isDeploying}
+      selectedService={selectedService?.name}
+      activeDeployServices={activeDeployServices}
+    />
+  </>
+);
 };
 
 export default App;
