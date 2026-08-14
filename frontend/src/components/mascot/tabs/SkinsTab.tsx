@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, ShieldCheck, Sparkles, BookOpen, Zap, Award } from 'lucide-react';
 import { LEVEL_CONFIG } from '../constants';
 import { BunnySkinSprite } from '../components/BunnySkinSprite';
+import { formatNumber } from '../utils';
 
 const REALM_DETAILS_LORE: Record<number, {
   title: string;
@@ -264,7 +265,7 @@ export const SkinsTab: React.FC<{
                     Lv.{lvl.level}: {lvl.name}
                   </div>
                   <div style={{ fontSize: '10.5px', color: unlocked ? '#86efac' : '#64748b' }}>
-                    {unlocked ? 'Đã mở cảnh giới' : `${lvl.reqXp.toLocaleString()} XP`}
+                    {unlocked ? 'Đã mở cảnh giới' : `${formatNumber(lvl.reqXp)} XP`}
                   </div>
                 </div>
               </div>

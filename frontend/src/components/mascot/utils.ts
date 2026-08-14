@@ -72,3 +72,21 @@ export const getDeployCommentary = (serviceName: string, multiServices?: string[
   ];
   return genericLines[Math.floor(Math.random() * genericLines.length)];
 };
+
+// ─── Number Formatting Utility (Support up to Billions & Trillions) ────────────
+export const formatNumber = (num: number): string => {
+  if (num === undefined || num === null) return '0';
+  if (num >= 1_000_000_000) {
+    const b = num / 1_000_000_000;
+    return (b % 1 === 0 ? b.toFixed(0) : b.toFixed(2)) + ' Tỷ';
+  }
+  if (num >= 1_000_000) {
+    const m = num / 1_000_000;
+    return (m % 1 === 0 ? m.toFixed(0) : m.toFixed(2)) + ' Tr';
+  }
+  if (num >= 100_000) {
+    const k = num / 1_000;
+    return (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + 'K';
+  }
+  return num.toLocaleString('vi-VN');
+};

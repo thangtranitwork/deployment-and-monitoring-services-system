@@ -1,6 +1,7 @@
 import React from 'react';
 import { Package, X } from 'lucide-react';
 import { LevelInfo } from '../types';
+import { formatNumber } from '../utils';
 
 export const SpeechBubble: React.FC<{
   bubbleText: string;
@@ -95,7 +96,7 @@ export const SpeechBubble: React.FC<{
           onOpenCostumePicker();
         }}
         onPointerDown={e => e.stopPropagation()}
-        title={`Linh Lực Tu Vi: ${Math.floor(Math.max(0, xp - prevReq))} / ${nextReq - prevReq} XP (${Math.round(progressPercent)}%)`}
+        title={`Linh Lực Tu Vi: ${formatNumber(Math.floor(Math.max(0, xp - prevReq)))} / ${formatNumber(nextReq - prevReq)} XP (${Math.round(progressPercent)}%)`}
         style={{
           position: 'relative',
           width: '24px',
