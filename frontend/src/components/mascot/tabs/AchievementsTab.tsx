@@ -15,6 +15,9 @@ export const AchievementsTab: React.FC<{
   onSearchChange,
   onCategoryFilterChange
 }) => {
+  const [hoveredAch, setHoveredAch] = useState<any | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   const filteredAchievements = ACHIEVEMENTS.filter(ach => {
     const matchesCat = categoryFilter === 'all' || ach.category === categoryFilter;
     const matchesSearch =
@@ -34,8 +37,73 @@ export const AchievementsTab: React.FC<{
     ? ITEM_CONFIG.find(i => i.id === selectedAch.reward.itemId) || HERB_CONFIG.find(h => (h.id as string) === selectedAch.reward.itemId)
     : null;
 
+  const handleMouseEnter = (ach: any, e: React.MouseEvent) => {
+    setHoveredAch(ach);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoverPos({ x: rect.right + 10, y: rect.top });
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredAch(null);
+  };
+
   return (
-    <div style={{ display: 'flex', gap: '14px', height: '460px' }}>
+    <div style={{ display: 'flex', gap: '14px', height: '460px', position: 'relative' }}>
+      {/* ─── HOVER OVERLAY TOOLTIP ────────────────────────────────────────── */}
+      {hoveredAch && (
+        <div
+          style={{
+            position: 'fixed',
+            left: `${Math.min(hoverPos.x, window.innerWidth - 300)}px`,
+            top: `${Math.min(hoverPos.y, window.innerHeight - 200)}px`,
+            width: '270px',
+            background: 'linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.98))',
+            border: `1.5px solid ${unlockedAchievements.includes(hoveredAch.id) ? '#f59e0b' : 'rgba(255,255,255,0.15)'}`,
+            borderRadius: '12px',
+            padding: '12px 14px',
+            boxShadow: '0 12px 28px rgba(0,0,0,0.6), 0 0 15px rgba(245,158,11,0.2)',
+            zIndex: 9999,
+            pointerEvents: 'none',
+            backdropFilter: 'blur(12px)',
+            transition: 'opacity 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '26px' }}>
+              {hoveredAch.isSecret && !unlockedAchievements.includes(hoveredAch.id) ? '❓' : hoveredAch.icon}
+            </span>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: '13px', color: unlockedAchievements.includes(hoveredAch.id) ? '#fde047' : '#f1f5f9' }}>
+                {hoveredAch.isSecret && !unlockedAchievements.includes(hoveredAch.id) ? 'Thành Tựu Ẩn' : hoveredAch.title}
+              </div>
+              <span
+                style={{
+                  fontSize: '9.5px',
+                  fontWeight: 900,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  background: unlockedAchievements.includes(hoveredAch.id) ? 'rgba(16,185,129,0.25)' : 'rgba(255,255,255,0.1)',
+                  color: unlockedAchievements.includes(hoveredAch.id) ? '#86efac' : '#94a3b8',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {unlockedAchievements.includes(hoveredAch.id) ? '✓ Đã hoàn thành' : '🔒 Chưa mở khóa'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '11.5px', color: '#cbd5e1', lineHeight: '1.4', marginBottom: '10px' }}>
+            {hoveredAch.isSecret && !unlockedAchievements.includes(hoveredAch.id)
+              ? `💡 Gợi ý: ${hoveredAch.hint || 'Khám phá bí mật trong tam giới...'}`
+              : hoveredAch.description}
+          </div>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 800 }}>Phần Thưởng:</span>
+            <span style={{ fontSize: '11px', color: '#fde047', fontWeight: 900 }}>🎁 {hoveredAch.rewardText}</span>
+          </div>
+        </div>
+      )}
       {/* ─── LEFT COLUMN: Master List ────────────────────────────────────────── */}
       <div
         style={{
@@ -130,6 +198,8 @@ export const AchievementsTab: React.FC<{
               <button
                 key={ach.id}
                 onClick={() => setSelectedAchId(ach.id)}
+                onMouseEnter={e => handleMouseEnter(ach, e)}
+                onMouseLeave={handleMouseLeave}
                 style={{
                   padding: '9px 11px',
                   borderRadius: '10px',

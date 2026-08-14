@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { HerbId, ItemId, Inventory } from '../types';
-import { HERB_CONFIG, ITEM_CONFIG, RARITY_COLORS } from '../constants';
+import { HERB_CONFIG, ITEM_CONFIG, FOOD_CONFIG, RARITY_COLORS } from '../constants';
 import { ShoppingBag, Coins, BookOpen } from 'lucide-react';
 
 export const MarketTab: React.FC<{
   spiritStones: number;
-  herbsInventory: Record<HerbId, number>;
+  herbsInventory: Record<string, number>;
   inventory: Inventory;
-  onBuyMaterial: (herbId: HerbId, amount: number) => void;
-  onSellMaterial: (herbId: HerbId, amount: number) => void;
+  onBuyMaterial: (herbId: any, amount: number) => void;
+  onSellMaterial: (herbId: any, amount: number) => void;
   onBuyItem: (itemId: ItemId, amount: number) => void;
   onSellItem: (itemId: ItemId, amount: number) => void;
 }> = ({
@@ -23,10 +23,12 @@ export const MarketTab: React.FC<{
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [selectedTradeKey, setSelectedTradeKey] = useState<string>('herb_lingzhi');
   const [tradeAmount, setTradeAmount] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'herb' | 'food' | 'item'>('all');
 
-  // Combine herbs and buyable/sellable pills/items
+  // Combine herbs, foods and buyable/sellable pills/items
   const allTradeItems: Array<{
-    kind: 'herb' | 'item';
+    kind: 'herb' | 'food' | 'item';
     id: string;
     name: string;
     emoji: string;
@@ -48,6 +50,18 @@ export const MarketTab: React.FC<{
       buyPrice: h.buyPrice,
       sellPrice: h.sellPrice,
       owned: herbsInventory[h.id] || 0
+    })),
+    ...FOOD_CONFIG.map(f => ({
+      kind: 'food' as const,
+      id: f.id,
+      name: f.name,
+      emoji: f.emoji,
+      iconImage: f.iconImage,
+      rarity: f.rarity,
+      description: f.description,
+      buyPrice: f.buyPrice,
+      sellPrice: f.sellPrice,
+      owned: herbsInventory[f.id] || 0
     })),
     ...ITEM_CONFIG.filter(i => i.buyPrice || i.sellPrice).map(i => ({
       kind: 'item' as const,
@@ -156,7 +170,61 @@ export const MarketTab: React.FC<{
           </button>
         </div>
 
-        {allTradeItems.map(item => {
+        {/* Search Bar */}
+        <div style={{ position: 'relative', width: '100%', marginBottom: '4px' }}>
+          <input
+            type="text"
+            placeholder="🔍 Tìm sản phẩm (đan, thức ăn, thảo dược)..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              background: 'rgba(15,23,42,0.85)',
+              border: '1px solid rgba(245,158,11,0.28)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              fontSize: '11px',
+              color: '#fff',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+          />
+        </div>
+
+        {/* Category Filters */}
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
+          {[
+            { key: 'all', label: 'Tất Cả' },
+            { key: 'herb', label: '🌿 Thảo Dược' },
+            { key: 'food', label: '🍱 Thức Ăn' },
+            { key: 'item', label: '💊 Đan Dược' }
+          ].map(cat => (
+            <button
+              key={cat.key}
+              onClick={() => setFilterCategory(cat.key as any)}
+              style={{
+                background: filterCategory === cat.key ? 'rgba(245,158,11,0.25)' : 'rgba(0,0,0,0.2)',
+                border: `1px solid ${filterCategory === cat.key ? '#f59e0b' : 'rgba(255,255,255,0.08)'}`,
+                color: filterCategory === cat.key ? '#fde68a' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 6px',
+                fontSize: '10px',
+                fontWeight: 800,
+                cursor: 'pointer'
+              }}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {allTradeItems
+          .filter(item => {
+            const matchesCat = filterCategory === 'all' || item.kind === filterCategory;
+            const matchesSearch = !searchQuery.trim() || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCat && matchesSearch;
+          })
+          .map(item => {
           const isSelected = selectedTradeKey === item.id;
           const displayPrice = mode === 'buy' ? item.buyPrice : item.sellPrice;
 

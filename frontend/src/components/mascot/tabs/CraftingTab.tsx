@@ -10,10 +10,15 @@ export const CraftingTab: React.FC<{
   onCraftPill: (recipe: CraftingRecipe, count: number) => void;
 }> = ({ spiritStones, inventory, herbsInventory, onCraftPill }) => {
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>(CRAFTING_RECIPES[0].id);
   const [craftBatchCount, setCraftBatchCount] = useState<number>(1);
 
-  const filteredRecipes = CRAFTING_RECIPES.filter(r => filterCategory === 'all' || r.category === filterCategory);
+  const filteredRecipes = CRAFTING_RECIPES.filter(r => {
+    const matchesCat = filterCategory === 'all' || r.category === filterCategory;
+    const matchesSearch = !searchQuery.trim() || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
   const selectedRecipe = CRAFTING_RECIPES.find(r => r.id === selectedRecipeId) || filteredRecipes[0] || CRAFTING_RECIPES[0];
 
   const getIngredientQty = (ingId: IngredientId): number => {

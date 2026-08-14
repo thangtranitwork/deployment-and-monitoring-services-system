@@ -111,6 +111,18 @@ export interface HerbConfig {
   sellPrice: number;
 }
 
+export interface FoodConfig {
+  id: string;
+  name: string;
+  emoji: string;
+  iconImage: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
+  expValue: number;
+  buyPrice: number;
+  sellPrice: number;
+  description: string;
+}
+
 export type IngredientId = ItemId | HerbId;
 
 export interface CraftingRecipe {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, RefreshCw, Lock, Utensils, Info } from 'lucide-react';
-import { MOUNT_CONFIG, RARITY_COLORS, HERB_CONFIG } from '../constants';
+import { MOUNT_CONFIG, RARITY_COLORS, HERB_CONFIG, FOOD_CONFIG } from '../constants';
 import { HerbId } from '../types';
 import { AnimatedMountSprite } from '../components/AnimatedMountSprite';
 
@@ -10,11 +10,11 @@ export interface MountsTabProps {
   gachaSpinCount: number;
   mountLevels?: Record<string, number>;
   mountExp?: Record<string, number>;
-  herbsInventory?: Record<HerbId, number>;
+  herbsInventory?: Record<string, number>;
   spiritStones?: number;
   onSpinGacha: (count: number) => void;
   onToggleMount: (mountId: string, name: string) => void;
-  onFeedMount?: (mountId: string, herbId: HerbId | 'spirit_stone', amount: number) => void;
+  onFeedMount?: (mountId: string, foodId: string, amount: number) => void;
 }
 
 export const MountsTab: React.FC<MountsTabProps> = ({
@@ -23,13 +23,15 @@ export const MountsTab: React.FC<MountsTabProps> = ({
   gachaSpinCount,
   mountLevels = {},
   mountExp = {},
-  herbsInventory = {} as Record<HerbId, number>,
+  herbsInventory = {} as Record<string, number>,
   spiritStones = 0,
   onSpinGacha,
   onToggleMount,
   onFeedMount
 }) => {
   const [selectedMountId, setSelectedMountId] = useState<string>(activeMountId || MOUNT_CONFIG[0].id);
+  const [foodSearchQuery, setFoodSearchQuery] = useState<string>('');
+  const [foodRarityFilter, setFoodRarityFilter] = useState<'all' | 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme'>('all');
 
   const selectedMount = MOUNT_CONFIG.find(m => m.id === selectedMountId) || MOUNT_CONFIG[0];
   const isOwned = ownedMounts.includes(selectedMount.id);
@@ -315,20 +317,76 @@ export const MountsTab: React.FC<MountsTabProps> = ({
             {/* Spacious Feeding Materials Grid */}
             {isOwned && (
               <div style={{ background: 'rgba(0,0,0,0.35)', padding: '12px 14px', borderRadius: '12px', marginBottom: '14px', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <div style={{ fontSize: '11.5px', fontWeight: 900, color: '#86efac', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Utensils style={{ width: '14px', height: '14px' }} />
-                  <span>CHO LINH THÚ ĂN ĐỂ NÂNG CẤP (+5% XP/CẤP):</span>
+                <div style={{ fontSize: '11.5px', fontWeight: 900, color: '#86efac', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Utensils style={{ width: '14px', height: '14px' }} />
+                    <span>CHO LINH THÚ ĂN ĐỂ NÂNG CẤP (+5% XP/CẤP):</span>
+                  </div>
+                </div>
+
+                {/* Food Search & Filter Controls */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="🔍 Tìm thức ăn..."
+                    value={foodSearchQuery}
+                    onChange={e => setFoodSearchQuery(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: '120px',
+                      background: 'rgba(15,23,42,0.85)',
+                      border: '1px solid rgba(16,185,129,0.3)',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      color: '#fff',
+                      outline: 'none'
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    {[
+                      { key: 'all', label: 'Tất Cả' },
+                      { key: 'common', label: 'Thường' },
+                      { key: 'uncommon', label: 'Hiếm' },
+                      { key: 'rare', label: 'Trân Quý' },
+                      { key: 'legendary', label: 'Truyền Thuyết' },
+                      { key: 'supreme', label: 'Chí Bảo' }
+                    ].map(r => (
+                      <button
+                        key={r.key}
+                        onClick={() => setFoodRarityFilter(r.key as any)}
+                        style={{
+                          background: foodRarityFilter === r.key ? 'rgba(16,185,129,0.3)' : 'rgba(0,0,0,0.25)',
+                          border: `1px solid ${foodRarityFilter === r.key ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+                          color: foodRarityFilter === r.key ? '#86efac' : '#94a3b8',
+                          borderRadius: '5px',
+                          padding: '2px 6px',
+                          fontSize: '9.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-                  {HERB_CONFIG.map(herb => {
-                    const qty = herbsInventory[herb.id] || 0;
-                    const expValue = herb.rarity === 'supreme' ? 500 : herb.rarity === 'legendary' ? 200 : herb.rarity === 'rare' ? 80 : herb.rarity === 'uncommon' ? 35 : 15;
+                  {FOOD_CONFIG
+                    .filter(food => {
+                      const matchesRarity = foodRarityFilter === 'all' || food.rarity === foodRarityFilter;
+                      const matchesSearch = !foodSearchQuery.trim() || food.name.toLowerCase().includes(foodSearchQuery.toLowerCase());
+                      return matchesRarity && matchesSearch;
+                    })
+                    .map(food => {
+                    const qty = herbsInventory[food.id] || 0;
+                    const expValue = food.expValue;
                     const canFeed1 = qty >= 1;
 
                     return (
                       <div
-                        key={herb.id}
+                        key={food.id}
                         style={{
                           background: qty > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.02)',
                           border: `1px solid ${qty > 0 ? '#10b98155' : 'rgba(255,255,255,0.06)'}`,
@@ -342,14 +400,14 @@ export const MountsTab: React.FC<MountsTabProps> = ({
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                          {herb.iconImage ? (
-                            <img src={herb.iconImage} alt={herb.name} style={{ width: '24px', height: '24px', objectFit: 'contain', flexShrink: 0 }} />
+                          {food.iconImage ? (
+                            <img src={food.iconImage} alt={food.name} style={{ width: '26px', height: '26px', objectFit: 'contain', flexShrink: 0 }} />
                           ) : (
-                            <span style={{ fontSize: '16px' }}>{herb.emoji}</span>
+                            <span style={{ fontSize: '16px' }}>{food.emoji}</span>
                           )}
                           <div style={{ overflow: 'hidden' }}>
-                            <div style={{ fontSize: '11px', fontWeight: 800, color: RARITY_COLORS[herb.rarity] }}>
-                              {herb.name}
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: RARITY_COLORS[food.rarity] }}>
+                              {food.name}
                             </div>
                             <div style={{ fontSize: '9.5px', color: '#86efac', fontWeight: 700 }}>
                               Có: {qty} • +{expValue} EXP
@@ -359,7 +417,7 @@ export const MountsTab: React.FC<MountsTabProps> = ({
 
                         <div style={{ display: 'flex', gap: '3px', flexShrink: 0 }}>
                           <button
-                            onClick={() => onFeedMount && onFeedMount(selectedMount.id, herb.id, 1)}
+                            onClick={() => onFeedMount && onFeedMount(selectedMount.id, food.id, 1)}
                             disabled={!canFeed1}
                             style={{
                               background: canFeed1 ? '#10b98133' : 'transparent',

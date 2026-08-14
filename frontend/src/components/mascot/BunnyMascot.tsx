@@ -18,6 +18,7 @@ import {
   LEVEL_CONFIG,
   ITEM_CONFIG,
   HERB_CONFIG,
+  FOOD_CONFIG,
   MOUNT_CONFIG,
   ACHIEVEMENTS
 } from './constants';
@@ -112,7 +113,20 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [treasureLevels, setTreasureLevels] = useState<Record<number, number>>(() => loadSaved().treasureLevels ?? {});
   const [craftCount, setCraftCount] = useState<number>(() => loadSaved().craftCount ?? 0);
   const [craftFailCount, setCraftFailCount] = useState<number>(() => loadSaved().craftFailCount ?? 0);
-  const [herbsInventory, setHerbsInventory] = useState<Record<HerbId, number>>(() => loadSaved().herbsInventory ?? {});
+  const [herbsInventory, setHerbsInventory] = useState<Record<string, number>>(() => {
+    const saved = loadSaved().herbsInventory ?? {};
+    if (!saved.food_01_pho_bo && !saved.food_09_pizza && !saved.food_33_linh_qua) {
+      return {
+        ...saved,
+        food_01_pho_bo: 10,
+        food_09_pizza: 5,
+        food_17_steak: 3,
+        food_33_linh_qua: 2,
+        food_49_tien_dao: 1
+      };
+    }
+    return saved;
+  });
   const [isCraftingAnim, setIsCraftingAnim] = useState(false);
   const [activeCraftingRecipe, setActiveCraftingRecipe] = useState<CraftingRecipe | null>(null);
   const [craftingResult, setCraftingResult] = useState<{
@@ -352,13 +366,13 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           const itemRoll = Math.random();
           if (itemRoll < 0.35) {
             grantItem('basic', 3);
-            newRewards.push({ type: 'item', name: '3x Tụ Linh Đan', icon: '💊', iconImage: '/items/01_tu_linh_dan.png', rarity: 'common' });
+            newRewards.push({ type: 'item', name: '3x Tụ Linh Đan', icon: '💊', iconImage: '/pills/01_tu_linh_dan.png', rarity: 'common' });
           } else if (itemRoll < 0.60) {
             grantItem('recover', 2);
-            newRewards.push({ type: 'item', name: '2x Hồi Phục Đan', icon: '🍃', iconImage: '/items/02_hoi_phuc_dan.png', rarity: 'uncommon' });
+            newRewards.push({ type: 'item', name: '2x Hồi Phục Đan', icon: '🍃', iconImage: '/pills/04_hoi_khi_dan.png', rarity: 'uncommon' });
           } else if (itemRoll < 0.75) {
             grantItem('great', 1);
-            newRewards.push({ type: 'item', name: '1x Đại Hoàn Đan', icon: '🌸', iconImage: '/items/03_dai_hoan_dan.png', rarity: 'rare' });
+            newRewards.push({ type: 'item', name: '1x Đại Hoàn Đan', icon: '🌸', iconImage: '/pills/24_dai_hoi_khi_dan.png', rarity: 'rare' });
           } else if (itemRoll < 0.85) {
             grantItem('talisman', 1);
             newRewards.push({ type: 'item', name: '1x Hộ Kiếp Phù', icon: '🔱', iconImage: '/items/17_ho_kiep_phu.png', rarity: 'legendary' });
@@ -388,14 +402,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   };
 
   // ─── Mount Nurturing & Leveling ──────────────────────────────────────────────
-  const handleFeedMount = (mountId: string, herbId: HerbId | 'spirit_stone', amount: number) => {
+  const handleFeedMount = (mountId: string, foodId: string, amount: number) => {
     const mount = MOUNT_CONFIG.find(m => m.id === mountId);
     if (!mount || !ownedMounts.includes(mountId)) return;
 
     let expGain = 0;
     let costMsg = '';
 
-    if (herbId === 'spirit_stone') {
+    if (foodId === 'spirit_stone') {
       const cost = 50 * amount;
       if (spiritStones < cost) {
         setBubbleText(`😢 Không đủ Linh Thạch! Cần ${cost} 💎 để nuôi [${mount.name}]!`);
@@ -405,18 +419,18 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       expGain = 25 * amount;
       costMsg = `${cost} 💎 Linh Thạch`;
     } else {
-      const herb = HERB_CONFIG.find(h => h.id === herbId);
-      if (!herb) return;
-      const have = herbsInventory[herbId] || 0;
+      const foodItem = FOOD_CONFIG.find(f => f.id === foodId) || HERB_CONFIG.find(h => h.id === foodId as any);
+      if (!foodItem) return;
+      const have = herbsInventory[foodId as any] || 0;
       if (have < amount) {
-        setBubbleText(`😢 Không đủ [${herb.name}]! Cần ${amount}x!`);
+        setBubbleText(`😢 Không đủ [${foodItem.name}]! Cần ${amount}x!`);
         return;
       }
-      const expPerHerb =
-        herb.rarity === 'supreme' ? 500 : herb.rarity === 'legendary' ? 200 : herb.rarity === 'rare' ? 80 : herb.rarity === 'uncommon' ? 35 : 15;
-      expGain = expPerHerb * amount;
-      costMsg = `${amount}x [${herb.name}]`;
-      setHerbsInventory(prev => ({ ...prev, [herbId]: Math.max(0, (prev[herbId] || 0) - amount) }));
+      const expPerFood = (foodItem as any).expValue || (foodItem.rarity === 'supreme' ? 500 : foodItem.rarity === 'legendary' ? 200 : foodItem.rarity === 'rare' ? 80 : foodItem.rarity === 'uncommon' ? 35 : 15);
+      expGain = expPerFood * amount;
+      costMsg = `${amount}x [${foodItem.name}]`;
+      unlockAchievement('food_feed_1');
+      setHerbsInventory(prev => ({ ...prev, [foodId]: Math.max(0, (prev[foodId] || 0) - amount) }));
     }
 
     const curLvl = mountLevels[mountId] || 1;
@@ -996,23 +1010,16 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       addSpiritStones(10);
 
       const roll = Math.random();
-      let cumulative = 0;
-      let pickedHerb = null;
-
-      for (const herb of HERB_CONFIG) {
-        cumulative += herb.dropChance;
-        if (roll < cumulative) {
-          pickedHerb = herb;
-          break;
-        }
-      }
-
-      if (pickedHerb) {
+      if (roll < 0.55) {
+        const randomFood = FOOD_CONFIG[Math.floor(Math.random() * FOOD_CONFIG.length)];
+        const qty = Math.random() < 0.3 ? 2 : 1;
+        setHerbsInventory(prev => ({ ...prev, [randomFood.id]: (prev[randomFood.id] || 0) + qty }));
+        setBubbleText(`🍲 Bế quan kỳ ngộ! Thu hoạch thức ăn: ${randomFood.emoji} ${randomFood.name} x${qty}! ✨ (+10 💎)`);
+      } else {
+        const pickedHerb = HERB_CONFIG[Math.floor(Math.random() * HERB_CONFIG.length)];
         const qty = Math.random() < 0.2 ? 2 : 1;
         setHerbsInventory(prev => ({ ...prev, [pickedHerb.id]: (prev[pickedHerb.id] || 0) + qty }));
         setBubbleText(`🌿 Bế quan kỳ ngộ! Thu hoạch: ${pickedHerb.emoji} ${pickedHerb.name} x${qty}! ✨ (+10 💎)`);
-      } else {
-        addXP(5, '✨ 1 phút Bế Quan: Hấp thu Linh Khí thiên địa (+5 XP & +10 💎)');
       }
     }, 60_000);
     return () => clearInterval(id);
@@ -1226,11 +1233,12 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         const now = Date.now();
         const elapsed = now - lastPetRewardTime;
         const PET_COOLDOWN_MS = 5 * 60 * 1000;
-
         if (elapsed >= PET_COOLDOWN_MS) {
           setLastPetRewardTime(now);
           addSpiritStones(15);
-          addXP(20, `🥰 Bổn Thỏ nhận quà vuốt ve! (+20 XP & +15 💎)`);
+          const randomFood = FOOD_CONFIG[Math.floor(Math.random() * FOOD_CONFIG.length)];
+          setHerbsInventory(prev => ({ ...prev, [randomFood.id]: (prev[randomFood.id] || 0) + 1 }));
+          addXP(20, `🥰 Vuốt ve Thỏ Tiên! (+20 XP, +15 💎 Linh Thạch & nhận ${randomFood.emoji} ${randomFood.name} x1)`);
         } else {
           const remSec = Math.ceil((PET_COOLDOWN_MS - elapsed) / 1000);
           const min = Math.floor(remSec / 60);
@@ -1370,7 +1378,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           realmPillExpiry={realmPillExpiry}
           reviveBuffExpiry={reviveBuffExpiry}
           voCucBuffExpiry={voCucBuffExpiry}
+          activeMountId={activeMountId}
           onConsumePill={handleConsumePill}
+          onFeedMount={handleFeedMount}
         />
 
         {/* ── Bunny Sprite + Orbiting Cultivation Treasure + Flying Mount ── */}

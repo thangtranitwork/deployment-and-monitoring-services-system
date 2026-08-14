@@ -1,23 +1,29 @@
-# 🚀 Internal Deploy System (IDS) - v2.3.1
+# 🚀 Internal Deploy System (IDS) - v2.3.2
 
-A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 118 achievements, Pill Crafting Alchemy Altar, 10-level Artifact Forge with 3D Bát Quái glowing auras, 10 Xianxia Spirit Mounts, bad luck protection pity breakthrough mechanics, 4-column wide modal layouts, full X/Y screen drag positioning, dynamic motion direction flipping, and bunny petting interactions.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 120 achievements, Pill Crafting Alchemy Altar, 10-level Artifact Forge with 3D Bát Quái glowing auras, 10 Xianxia Spirit Mounts, 64-item Pill Atlas, 64-item Mount Food Atlas, tab search & filter controls, achievement hover popups, and press-and-hold inventory consumption.
 
 ---
 
-## 🌟 What's New in v2.3.1
+## 🌟 What's New in v2.3.2
 
-### 📦 Modular Mascot Architecture & Clean Code
-- **Complete Module Extraction**: Refactored monolithic mascot component (~2,900 lines) into dedicated, clean modular packages under `src/components/mascot/` (`types.ts`, `constants.ts`, `utils.ts`, `components/`, `tabs/`).
-- **Backward Compatibility Layer**: Seamless re-exports for zero breaking changes across other system components.
+### 💊 64-Pill Atlas & 🍱 64-Mount Food Atlas
+- **Dedicated Pill Sprite Atlas (`public/pills/`)**: 64 high-resolution pixel-art icons for all 64 Xianxia cultivation pills (`01_tu_linh_dan.png` .. `64_vo_cuc_hong_mong_tien_de_dan.png`).
+- **Dedicated Mount Food Atlas (`public/foods/`)**: 64 pixel-art icons for mount food items (`01_pho_bo.png` .. `64_vo_cuc_hong_mong_than_yen.png`), covering modern delicacies, desserts, celestial fruits, and divine feasts.
 
-### 🎨 64-Item Xianxia RPG Atlases & Pixel Art Assets
-- **64 Xianxia RPG Item Icons**: 1024×1024 pixel-art sprite atlas containing an 8×8 grid of 128×128 pixel transparent icons for cultivation pills, talismans, spiritual minerals, alchemy ingredients, spiritual equipment, celestial fruits, and rare heavenly treasures (`frontend/public/items/`).
-- **64 Xianxia Cultivation Materials Atlas**: 1024×1024 pixel-art sprite atlas containing an 8×8 grid of 128×128 pixel transparent icons for herbs, roots, woods, minerals, and divine essences (`frontend/public/materials/`).
-- **Enhanced Forging & Alchemy UI**: Live preview of crafted pills, materials, and forging boosters with pixel-art graphics and custom drop shadows.
+### 🐴 Mount Feeding & AFK Drops System
+- **Mount Leveling**: Feed dishes to Spirit Mounts to level them up for +5% XP/level bonuses.
+- **AFK / Treo Máy Drops**: Idling, petting Thỏ, and deploying microservices reward food items alongside spirit stones and herbs.
+- **Phường Thị Trading**: Buy and sell all 64 food items in the Tu Chân Market.
 
-### ⚡ Per-Attempt Forge Boosters & Failure Protection
-- **Thần Luyện Phù**: Consumes 1 per forge attempt to increase success rate by +20%.
-- **Bổ Thiên Thạch**: Consumes 1 per forge attempt to increase success rate by +35% with 50% Spirit Stone refund on failure.
+### 🔍 Tab Search & Category Filters
+- Integrated search inputs `🔍` and category/rarity filter buttons across **Phường Thị (Market)**, **Linh Thú (Mounts)**, **Luyện Đan (Crafting)**, and **Thành Tựu (Achievements)**.
+
+### 🏆 Achievement Hover Glassmorphic Popups
+- Hovering over any achievement item pops up a floating glassmorphic tooltip showing full title, category badge, status indicator, secret hints, and reward details.
+
+### 🎒 Inventory Direct Click & Press-Hold Action
+- **Direct Icon Action**: Click or press & hold on item icons in the Inventory Panel to rapidly consume pills or feed mounts continuously (90ms interval).
+- **Dedicated Food Grid**: Added a 64-item Food storage section in the Inventory Panel with live EXP gain previews.
 
 ---
 
