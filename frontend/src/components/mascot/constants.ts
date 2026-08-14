@@ -33,31 +33,50 @@ export const RARITY_COLORS: Record<string, string> = {
 };
 
 export const ITEM_CONFIG: ItemConfig[] = [
-  { id: 'basic', name: 'Tụ Linh Đan', emoji: '💊', iconImage: '/items/01_tu_linh_dan.png', xpValue: 8, maxStack: 999, rarity: 'common', description: '+8 Linh Lực • Nhận: tỉ lệ may mắn khi treo máy, kéo thả Thỏ' },
-  { id: 'recover', name: 'Hồi Phục Đan', emoji: '🍃', iconImage: '/items/02_hoi_phuc_dan.png', xpValue: 20, maxStack: 999, rarity: 'uncommon', description: '+20 Linh Lực • Nhận: deploy thành công, Lò Bát Quái' },
-  { id: 'great', name: 'Đại Hoàn Đan', emoji: '🌸', iconImage: '/items/03_dai_hoan_dan.png', xpValue: 50, maxStack: 999, rarity: 'rare', description: '+50 Linh Lực • Nhận: Độ Kiếp thành công, Lò Bát Quái' },
-  { id: 'talisman', name: 'Hộ Kiếp Phù', emoji: '🔱', iconImage: '/items/17_ho_kiep_phu.png', xpValue: 0, maxStack: 99, rarity: 'legendary', isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, description: '+25% tỉ lệ Độ Kiếp trong 5 phút • Luyện từ Lò Bát Quái' },
-  { id: 'revive', name: 'Cửu Chuyển Hoàn Hồn Đan', emoji: '🔮', iconImage: '/items/04_cuu_chuyen_hoan_hon_dan.png', xpValue: 100, maxStack: 99, rarity: 'supreme', isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.35, description: '+35% Tỉ lệ Độ Kiếp & Bảo hộ 100% không tổn hại XP khi thất bại (10 phút) • Luyện từ Lò Bát Quái' },
-  { id: 'forge_talisman', name: 'Thần Luyện Phù', emoji: '📜', iconImage: '/items/18_than_luyen_phu.png', xpValue: 0, maxStack: 99, rarity: 'legendary', isForgeBooster: true, forgeSuccessBonus: 0.20, description: '+20% Tỉ lệ rèn Pháp Bảo / lần rèn • Luyện từ Lò Bát Quái, Gacha hoặc Thành Tựu' },
-  { id: 'sky_stone', name: 'Bổ Thiên Thần Thạch', emoji: '💠', iconImage: '/items/25_bo_thien_thach.png', xpValue: 0, maxStack: 99, rarity: 'supreme', isForgeBooster: true, forgeSuccessBonus: 0.35, refundOnFailRatio: 0.50, description: '+35% Tỉ lệ rèn Pháp Bảo / lần rèn & Hoàn 50% Linh Thạch nếu xịt • Luyện từ Lò Bát Quái' }
+  // ─── Nhóm Đan Dược Tăng Tu Vi (XP) ─────────────────────────────────────────
+  { id: 'basic', name: 'Tụ Linh Đan', emoji: '💊', iconImage: '/items/01_tu_linh_dan.png', xpValue: 8, maxStack: 999, rarity: 'common', category: 'xp', buyPrice: 15, sellPrice: 6, description: '+8 Linh Lực (XP) • Nhận: tỉ lệ may mắn khi treo máy, kéo thả Thỏ, Lò Luyện Đan' },
+  { id: 'recover', name: 'Hồi Phục Đan', emoji: '🍃', iconImage: '/items/02_hoi_phuc_dan.png', xpValue: 20, maxStack: 999, rarity: 'uncommon', category: 'xp', buyPrice: 40, sellPrice: 16, description: '+20 Linh Lực (XP) • Nhận: deploy thành công, Lò Luyện Đan Bát Quái' },
+  { id: 'great', name: 'Đại Hoàn Đan', emoji: '🌸', iconImage: '/items/03_dai_hoan_dan.png', xpValue: 50, maxStack: 999, rarity: 'rare', category: 'xp', buyPrice: 90, sellPrice: 36, description: '+50 Linh Lực (XP) • Nhận: Độ Kiếp thành công, Lò Luyện Đan Bát Quái' },
+
+  // ─── Nhóm Đan Dược Đột Phá Cảnh Giới ──────────────────────────────────────
+  { id: 'pill_truc_co', name: 'Trúc Cơ Đan', emoji: '🌱', iconImage: '/items/05_truc_co_dan.png', xpValue: 20, maxStack: 99, rarity: 'uncommon', category: 'breakthrough', targetRealmIndex: 1, breakthroughBonus: 0.30, isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.30, buyPrice: 120, sellPrice: 45, description: '+30% Tỉ lệ Đột phá Trúc Cơ & +20 XP • Dành cho đệ tử Luyện Khí viên mãn' },
+  { id: 'pill_kim_dan', name: 'Kim Đan', emoji: '🟡', iconImage: '/items/06_kim_dan.png', xpValue: 40, maxStack: 99, rarity: 'rare', category: 'breakthrough', targetRealmIndex: 2, breakthroughBonus: 0.25, isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, buyPrice: 260, sellPrice: 95, description: '+25% Tỉ lệ Ngưng Kết Kim Đan & +40 XP • Hấp thụ tinh hoa thiên địa' },
+  { id: 'pill_nguyen_anh', name: 'Nguyên Anh Đan', emoji: '👶', iconImage: '/items/07_nguyen_anh_dan.png', xpValue: 70, maxStack: 99, rarity: 'rare', category: 'breakthrough', targetRealmIndex: 3, breakthroughBonus: 0.25, isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, buyPrice: 480, sellPrice: 180, description: '+25% Tỉ lệ Hóa Sinh Nguyên Anh & +70 XP • Phá xác thành anh' },
+  { id: 'pill_hoa_than', name: 'Hóa Thần Đan', emoji: '🟣', iconImage: '/items/08_hoa_than_dan.png', xpValue: 120, maxStack: 99, rarity: 'legendary', category: 'breakthrough', targetRealmIndex: 4, breakthroughBonus: 0.20, isBuff: true, buffDurationMs: 6 * 60 * 1000, buffSuccessBonus: 0.20, buyPrice: 850, sellPrice: 320, description: '+20% Tỉ lệ Đột phá Hóa Thần Thần Thông & +120 XP • Thần thức thông thiên triệt địa' },
+  { id: 'pill_luyen_hu', name: 'Luyện Hư Đan', emoji: '🌌', iconImage: '/items/09_luyen_hu_dan.png', xpValue: 180, maxStack: 99, rarity: 'legendary', category: 'breakthrough', targetRealmIndex: 5, breakthroughBonus: 0.20, isBuff: true, buffDurationMs: 6 * 60 * 1000, buffSuccessBonus: 0.20, buyPrice: 1300, sellPrice: 500, description: '+20% Tỉ lệ Đột phá Luyện Hư Cảnh & +180 XP • Hòa nhập hư không thiên đạo' },
+  { id: 'pill_do_kiep', name: 'Độ Kiếp Đan', emoji: '⚡', iconImage: '/items/12_do_kiep_dan.png', xpValue: 300, maxStack: 99, rarity: 'supreme', category: 'breakthrough', targetRealmIndex: 8, breakthroughBonus: 0.25, isBuff: true, buffDurationMs: 8 * 60 * 1000, buffSuccessBonus: 0.25, buyPrice: 2800, sellPrice: 1100, description: '+25% Tỉ lệ Vượt Qua Cửu Trọng Lôi Kiếp & +300 XP • Hộ thân kháng lôi kiếp' },
+  { id: 'pill_chan_tien', name: 'Chân Tiên Đan', emoji: '✨', iconImage: '/items/13_chan_tien_dan.png', xpValue: 450, maxStack: 99, rarity: 'supreme', category: 'breakthrough', targetRealmIndex: 9, breakthroughBonus: 0.18, isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.18, buyPrice: 4000, sellPrice: 1600, description: '+18% Tỉ lệ Đột phá Tiên Nhân Cảnh & +450 XP • Thoát thai hoán cốt thành tiên' },
+  { id: 'pill_thai_at', name: 'Thái Ất Kim Đan', emoji: '👑', iconImage: '/items/16_thai_at_kim_dan.png', xpValue: 800, maxStack: 99, rarity: 'supreme', category: 'breakthrough', targetRealmIndex: 12, breakthroughBonus: 0.20, isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.20, buyPrice: 7500, sellPrice: 3000, description: 'Chí Tôn Đan Dược: +20% Đột phá Tiên Tôn/Tiên Đế & +800 XP • Cực phẩm tam giới' },
+
+  // ─── Nhóm Đan Dược Buff Đặc Biệt & Hộ Mệnh ───────────────────────────────
+  { id: 'pill_ngo_dao', name: 'Ngộ Đạo Đan', emoji: '🧘', iconImage: '/items/50_ngo_dao_dan.png', xpValue: 30, maxStack: 99, rarity: 'rare', category: 'buff', isBuff: true, buffDurationMs: 15 * 60 * 1000, expMultiplier: 2.0, buyPrice: 450, sellPrice: 170, description: 'x2 Tốc độ nhận Linh Lực (XP) khi treo máy & click Thỏ trong 15 phút' },
+  { id: 'pill_thien_dao', name: 'Thiên Đạo Đan', emoji: '🌟', iconImage: '/items/51_thien_dao_dan.png', xpValue: 50, maxStack: 99, rarity: 'legendary', category: 'buff', isBuff: true, buffDurationMs: 15 * 60 * 1000, dropRateMultiplier: 1.5, buyPrice: 850, sellPrice: 330, description: '+50% Tỉ lệ may mắn rơi Thảo Dược & Quặng Hiếm trong 15 phút' },
+  { id: 'pill_vo_cuc', name: 'Vô Cực Đan', emoji: '☯️', iconImage: '/items/52_vo_cuc_dan.png', xpValue: 100, maxStack: 99, rarity: 'supreme', category: 'buff', isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.20, forgeSuccessBonus: 0.20, buyPrice: 1800, sellPrice: 700, description: 'Âm Dương Hỗ Trợ: +20% Tỉ lệ Độ Kiếp & +20% Tỉ lệ Rèn Pháp Bảo trong 10 phút' },
+  { id: 'talisman', name: 'Hộ Kiếp Phù', emoji: '🔱', iconImage: '/items/17_ho_kiep_phu.png', xpValue: 0, maxStack: 99, rarity: 'legendary', category: 'breakthrough', isBuff: true, buffDurationMs: 5 * 60 * 1000, buffSuccessBonus: 0.25, buyPrice: 600, sellPrice: 240, description: '+25% Tỉ lệ Độ Kiếp trong 5 phút • Luyện từ Lò Bát Quái' },
+  { id: 'revive', name: 'Cửu Chuyển Hoàn Hồn Đan', emoji: '🔮', iconImage: '/items/04_cuu_chuyen_hoan_hon_dan.png', xpValue: 100, maxStack: 99, rarity: 'supreme', category: 'breakthrough', isBuff: true, buffDurationMs: 10 * 60 * 1000, buffSuccessBonus: 0.35, buyPrice: 1500, sellPrice: 600, description: '+35% Tỉ lệ Độ Kiếp & Bảo hộ 100% không tổn hại XP khi thất bại (10 phút)' },
+
+  // ─── Nhóm Phụ Trợ Rèn Pháp Bảo ───────────────────────────────────────────
+  { id: 'forge_talisman', name: 'Thần Luyện Phù', emoji: '📜', iconImage: '/items/18_than_luyen_phu.png', xpValue: 0, maxStack: 99, rarity: 'legendary', category: 'forge', isForgeBooster: true, forgeSuccessBonus: 0.20, buyPrice: 400, sellPrice: 150, description: '+20% Tỉ lệ rèn Pháp Bảo / lần rèn • Luyện từ Lò Bát Quái, Gacha hoặc Phường Thị' },
+  { id: 'sky_stone', name: 'Bổ Thiên Thần Thạch', emoji: '💠', iconImage: '/items/25_bo_thien_thach.png', xpValue: 0, maxStack: 99, rarity: 'supreme', category: 'forge', isForgeBooster: true, forgeSuccessBonus: 0.35, refundOnFailRatio: 0.50, buyPrice: 1200, sellPrice: 480, description: '+35% Tỉ lệ rèn Pháp Bảo / lần rèn & Hoàn 50% Linh Thạch nếu xịt' }
 ];
 
 export const HERB_CONFIG: HerbConfig[] = [
-  { id: 'herb_lingzhi',        name: 'Linh Tuyền Thảo',      emoji: '🌿', iconImage: '/materials/01_linh_tuyen_thao.png',       rarity: 'common',    dropChance: 0.12,  description: 'Thảo dược ven bờ linh tuyền hấp thụ khí cơ (Tỉ lệ rớt 12%/phút)' },
-  { id: 'herb_ginseng',        name: 'Bách Niên Nhân Sâm',  emoji: '🪵', iconImage: '/materials/02_bach_nien_nhan_sam.png',     rarity: 'common',    dropChance: 0.10,  description: 'Nhân sâm trăm tuổi hút linh khí đất trời (Tỉ lệ rớt 10%/phút)' },
-  { id: 'mineral_iron',        name: 'Huyền Thiết Quặng',    emoji: '🪨', iconImage: '/materials/29_huyen_thiet_quang.png',     rarity: 'common',    dropChance: 0.09,  description: 'Quặng sắt linh khí chứa hắc kim cổ xưa (Tỉ lệ rớt 9%/phút)' },
-  { id: 'herb_lotus',          name: 'Cửu Phẩm Băng Liên',   emoji: '🪷', iconImage: '/materials/47_cuu_pham_bang_lien.png',    rarity: 'uncommon',  dropChance: 0.07,  description: 'Băng liên sen tuyết ngàn năm trên đỉnh tuyết sơn (Tỉ lệ rớt 7%/phút)' },
-  { id: 'herb_fire_fruit',     name: 'Xích Diệm Hỏa Quả',   emoji: '🍎', iconImage: '/materials/19_xich_diem_hoa_qua.png',      rarity: 'uncommon',  dropChance: 0.06,  description: 'Hỏa quả ngưng tụ từ cực dương hỏa (Tỉ lệ rớt 6%/phút)' },
-  { id: 'mineral_crystal',     name: 'Thạch Anh Linh Tinh',  emoji: '💎', iconImage: '/materials/07_thach_anh_linh_tinh.png',   rarity: 'uncommon',  dropChance: 0.05,  description: 'Tinh thể ngọc bích phát sáng linh quang (Tỉ lệ rớt 5%/phút)' },
-  { id: 'herb_bamboo',         name: 'Ninh Sương Trúc Chồi', emoji: '🎍', iconImage: '/materials/03_ninh_suong_truc_choi.png',  rarity: 'rare',      dropChance: 0.035, description: 'Trúc tiên đọng sương mai lúc rạng đông (Tỉ lệ rớt 3.5%/phút)' },
-  { id: 'herb_dragon_grass',   name: 'Long Kế Thảo',        emoji: '🐉', iconImage: '/materials/13_long_ke_thao.png',           rarity: 'rare',      dropChance: 0.025, description: 'Cỏ thiêng thấm huyết mạch linh long (Tỉ lệ rớt 2.5%/phút)' },
-  { id: 'mineral_gold',        name: 'Thái Cổ Kim Tinh',    emoji: '🌟', iconImage: '/materials/30_thai_co_kim_tinh.png',       rarity: 'rare',      dropChance: 0.02,  description: 'Tinh quặng vàng Thái Cổ chói lọi (Tỉ lệ rớt 2%/phút)' },
-  { id: 'herb_phoenix_flower', name: 'Phượng Hoàng Hỏa Hoa', emoji: '🌺', iconImage: '/materials/28_phuong_hoang_hoa_hoa.png',  rarity: 'legendary', dropChance: 0.01,  description: 'Hoa lửa thần phượng tắm từ biển lửa (Tỉ lệ rớt 1%/phút)' },
-  { id: 'mineral_star_stone',  name: 'Cửu Thiên Tinh Thạch', emoji: '🌌', iconImage: '/materials/32_cuu_thien_tinh_thach.png',   rarity: 'legendary', dropChance: 0.007, description: 'Đá thiên thạch rơi từ cửu trùng thiên (Tỉ lệ rớt 0.7%/phút)' },
-  { id: 'herb_immortal_root',  name: 'Hỗn Nguyên Thần Căn',  emoji: '👑', iconImage: '/materials/48_hon_nguyen_than_can.png',   rarity: 'supreme',   dropChance: 0.003, description: 'Rễ cây thần Thái Cổ thuở khai thiên lập địa (Tỉ lệ rớt 0.3%/phút)' }
+  { id: 'herb_lingzhi',        name: 'Linh Tuyền Thảo',      emoji: '🌿', iconImage: '/materials/01_linh_tuyen_thao.png',       rarity: 'common',    dropChance: 0.12,  buyPrice: 20,   sellPrice: 8,   description: 'Thảo dược ven bờ linh tuyền hấp thụ khí cơ (Tỉ lệ rớt 12%/phút)' },
+  { id: 'herb_ginseng',        name: 'Bách Niên Nhân Sâm',  emoji: '🪵', iconImage: '/materials/02_bach_nien_nhan_sam.png',     rarity: 'common',    dropChance: 0.10,  buyPrice: 25,   sellPrice: 10,  description: 'Nhân sâm trăm tuổi hút linh khí đất trời (Tỉ lệ rớt 10%/phút)' },
+  { id: 'mineral_iron',        name: 'Huyền Thiết Quặng',    emoji: '🪨', iconImage: '/materials/29_huyen_thiet_quang.png',     rarity: 'common',    dropChance: 0.09,  buyPrice: 30,   sellPrice: 12,  description: 'Quặng sắt linh khí chứa hắc kim cổ xưa (Tỉ lệ rớt 9%/phút)' },
+  { id: 'herb_lotus',          name: 'Cửu Phẩm Băng Liên',   emoji: '🪷', iconImage: '/materials/47_cuu_pham_bang_lien.png',    rarity: 'uncommon',  dropChance: 0.07,  buyPrice: 65,   sellPrice: 26,  description: 'Băng liên sen tuyết ngàn năm trên đỉnh tuyết sơn (Tỉ lệ rớt 7%/phút)' },
+  { id: 'herb_fire_fruit',     name: 'Xích Diệm Hỏa Quả',   emoji: '🍎', iconImage: '/materials/19_xich_diem_hoa_qua.png',      rarity: 'uncommon',  dropChance: 0.06,  buyPrice: 75,   sellPrice: 30,  description: 'Hỏa quả ngưng tụ từ cực dương hỏa (Tỉ lệ rớt 6%/phút)' },
+  { id: 'mineral_crystal',     name: 'Thạch Anh Linh Tinh',  emoji: '💎', iconImage: '/materials/07_thach_anh_linh_tinh.png',   rarity: 'uncommon',  dropChance: 0.05,  buyPrice: 90,   sellPrice: 36,  description: 'Tinh thể ngọc bích phát sáng linh quang (Tỉ lệ rớt 5%/phút)' },
+  { id: 'herb_bamboo',         name: 'Ninh Sương Trúc Chồi', emoji: '🎍', iconImage: '/materials/03_ninh_suong_truc_choi.png',  rarity: 'rare',      dropChance: 0.035, buyPrice: 180,  sellPrice: 70,  description: 'Trúc tiên đọng sương mai lúc rạng đông (Tỉ lệ rớt 3.5%/phút)' },
+  { id: 'herb_dragon_grass',   name: 'Long Kế Thảo',        emoji: '🐉', iconImage: '/materials/13_long_ke_thao.png',           rarity: 'rare',      dropChance: 0.025, buyPrice: 240,  sellPrice: 95,  description: 'Cỏ thiêng thấm huyết mạch linh long (Tỉ lệ rớt 2.5%/phút)' },
+  { id: 'mineral_gold',        name: 'Thái Cổ Kim Tinh',    emoji: '🌟', iconImage: '/materials/30_thai_co_kim_tinh.png',       rarity: 'rare',      dropChance: 0.02,  buyPrice: 320,  sellPrice: 125, description: 'Tinh quặng vàng Thái Cổ chói lọi (Tỉ lệ rớt 2%/phút)' },
+  { id: 'herb_phoenix_flower', name: 'Phượng Hoàng Hỏa Hoa', emoji: '🌺', iconImage: '/materials/28_phuong_hoang_hoa_hoa.png',  rarity: 'legendary', dropChance: 0.01,  buyPrice: 700,  sellPrice: 280, description: 'Hoa lửa thần phượng tắm từ biển lửa (Tỉ lệ rớt 1%/phút)' },
+  { id: 'mineral_star_stone',  name: 'Cửu Thiên Tinh Thạch', emoji: '🌌', iconImage: '/materials/32_cuu_thien_tinh_thach.png',   rarity: 'legendary', dropChance: 0.007, buyPrice: 1000, sellPrice: 400, description: 'Đá thiên thạch rơi từ cửu trùng thiên (Tỉ lệ rớt 0.7%/phút)' },
+  { id: 'herb_immortal_root',  name: 'Hỗn Nguyên Thần Căn',  emoji: '👑', iconImage: '/materials/48_hon_nguyen_than_can.png',   rarity: 'supreme',   dropChance: 0.003, buyPrice: 2400, sellPrice: 950, description: 'Rễ cây thần Thái Cổ thuở khai thiên lập địa (Tỉ lệ rớt 0.3%/phút)' }
 ];
 
 export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  // ─── Công thức Tăng Tu Vi ────────────────────────────────────────────────
   {
     id: 'craft_basic',
     name: 'Luyện Tụ Linh Đan',
@@ -65,6 +84,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/01_tu_linh_dan.png',
     resultItemId: 'basic',
     resultAmount: 2,
+    category: 'xp',
     ingredients: [{ id: 'herb_lingzhi', amount: 2 }, { id: 'herb_ginseng', amount: 1 }],
     spiritStonesCost: 10,
     successRate: 0.98,
@@ -78,6 +98,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/02_hoi_phuc_dan.png',
     resultItemId: 'recover',
     resultAmount: 2,
+    category: 'xp',
     ingredients: [{ id: 'herb_lotus', amount: 2 }, { id: 'herb_fire_fruit', amount: 2 }, { id: 'mineral_iron', amount: 1 }],
     spiritStonesCost: 25,
     successRate: 0.90,
@@ -91,11 +112,142 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/03_dai_hoan_dan.png',
     resultItemId: 'great',
     resultAmount: 1,
+    category: 'xp',
     ingredients: [{ id: 'herb_dragon_grass', amount: 2 }, { id: 'herb_bamboo', amount: 2 }, { id: 'mineral_gold', amount: 1 }],
     spiritStonesCost: 50,
     successRate: 0.85,
     description: 'Chế tạo 1x Đại Hoàn Đan (+50 XP) từ 2x Long Kế Thảo + 2x Ninh Sương Trúc Chồi + 1x Thái Cổ Kim Tinh & 50 Linh Thạch (Thành công 85%).',
     rarity: 'rare'
+  },
+
+  // ─── Công thức Đột Phá Cảnh Giới ─────────────────────────────────────────
+  {
+    id: 'craft_pill_truc_co',
+    name: 'Luyện Trúc Cơ Đan',
+    emoji: '🌱',
+    iconImage: '/items/05_truc_co_dan.png',
+    resultItemId: 'pill_truc_co',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_lingzhi', amount: 3 }, { id: 'herb_ginseng', amount: 2 }, { id: 'mineral_crystal', amount: 1 }],
+    spiritStonesCost: 40,
+    successRate: 0.92,
+    description: 'Luyện Trúc Cơ Đan (+30% Đột phá Trúc Cơ) từ 3x Linh Tuyền Thảo + 2x Bách Niên Nhân Sâm + 1x Thạch Anh Linh Tinh & 40 Linh Thạch.',
+    rarity: 'uncommon'
+  },
+  {
+    id: 'craft_pill_kim_dan',
+    name: 'Luyện Kim Đan',
+    emoji: '🟡',
+    iconImage: '/items/06_kim_dan.png',
+    resultItemId: 'pill_kim_dan',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_bamboo', amount: 2 }, { id: 'mineral_gold', amount: 2 }, { id: 'herb_fire_fruit', amount: 2 }],
+    spiritStonesCost: 80,
+    successRate: 0.85,
+    description: 'Luyện Kim Đan (+25% Đột phá Kim Đan) từ 2x Ninh Sương Trúc Chồi + 2x Thái Cổ Kim Tinh + 2x Xích Diệm Hỏa Quả & 80 Linh Thạch.',
+    rarity: 'rare'
+  },
+  {
+    id: 'craft_pill_nguyen_anh',
+    name: 'Luyện Nguyên Anh Đan',
+    emoji: '👶',
+    iconImage: '/items/07_nguyen_anh_dan.png',
+    resultItemId: 'pill_nguyen_anh',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_dragon_grass', amount: 3 }, { id: 'herb_lotus', amount: 3 }, { id: 'mineral_gold', amount: 2 }],
+    spiritStonesCost: 150,
+    successRate: 0.80,
+    description: 'Luyện Nguyên Anh Đan (+25% Đột phá Nguyên Anh) từ 3x Long Kế Thảo + 3x Cửu Phẩm Băng Liên + 2x Thái Cổ Kim Tinh & 150 Linh Thạch.',
+    rarity: 'rare'
+  },
+  {
+    id: 'craft_pill_hoa_than',
+    name: 'Luyện Hóa Thần Đan',
+    emoji: '🟣',
+    iconImage: '/items/08_hoa_than_dan.png',
+    resultItemId: 'pill_hoa_than',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'mineral_star_stone', amount: 2 }, { id: 'herb_dragon_grass', amount: 2 }],
+    spiritStonesCost: 300,
+    successRate: 0.75,
+    description: 'Luyện Hóa Thần Đan (+20% Đột phá Hóa Thần) từ 2x Phượng Hoàng Hỏa Hoa + 2x Cửu Thiên Tinh Thạch + 2x Long Kế Thảo & 300 Linh Thạch.',
+    rarity: 'legendary'
+  },
+  {
+    id: 'craft_pill_do_kiep',
+    name: 'Luyện Độ Kiếp Đan',
+    emoji: '⚡',
+    iconImage: '/items/12_do_kiep_dan.png',
+    resultItemId: 'pill_do_kiep',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'mineral_star_stone', amount: 3 }, { id: 'herb_phoenix_flower', amount: 3 }],
+    spiritStonesCost: 600,
+    successRate: 0.70,
+    description: 'Luyện Độ Kiếp Đan (+25% Vượt Lôi Kiếp) từ 2x Hỗn Nguyên Thần Căn + 3x Cửu Thiên Tinh Thạch + 3x Phượng Hoàng Hỏa Hoa & 600 Linh Thạch.',
+    rarity: 'supreme'
+  },
+  {
+    id: 'craft_pill_chan_tien',
+    name: 'Luyện Chân Tiên Đan',
+    emoji: '✨',
+    iconImage: '/items/13_chan_tien_dan.png',
+    resultItemId: 'pill_chan_tien',
+    resultAmount: 1,
+    category: 'breakthrough',
+    ingredients: [{ id: 'herb_immortal_root', amount: 3 }, { id: 'mineral_star_stone', amount: 4 }, { id: 'herb_lotus', amount: 5 }],
+    spiritStonesCost: 1000,
+    successRate: 0.65,
+    description: 'Chí Bảo Tiên Giới: Luyện Chân Tiên Đan (+18% Đột phá Tiên Nhân) từ 3x Hỗn Nguyên Thần Căn + 4x Cửu Thiên Tinh Thạch + 5x Băng Liên & 1000 Linh Thạch.',
+    rarity: 'supreme'
+  },
+
+  // ─── Công thức Đạo Cảnh Buff & Phụ Trợ ──────────────────────────────────
+  {
+    id: 'craft_pill_ngo_dao',
+    name: 'Luyện Ngộ Đạo Đan',
+    emoji: '🧘',
+    iconImage: '/items/50_ngo_dao_dan.png',
+    resultItemId: 'pill_ngo_dao',
+    resultAmount: 1,
+    category: 'buff',
+    ingredients: [{ id: 'herb_bamboo', amount: 3 }, { id: 'herb_ginseng', amount: 3 }, { id: 'mineral_crystal', amount: 2 }],
+    spiritStonesCost: 120,
+    successRate: 0.85,
+    description: 'Luyện Ngộ Đạo Đan (x2 XP trong 15 phút) từ 3x Ninh Sương Trúc Chồi + 3x Bách Niên Nhân Sâm + 2x Thạch Anh Linh Tinh & 120 Linh Thạch.',
+    rarity: 'rare'
+  },
+  {
+    id: 'craft_pill_thien_dao',
+    name: 'Luyện Thiên Đạo Đan',
+    emoji: '🌟',
+    iconImage: '/items/51_thien_dao_dan.png',
+    resultItemId: 'pill_thien_dao',
+    resultAmount: 1,
+    category: 'buff',
+    ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'herb_dragon_grass', amount: 3 }, { id: 'mineral_gold', amount: 2 }],
+    spiritStonesCost: 250,
+    successRate: 0.80,
+    description: 'Luyện Thiên Đạo Đan (+50% May mắn rơi nguyên liệu hiếm trong 15 phút) từ 2x Phượng Hoàng Hỏa Hoa + 3x Long Kế Thảo + 2x Thái Cổ Kim Tinh & 250 Linh Thạch.',
+    rarity: 'legendary'
+  },
+  {
+    id: 'craft_pill_vo_cuc',
+    name: 'Luyện Vô Cực Đan',
+    emoji: '☯️',
+    iconImage: '/items/52_vo_cuc_dan.png',
+    resultItemId: 'pill_vo_cuc',
+    resultAmount: 1,
+    category: 'buff',
+    ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'herb_lotus', amount: 4 }, { id: 'mineral_gold', amount: 3 }],
+    spiritStonesCost: 450,
+    successRate: 0.75,
+    description: 'Luyện Vô Cực Đan (+20% Đột Phá & +20% Rèn Pháp Bảo trong 10 phút) từ 2x Hỗn Nguyên Thần Căn + 4x Băng Liên + 3x Thái Cổ Kim Tinh & 450 Linh Thạch.',
+    rarity: 'supreme'
   },
   {
     id: 'craft_talisman',
@@ -104,6 +256,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/17_ho_kiep_phu.png',
     resultItemId: 'talisman',
     resultAmount: 1,
+    category: 'breakthrough',
     ingredients: [{ id: 'herb_phoenix_flower', amount: 2 }, { id: 'mineral_star_stone', amount: 1 }],
     spiritStonesCost: 100,
     successRate: 0.75,
@@ -117,6 +270,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/04_cuu_chuyen_hoan_hon_dan.png',
     resultItemId: 'revive',
     resultAmount: 1,
+    category: 'breakthrough',
     ingredients: [{ id: 'herb_immortal_root', amount: 2 }, { id: 'mineral_star_stone', amount: 2 }, { id: 'herb_phoenix_flower', amount: 2 }],
     spiritStonesCost: 200,
     successRate: 0.65,
@@ -130,6 +284,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/18_than_luyen_phu.png',
     resultItemId: 'forge_talisman',
     resultAmount: 1,
+    category: 'forge',
     ingredients: [{ id: 'mineral_iron', amount: 2 }, { id: 'mineral_crystal', amount: 2 }, { id: 'mineral_gold', amount: 1 }],
     spiritStonesCost: 75,
     successRate: 0.80,
@@ -143,6 +298,7 @@ export const CRAFTING_RECIPES: CraftingRecipe[] = [
     iconImage: '/items/25_bo_thien_thach.png',
     resultItemId: 'sky_stone',
     resultAmount: 1,
+    category: 'forge',
     ingredients: [{ id: 'mineral_star_stone', amount: 2 }, { id: 'herb_immortal_root', amount: 1 }, { id: 'mineral_gold', amount: 2 }],
     spiritStonesCost: 150,
     successRate: 0.70,

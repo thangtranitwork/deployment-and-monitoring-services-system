@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Moon, X, Crown, Zap, Trophy, Sparkles, Compass } from 'lucide-react';
+import { Moon, X, Crown, Zap, Trophy, Sparkles, Compass, ShoppingBag } from 'lucide-react';
 import {
   BunnyMascotProps,
   BunnyState,
@@ -41,6 +41,7 @@ import { AchievementToast } from './components/AchievementToast';
 import { SkinsTab } from './tabs/SkinsTab';
 import { TreasuresTab } from './tabs/TreasuresTab';
 import { CraftingTab } from './tabs/CraftingTab';
+import { MarketTab } from './tabs/MarketTab';
 import { MountsTab } from './tabs/MountsTab';
 import { AchievementsTab } from './tabs/AchievementsTab';
 
@@ -131,7 +132,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   // UI State
   const [isLevelUpAnim, setIsLevelUpAnim] = useState(false);
   const [showCostumePicker, setShowCostumePicker] = useState(false);
-  const [modalTab, setModalTab] = useState<'skins' | 'treasures' | 'mounts' | 'crafting' | 'achievements'>('skins');
+  const [modalTab, setModalTab] = useState<'skins' | 'treasures' | 'crafting' | 'market' | 'mounts' | 'achievements'>('skins');
   const [recentAchievementToast, setRecentAchievementToast] = useState<Achievement | null>(null);
   const [showInventory, setShowInventory] = useState(false);
   const [state, setState] = useState<BunnyState>('idle');
@@ -696,24 +697,78 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     });
   };
 
+  // ─── Market Handlers ────────────────────────────────────────────────────────
+  const handleBuyMaterial = (herbId: HerbId, amount: number) => {
+    const herb = HERB_CONFIG.find(h => h.id === herbId);
+    if (!herb) return;
+    const totalCost = herb.buyPrice * amount;
+    if (spiritStones < totalCost) {
+      setBubbleText(`😢 Không đủ Linh Thạch! Cần ${totalCost} 💎 để mua ${amount}x ${herb.name}!`);
+      return;
+    }
+    setSpiritStones(s => s - totalCost);
+    setHerbsInventory(prev => ({ ...prev, [herbId]: (prev[herbId] || 0) + amount }));
+    setBubbleText(`🛒 Đã mua thành công ${amount}x [${herb.name}] với ${totalCost} 💎!`);
+  };
+
+  const handleSellMaterial = (herbId: HerbId, amount: number) => {
+    const herb = HERB_CONFIG.find(h => h.id === herbId);
+    if (!herb) return;
+    const curQty = herbsInventory[herbId] || 0;
+    const sellAmount = Math.min(curQty, amount);
+    if (sellAmount <= 0) return;
+    const totalEarn = herb.sellPrice * sellAmount;
+    setHerbsInventory(prev => ({ ...prev, [herbId]: Math.max(0, (prev[herbId] || 0) - sellAmount) }));
+    setSpiritStones(s => s + totalEarn);
+    setBubbleText(`💰 Đã bán ${sellAmount}x [${herb.name}], thu về +${totalEarn} 💎 Linh Thạch!`);
+  };
+
+  const handleBuyItem = (itemId: ItemId, amount: number) => {
+    const item = ITEM_CONFIG.find(i => i.id === itemId);
+    if (!item || !item.buyPrice) return;
+    const totalCost = item.buyPrice * amount;
+    if (spiritStones < totalCost) {
+      setBubbleText(`😢 Không đủ Linh Thạch! Cần ${totalCost} 💎 để mua ${amount}x ${item.name}!`);
+      return;
+    }
+    setSpiritStones(s => s - totalCost);
+    setInventory(prev => ({ ...prev, [itemId]: Math.min(item.maxStack, (prev[itemId] || 0) + amount) }));
+    setBubbleText(`🛒 Đã mua thành công ${amount}x [${item.name}] với ${totalCost} 💎!`);
+  };
+
+  const handleSellItem = (itemId: ItemId, amount: number) => {
+    const item = ITEM_CONFIG.find(i => i.id === itemId);
+    if (!item || !item.sellPrice) return;
+    const curQty = inventory[itemId] || 0;
+    const sellAmount = Math.min(curQty, amount);
+    if (sellAmount <= 0) return;
+    const totalEarn = item.sellPrice * sellAmount;
+    setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 0) - sellAmount) }));
+    setSpiritStones(s => s + totalEarn);
+    setBubbleText(`💰 Đã bán ${sellAmount}x [${item.name}], thu về +${totalEarn} 💎 Linh Thạch!`);
+  };
+
   const handleConsumePill = (itemId: ItemId) => {
     const cfg = ITEM_CONFIG.find(i => i.id === itemId)!;
-    if (inventory[itemId] <= 0) {
+    const curQty = inventory[itemId] || 0;
+    if (curQty <= 0) {
       setBubbleText(`😢 Kho ${cfg.emoji} trống rỗng! Tích thêm đan nhé!`);
       return;
     }
 
-    if (cfg.isBuff) {
-      if (isTalismanActive) {
-        setBubbleText(`🔱 Hộ Kiếp Phù đã đang hiệu lực! Còn ${Math.ceil(talismanCountdown / 60)} phút!`);
-        return;
-      }
-      const expiry = Date.now() + (cfg.buffDurationMs ?? 300_000);
+    if (cfg.isBuff || cfg.category === 'breakthrough') {
+      const bonus = cfg.buffSuccessBonus || cfg.breakthroughBonus || 0.25;
+      const duration = cfg.buffDurationMs || 300_000;
+      const expiry = Date.now() + duration;
+
       setTalismanBuffExpiry(expiry);
-      setInventory(prev => ({ ...prev, [itemId]: prev[itemId] - 1 }));
+      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 1) - 1 }));
+      setTotalPillsConsumed(prev => prev + 1);
+      if (cfg.xpValue > 0) addXP(cfg.xpValue);
+
       setState('dance');
       setFrame(0);
-      setBubbleText(`🔱 HỘ KIẾP PHÙ KÍCH HOẠT! +25% tỉ lệ Độ Kiếp trong 5 phút!`);
+      setBubbleText(`${cfg.emoji} [${cfg.name}] KÍCH HOẠT! +${Math.round(bonus * 100)}% Tỉ lệ Độ Kiếp trong ${Math.round(duration / 60000)} phút! ✨`);
       unlockAchievement('secret_first_talisman');
       setShowInventory(false);
       return;
@@ -732,7 +787,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       return;
     }
 
-    setInventory(prev => ({ ...prev, [itemId]: prev[itemId] - 1 }));
+    setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }));
     setTotalPillsConsumed(prev => prev + 1);
     setState('eat');
     setFrame(0);
@@ -751,7 +806,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       recover: [`🍃 Hồi Phục Đan tan chảy! Chân khí phục hồi~ (+${cfg.xpValue} XP)`, `🍃 Thuần thanh linh khí dâng trào! (+${cfg.xpValue} XP)`],
       great: [`🌸 Đại Hoàn Đan! Linh lực cuồn cuộn! (+${cfg.xpValue} XP)`, `🌸 Cổ Thần Đan! Khí tức như sấm dậy! (+${cfg.xpValue} XP)`]
     };
-    const pool = msgs[itemId] ?? [`${cfg.emoji} Cắn đan! (+${cfg.xpValue} XP)`];
+    const pool = msgs[itemId] ?? [`${cfg.emoji} Cắn đan [${cfg.name}]! (+${cfg.xpValue} XP)`];
     setBubbleText(pool[Math.floor(Math.random() * pool.length)]);
   };
 
@@ -1338,26 +1393,6 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setModalTab('mounts')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: modalTab === 'mounts' ? 'rgba(245,158,11,0.22)' : 'transparent',
-                    border: `1px solid ${modalTab === 'mounts' ? '#a855f7' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: '10px',
-                    padding: '8px 14px',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    color: modalTab === 'mounts' ? '#d8b4fe' : '#94a3b8',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Compass style={{ width: '14px', height: '14px', color: modalTab === 'mounts' ? '#a855f7' : '#64748b' }} />
-                  🐴 Thú Cưỡi Gacha ({ownedMounts.length}/10)
-                </button>
-
-                <button
                   onClick={() => setModalTab('crafting')}
                   style={{
                     display: 'flex',
@@ -1375,6 +1410,46 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                 >
                   <Sparkles style={{ width: '14px', height: '14px', color: modalTab === 'crafting' ? '#10b981' : '#64748b' }} />
                   🧪 Lò Luyện Đan
+                </button>
+
+                <button
+                  onClick={() => setModalTab('market')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: modalTab === 'market' ? 'rgba(234,179,8,0.25)' : 'transparent',
+                    border: `1px solid ${modalTab === 'market' ? '#fde047' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: modalTab === 'market' ? '#fde047' : '#94a3b8',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ShoppingBag style={{ width: '14px', height: '14px', color: modalTab === 'market' ? '#fde047' : '#64748b' }} />
+                  🏪 Phường Thị
+                </button>
+
+                <button
+                  onClick={() => setModalTab('mounts')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: modalTab === 'mounts' ? 'rgba(245,158,11,0.22)' : 'transparent',
+                    border: `1px solid ${modalTab === 'mounts' ? '#a855f7' : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    color: modalTab === 'mounts' ? '#d8b4fe' : '#94a3b8',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Compass style={{ width: '14px', height: '14px', color: modalTab === 'mounts' ? '#a855f7' : '#64748b' }} />
+                  🐴 Thú Cưỡi ({ownedMounts.length}/10)
                 </button>
 
                 <button
@@ -1576,7 +1651,20 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
               />
             )}
 
-            {/* TAB 4: Mounts Gacha & Collection */}
+            {/* TAB 4: Phường Thị Tu Chân (Market) */}
+            {modalTab === 'market' && (
+              <MarketTab
+                spiritStones={spiritStones}
+                herbsInventory={herbsInventory}
+                inventory={inventory}
+                onBuyMaterial={handleBuyMaterial}
+                onSellMaterial={handleSellMaterial}
+                onBuyItem={handleBuyItem}
+                onSellItem={handleSellItem}
+              />
+            )}
+
+            {/* TAB 5: Mounts Gacha & Collection */}
             {modalTab === 'mounts' && (
               <MountsTab
                 ownedMounts={ownedMounts}

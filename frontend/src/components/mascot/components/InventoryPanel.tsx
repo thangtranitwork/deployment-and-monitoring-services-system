@@ -1,6 +1,217 @@
-import React from 'react';
-import { ItemId, HerbId, ForgeBoosterId, Inventory } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { ItemId, HerbId, ForgeBoosterId, Inventory, ItemConfig } from '../types';
 import { ITEM_CONFIG, HERB_CONFIG, RARITY_COLORS } from '../constants';
+
+interface PillItemButtonProps {
+  item: ItemConfig;
+  qty: number;
+  isTalismanActive: boolean;
+  talismanCountdown: number;
+  selectedForgeBooster: ForgeBoosterId;
+  onConsumePill: (itemId: ItemId) => void;
+}
+
+const PillItemButton: React.FC<PillItemButtonProps> = ({
+  item,
+  qty,
+  isTalismanActive,
+  talismanCountdown,
+  selectedForgeBooster,
+  onConsumePill
+}) => {
+  const [isPressing, setIsPressing] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const qtyRef = useRef(qty);
+  qtyRef.current = qty;
+
+  const isTalismItem = item.isBuff;
+  const isForgeBoosterItem = item.isForgeBooster;
+  const isActiveTalisman = isTalismItem && isTalismanActive;
+  const isSelectedBooster = isForgeBoosterItem && selectedForgeBooster === item.id && qty > 0;
+  const disabled = qty === 0 || isActiveTalisman;
+
+  const stopHold = () => {
+    setIsPressing(false);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (disabled || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Consume 1 immediately
+    onConsumePill(item.id);
+    setIsPressing(true);
+
+    // Buffs / Forge boosters are single-activate items
+    if (isTalismItem || isForgeBoosterItem) {
+      setIsPressing(false);
+      return;
+    }
+
+    // Start holding interval for continuous pill consumption
+    timerRef.current = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        if (qtyRef.current <= 0) {
+          stopHold();
+          return;
+        }
+        onConsumePill(item.id);
+      }, 90);
+    }, 280);
+  };
+
+  useEffect(() => {
+    return () => stopHold();
+  }, []);
+
+  return (
+    <button
+      onPointerDown={handlePointerDown}
+      onPointerUp={stopHold}
+      onPointerLeave={stopHold}
+      onPointerCancel={stopHold}
+      onContextMenu={e => e.preventDefault()}
+      disabled={disabled}
+      title={`${item.description} • [Nhấn giữ để cắn liên tục ⚡]`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        background: isPressing
+          ? 'linear-gradient(135deg, rgba(234,179,8,0.3), rgba(168,85,247,0.3))'
+          : (isActiveTalisman || isSelectedBooster)
+          ? 'rgba(253,224,71,0.15)'
+          : disabled
+          ? 'rgba(30,35,50,0.5)'
+          : 'rgba(245,158,11,0.1)',
+        border: `1.5px solid ${
+          isPressing
+            ? '#fde047'
+            : (isActiveTalisman || isSelectedBooster)
+            ? '#fde047aa'
+            : disabled
+            ? 'rgba(100,116,139,0.2)'
+            : RARITY_COLORS[item.rarity] + '66'
+        }`,
+        borderRadius: '10px',
+        padding: '6px 10px',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        width: '100%',
+        opacity: disabled && !isActiveTalisman ? 0.5 : 1,
+        transition: 'transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease',
+        transform: isPressing ? 'scale(0.96)' : 'scale(1)',
+        boxShadow: isPressing
+          ? '0 0 20px rgba(253,224,71,0.6), inset 0 0 10px rgba(253,224,71,0.3)'
+          : (isActiveTalisman || isSelectedBooster)
+          ? '0 0 14px rgba(253,224,71,0.45)'
+          : 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'none'
+      }}
+    >
+      {item.iconImage ? (
+        <img
+          src={item.iconImage}
+          alt={item.name}
+          style={{
+            width: '28px',
+            height: '28px',
+            objectFit: 'contain',
+            flexShrink: 0,
+            filter: isPressing ? 'drop-shadow(0 0 6px #fde047)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))'
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.emoji}</span>
+      )}
+      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+        <div
+          style={{
+            color: isPressing ? '#fde047' : RARITY_COLORS[item.rarity],
+            fontWeight: 800,
+            fontSize: '11.5px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {item.name}
+          {isActiveTalisman && (
+            <span
+              style={{
+                color: '#fde047',
+                fontSize: '9px',
+                marginLeft: '4px',
+                background: 'rgba(253,224,71,0.2)',
+                padding: '1px 4px',
+                borderRadius: '4px'
+              }}
+            >
+              ● DÙNG
+            </span>
+          )}
+          {isSelectedBooster && (
+            <span
+              style={{
+                color: '#fde047',
+                fontSize: '9px',
+                marginLeft: '4px',
+                background: 'rgba(253,224,71,0.2)',
+                padding: '1px 4px',
+                borderRadius: '4px'
+              }}
+            >
+              ● ĐANG CHỌN
+            </span>
+          )}
+        </div>
+        <div
+          style={{
+            color: '#94a3b8',
+            fontSize: '10px',
+            marginTop: '1px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {item.isBuff
+            ? isActiveTalisman
+              ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s`
+              : `+${(item.buffSuccessBonus || 0.25) * 100}% Độ Kiếp`
+            : item.isForgeBooster
+            ? `+${Math.round((item.forgeSuccessBonus || 0.20) * 100)}% Rèn Pháp Bảo`
+            : `+${item.xpValue} Linh Lực`}
+        </div>
+      </div>
+      <div
+        style={{
+          background: qty > 0 ? (isPressing ? 'rgba(234,179,8,0.4)' : RARITY_COLORS[item.rarity] + '33') : 'rgba(100,116,139,0.2)',
+          color: qty > 0 ? (isPressing ? '#fde047' : RARITY_COLORS[item.rarity]) : '#94a3b8',
+          border: `1px solid ${qty > 0 ? (isPressing ? '#fde047' : RARITY_COLORS[item.rarity] + '66') : 'transparent'}`,
+          borderRadius: '8px',
+          padding: '2px 8px',
+          fontSize: '11.5px',
+          fontWeight: 800,
+          flexShrink: 0
+        }}
+      >
+        {qty}
+      </div>
+    </button>
+  );
+};
 
 export const InventoryPanel: React.FC<{
   isOpen: boolean;
@@ -58,7 +269,14 @@ export const InventoryPanel: React.FC<{
           paddingBottom: '8px'
         }}
       >
-        <span>🎒 TÚI TRỮ VẬT TIÊN GIA</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <img
+            src="/items/43_can_khon_tui.png"
+            alt="Túi Trữ Vật"
+            style={{ width: '22px', height: '22px', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(245,158,11,0.7))' }}
+          />
+          <span>TÚI TRỮ VẬT TIÊN GIA</span>
+        </div>
         <span
           style={{
             fontSize: '12px',
@@ -76,15 +294,26 @@ export const InventoryPanel: React.FC<{
 
       <div
         style={{
-          color: '#fde68a',
-          fontWeight: 800,
-          fontSize: '11px',
-          marginBottom: '6px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '6px'
         }}
       >
-        💊 Linh Đan Đã Tích Nạp
+        <div
+          style={{
+            color: '#fde68a',
+            fontWeight: 800,
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em'
+          }}
+        >
+          💊 Linh Đan Đã Tích Nạp
+        </div>
+        <span style={{ fontSize: '10px', color: '#fde047', fontWeight: 600 }}>
+          ⚡ Nhấn giữ để cắn đan liên tục
+        </span>
       </div>
 
       <div
@@ -99,127 +328,16 @@ export const InventoryPanel: React.FC<{
       >
         {ITEM_CONFIG.map(item => {
           const qty = inventory[item.id] || 0;
-          const isTalismItem = item.isBuff;
-          const isForgeBoosterItem = item.isForgeBooster;
-          const isActiveTalisman = isTalismItem && isTalismanActive;
-          const isSelectedBooster = isForgeBoosterItem && selectedForgeBooster === item.id && qty > 0;
-          const disabled = qty === 0 || isActiveTalisman;
-
           return (
-            <button
+            <PillItemButton
               key={item.id}
-              onClick={() => onConsumePill(item.id)}
-              disabled={disabled}
-              title={item.description}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: (isActiveTalisman || isSelectedBooster)
-                  ? 'rgba(253,224,71,0.15)'
-                  : disabled
-                  ? 'rgba(30,35,50,0.5)'
-                  : 'rgba(245,158,11,0.1)',
-                border: `1px solid ${
-                  (isActiveTalisman || isSelectedBooster)
-                    ? '#fde047aa'
-                    : disabled
-                    ? 'rgba(100,116,139,0.2)'
-                    : RARITY_COLORS[item.rarity] + '66'
-                }`,
-                borderRadius: '10px',
-                padding: '6px 10px',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                width: '100%',
-                opacity: disabled && !isActiveTalisman ? 0.5 : 1,
-                transition: 'all 0.15s',
-                boxShadow: (isActiveTalisman || isSelectedBooster) ? '0 0 14px rgba(253,224,71,0.45)' : 'none'
-              }}
-            >
-              {item.iconImage ? (
-                  <img
-                    src={item.iconImage}
-                    alt={item.name}
-                    style={{ width: '28px', height: '28px', objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}
-                  />
-                ) : (
-                  <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.emoji}</span>
-                )}
-              <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                <div
-                  style={{
-                    color: RARITY_COLORS[item.rarity],
-                    fontWeight: 800,
-                    fontSize: '11.5px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {item.name}
-                  {isActiveTalisman && (
-                    <span
-                      style={{
-                        color: '#fde047',
-                        fontSize: '9px',
-                        marginLeft: '4px',
-                        background: 'rgba(253,224,71,0.2)',
-                        padding: '1px 4px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      ● DÙNG
-                    </span>
-                  )}
-                  {isSelectedBooster && (
-                    <span
-                      style={{
-                        color: '#fde047',
-                        fontSize: '9px',
-                        marginLeft: '4px',
-                        background: 'rgba(253,224,71,0.2)',
-                        padding: '1px 4px',
-                        borderRadius: '4px'
-                      }}
-                    >
-                      ● ĐANG CHỌN
-                    </span>
-                  )}
-                </div>
-                <div
-                  style={{
-                    color: '#94a3b8',
-                    fontSize: '10px',
-                    marginTop: '1px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}
-                >
-                  {item.isBuff
-                    ? isActiveTalisman
-                      ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s`
-                      : `+${(item.buffSuccessBonus || 0.25) * 100}% Độ Kiếp`
-                    : item.isForgeBooster
-                    ? `+${Math.round((item.forgeSuccessBonus || 0.20) * 100)}% Rèn Pháp Bảo`
-                    : `+${item.xpValue} Linh Lực`}
-                </div>
-              </div>
-              <div
-                style={{
-                  background: qty > 0 ? RARITY_COLORS[item.rarity] + '33' : 'rgba(100,116,139,0.2)',
-                  color: qty > 0 ? RARITY_COLORS[item.rarity] : '#94a3b8',
-                  border: `1px solid ${qty > 0 ? RARITY_COLORS[item.rarity] + '66' : 'transparent'}`,
-                  borderRadius: '8px',
-                  padding: '2px 8px',
-                  fontSize: '11.5px',
-                  fontWeight: 800,
-                  flexShrink: 0
-                }}
-              >
-                {qty}
-              </div>
-            </button>
+              item={item}
+              qty={qty}
+              isTalismanActive={isTalismanActive}
+              talismanCountdown={talismanCountdown}
+              selectedForgeBooster={selectedForgeBooster}
+              onConsumePill={onConsumePill}
+            />
           );
         })}
       </div>

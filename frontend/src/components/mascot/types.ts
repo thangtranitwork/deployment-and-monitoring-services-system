@@ -33,11 +33,24 @@ export type ItemId =
   | 'talisman'
   | 'revive'
   | 'forge_talisman'
-  | 'sky_stone';
+  | 'sky_stone'
+  | 'pill_truc_co'
+  | 'pill_kim_dan'
+  | 'pill_nguyen_anh'
+  | 'pill_hoa_than'
+  | 'pill_luyen_hu'
+  | 'pill_do_kiep'
+  | 'pill_chan_tien'
+  | 'pill_thai_at'
+  | 'pill_ngo_dao'
+  | 'pill_thien_dao'
+  | 'pill_vo_cuc';
 
 export type ForgeBoosterId = 'none' | 'forge_talisman' | 'sky_stone';
 
-export type Inventory = Record<ItemId, number>;
+export type Inventory = Partial<Record<ItemId, number>>;
+
+export type ItemCategory = 'xp' | 'breakthrough' | 'buff' | 'forge';
 
 export interface ItemConfig {
   id: ItemId;
@@ -48,12 +61,19 @@ export interface ItemConfig {
   maxStack: number;
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
   description: string;
+  category?: ItemCategory;
   isBuff?: boolean;
   buffDurationMs?: number;
   buffSuccessBonus?: number;
+  targetRealmIndex?: number;
+  breakthroughBonus?: number;
+  expMultiplier?: number;
+  dropRateMultiplier?: number;
   isForgeBooster?: boolean;
   forgeSuccessBonus?: number;
   refundOnFailRatio?: number;
+  buyPrice?: number;
+  sellPrice?: number;
 }
 
 // ─── Xianxia Raw Herbal & Mineral Alchemy Ingredients ─────────────────────────
@@ -79,6 +99,8 @@ export interface HerbConfig {
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
   dropChance: number;
   description: string;
+  buyPrice: number;
+  sellPrice: number;
 }
 
 export type IngredientId = ItemId | HerbId;
@@ -95,6 +117,7 @@ export interface CraftingRecipe {
   successRate: number;
   description: string;
   rarity: 'common' | 'uncommon' | 'rare' | 'legendary' | 'supreme';
+  category?: ItemCategory;
 }
 
 // ─── 10 Xianxia Fantasy Mounts System ──────────────────────────────────────────

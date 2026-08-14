@@ -216,10 +216,14 @@ export const SpeechBubble: React.FC<{
           flexShrink: 0,
           display: 'flex',
           alignItems: 'center',
-          gap: '3px'
+          gap: '4px'
         }}
       >
-        <Package style={{ width: '12px', height: '12px' }} />
+        <img
+          src="/items/43_can_khon_tui.png"
+          alt="Túi Trữ Vật"
+          style={{ width: '16px', height: '16px', objectFit: 'contain', filter: 'drop-shadow(0 0 4px rgba(245,158,11,0.5))' }}
+        />
         {totalInventory > 0 && <span>{totalInventory}</span>}
       </button>
 

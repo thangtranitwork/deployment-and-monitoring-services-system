@@ -17,6 +17,7 @@ export * from './components/AchievementToast';
 export * from './tabs/SkinsTab';
 export * from './tabs/TreasuresTab';
 export * from './tabs/CraftingTab';
+export * from './tabs/MarketTab';
 export * from './tabs/MountsTab';
 export * from './tabs/AchievementsTab';
 export * from './BunnyMascot';

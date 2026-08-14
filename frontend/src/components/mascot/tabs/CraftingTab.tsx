@@ -1,5 +1,5 @@
-import React from 'react';
-import { CraftingRecipe, HerbId, IngredientId, Inventory } from '../types';
+import React, { useState } from 'react';
+import { CraftingRecipe, HerbId, IngredientId, Inventory, ItemCategory } from '../types';
 import { CRAFTING_RECIPES, RARITY_COLORS, ITEM_CONFIG, HERB_CONFIG } from '../constants';
 
 export const CraftingTab: React.FC<{
@@ -8,6 +8,7 @@ export const CraftingTab: React.FC<{
   herbsInventory: Record<HerbId, number>;
   onCraftPill: (recipe: CraftingRecipe, count: number) => void;
 }> = ({ spiritStones, inventory, herbsInventory, onCraftPill }) => {
+  const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all');
   const getIngredientQty = (ingId: IngredientId): number => {
     if (ingId.startsWith('herb_') || ingId.startsWith('mineral_')) {
       return herbsInventory[ingId as HerbId] || 0;
@@ -51,17 +52,47 @@ export const CraftingTab: React.FC<{
         <span>🧪 LÒ LUYỆN ĐAN BÁT QUÁI TIÊN GIA</span>
         <span style={{ color: '#38bdf8', fontSize: '12px' }}>💎 Linh Thạch: {spiritStones}</span>
       </div>
+
+      {/* Category Filter Tabs */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+        {[
+          { key: 'all', label: 'Tất Cả' },
+          { key: 'xp', label: '💊 Tăng Tu Vi (XP)' },
+          { key: 'breakthrough', label: '⚡ Đột Phá Cảnh Giới' },
+          { key: 'buff', label: '🌟 Đạo Cảnh & Buff' },
+          { key: 'forge', label: '📜 Bổ Trợ Rèn' }
+        ].map(cat => (
+          <button
+            key={cat.key}
+            onClick={() => setFilterCategory(cat.key as any)}
+            style={{
+              background: filterCategory === cat.key ? 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(168,85,247,0.25))' : 'rgba(0,0,0,0.25)',
+              border: `1px solid ${filterCategory === cat.key ? '#fde047' : 'rgba(255,255,255,0.08)'}`,
+              color: filterCategory === cat.key ? '#fde047' : '#94a3b8',
+              borderRadius: '8px',
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s'
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
           gap: '12px',
-          maxHeight: '460px',
+          maxHeight: '430px',
           overflowY: 'auto',
           paddingRight: '4px'
         }}
       >
-        {CRAFTING_RECIPES.map(recipe => {
+        {CRAFTING_RECIPES.filter(r => filterCategory === 'all' || r.category === filterCategory).map(recipe => {
           const canAffordStones = spiritStones >= recipe.spiritStonesCost;
           const canAffordItems = recipe.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount);
           const canCraft = canAffordStones && canAffordItems;
