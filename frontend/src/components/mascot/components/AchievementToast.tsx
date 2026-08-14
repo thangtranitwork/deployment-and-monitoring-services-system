@@ -1,12 +1,17 @@
 import React from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { Achievement } from '../types';
+import { ITEM_CONFIG, HERB_CONFIG } from '../constants';
 
 export const AchievementToast: React.FC<{
   achievement: Achievement | null;
   onClose: () => void;
 }> = ({ achievement, onClose }) => {
   if (!achievement) return null;
+
+  const rewardItemConfig = achievement.reward.itemId
+    ? ITEM_CONFIG.find(i => i.id === achievement.reward.itemId) || HERB_CONFIG.find(h => (h.id as string) === achievement.reward.itemId)
+    : null;
 
   return (
     <div
@@ -41,8 +46,11 @@ export const AchievementToast: React.FC<{
         <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 700, marginTop: '2px' }}>
           {achievement.icon} {achievement.title}
         </div>
-        <div style={{ color: '#86efac', fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>
-          🎁 Thưởng: {achievement.rewardText}
+        <div style={{ color: '#86efac', fontSize: '11px', fontWeight: 600, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {rewardItemConfig?.iconImage && (
+            <img src={rewardItemConfig.iconImage} alt="Reward" style={{ width: '14px', height: '14px', objectFit: 'contain' }} />
+          )}
+          <span>🎁 Thưởng: {achievement.rewardText}</span>
         </div>
       </div>
       <button

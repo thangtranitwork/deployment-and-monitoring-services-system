@@ -14,6 +14,9 @@ export const SpeechBubble: React.FC<{
   currentSuccessRatePercent: number;
   failCountAtCurrentLevel: number;
   isTalismanActive: boolean;
+  isRealmPillActive?: boolean;
+  isReviveActive?: boolean;
+  isVoCucActive?: boolean;
   totalInventory: number;
   onOpenCostumePicker: () => void;
   onBreakthrough: (e: React.MouseEvent) => void;
@@ -31,6 +34,9 @@ export const SpeechBubble: React.FC<{
   currentSuccessRatePercent,
   failCountAtCurrentLevel,
   isTalismanActive,
+  isRealmPillActive,
+  isReviveActive,
+  isVoCucActive,
   totalInventory,
   onOpenCostumePicker,
   onBreakthrough,
@@ -187,14 +193,25 @@ export const SpeechBubble: React.FC<{
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
             <span>{isTribulationLevel ? `🌩️ ĐỘ KIẾP (${currentSuccessRatePercent}%)` : '✨ ĐỘT PHÁ'}</span>
-            {failCountAtCurrentLevel > 0 && (
-              <span style={{ fontSize: '8.5px', color: '#7f1d1d', fontWeight: 900 }}>
-                +{failCountAtCurrentLevel * 5}% Tích Tụ
-              </span>
-            )}
-            {isTalismanActive && (
-              <span style={{ fontSize: '8.5px', color: '#854d0e', fontWeight: 800 }}>🔱 +25% Phù</span>
-            )}
+            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {failCountAtCurrentLevel > 0 && (
+                <span style={{ fontSize: '8.5px', color: '#7f1d1d', fontWeight: 900 }}>
+                  +{failCountAtCurrentLevel * 5}% Tích Tụ
+                </span>
+              )}
+              {isRealmPillActive && (
+                <span style={{ fontSize: '8.5px', color: '#15803d', fontWeight: 900 }}>🌱 Đan Cảnh Giới</span>
+              )}
+              {isTalismanActive && (
+                <span style={{ fontSize: '8.5px', color: '#854d0e', fontWeight: 900 }}>🔱 +25% Phù</span>
+              )}
+              {isReviveActive && (
+                <span style={{ fontSize: '8.5px', color: '#6b21a8', fontWeight: 900 }}>🔮 +35% (Bảo Hộ)</span>
+              )}
+              {isVoCucActive && (
+                <span style={{ fontSize: '8.5px', color: '#1e3a8a', fontWeight: 900 }}>☯️ +20% Vô Cực</span>
+              )}
+            </div>
           </div>
         </button>
       ) : null}

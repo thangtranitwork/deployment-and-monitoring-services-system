@@ -1,35 +1,171 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ItemId, HerbId, ForgeBoosterId, Inventory, ItemConfig } from '../types';
+import { ItemId, HerbId, ForgeBoosterId, Inventory, ItemConfig, HerbConfig } from '../types';
 import { ITEM_CONFIG, HERB_CONFIG, RARITY_COLORS } from '../constants';
+import { Flame } from 'lucide-react';
 
-interface PillItemButtonProps {
+interface PillSlotProps {
   item: ItemConfig;
   qty: number;
-  isTalismanActive: boolean;
-  talismanCountdown: number;
+  isSpecificActive: boolean;
   selectedForgeBooster: ForgeBoosterId;
+  isHovered: boolean;
+  onHover: () => void;
+  onLeave: () => void;
   onConsumePill: (itemId: ItemId) => void;
 }
 
-const PillItemButton: React.FC<PillItemButtonProps> = ({
+const PillSlot: React.FC<PillSlotProps> = ({
   item,
   qty,
-  isTalismanActive,
-  talismanCountdown,
+  isSpecificActive,
   selectedForgeBooster,
+  isHovered,
+  onHover,
+  onLeave,
   onConsumePill
 }) => {
+  const [imgError, setImgError] = useState(false);
+  const disabled = qty === 0;
+
+  return (
+    <div
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onClick={e => {
+        e.stopPropagation();
+        onHover();
+      }}
+      style={{
+        position: 'relative',
+        aspectRatio: '1 / 1',
+        width: '100%',
+        borderRadius: '10px',
+        background: isHovered
+          ? 'radial-gradient(circle, rgba(245,158,11,0.28) 0%, rgba(15,23,42,0.95) 100%)'
+          : isSpecificActive
+          ? 'radial-gradient(circle, rgba(253,224,71,0.22) 0%, rgba(10,13,22,0.95) 100%)'
+          : 'radial-gradient(circle, rgba(30,41,59,0.5) 0%, rgba(10,13,22,0.95) 100%)',
+        border: `1.5px solid ${
+          isHovered
+            ? '#fde047'
+            : isSpecificActive
+            ? '#fde047'
+            : disabled
+            ? 'rgba(255,255,255,0.06)'
+            : `${RARITY_COLORS[item.rarity]}66`
+        }`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        boxShadow: isHovered
+          ? '0 0 14px rgba(253,224,71,0.5)'
+          : isSpecificActive
+          ? '0 0 10px rgba(253,224,71,0.35)'
+          : 'none',
+        transition: 'all 0.15s ease',
+        transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+        opacity: disabled ? 0.4 : 1,
+        userSelect: 'none'
+      }}
+    >
+      {/* Item Icon */}
+      {item.iconImage && !imgError ? (
+        <img
+          src={item.iconImage}
+          alt={item.name}
+          onError={() => setImgError(true)}
+          style={{
+            width: '28px',
+            height: '28px',
+            objectFit: 'contain',
+            filter: isHovered ? 'drop-shadow(0 0 6px #fde047)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))'
+          }}
+        />
+      ) : (
+        <span style={{ fontSize: '20px' }}>{item.emoji}</span>
+      )}
+
+      {/* Active Indicator Badge (ONLY for the actually active item) */}
+      {isSpecificActive && (
+        <span
+          style={{
+            position: 'absolute',
+            top: '2px',
+            left: '2px',
+            background: '#fde047',
+            color: '#000',
+            fontSize: '7.5px',
+            fontWeight: 900,
+            padding: '1px 3px',
+            borderRadius: '3px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.8)'
+          }}
+        >
+          DÙNG
+        </span>
+      )}
+
+      {/* Quantity Badge */}
+      <span
+        style={{
+          position: 'absolute',
+          bottom: '2px',
+          right: '2px',
+          background: 'rgba(0,0,0,0.85)',
+          color: qty > 0 ? (isHovered ? '#fde047' : RARITY_COLORS[item.rarity]) : '#64748b',
+          border: `1px solid ${qty > 0 ? `${RARITY_COLORS[item.rarity]}66` : 'rgba(255,255,255,0.08)'}`,
+          fontSize: '9px',
+          fontWeight: 900,
+          padding: '0.5px 4px',
+          borderRadius: '4px'
+        }}
+      >
+        {qty}
+      </span>
+    </div>
+  );
+};
+
+export const InventoryPanel: React.FC<{
+  isOpen: boolean;
+  inventory: Inventory;
+  herbsInventory: Record<HerbId, number>;
+  spiritStones: number;
+  selectedForgeBooster: ForgeBoosterId;
+  isTalismanActive: boolean;
+  talismanCountdown: number;
+  activeRealmPillId?: string | null;
+  realmPillExpiry?: number;
+  reviveBuffExpiry?: number;
+  voCucBuffExpiry?: number;
+  onConsumePill: (itemId: ItemId) => void;
+}> = ({
+  isOpen,
+  inventory,
+  herbsInventory,
+  spiritStones,
+  selectedForgeBooster,
+  isTalismanActive,
+  talismanCountdown,
+  activeRealmPillId,
+  realmPillExpiry = 0,
+  reviveBuffExpiry = 0,
+  voCucBuffExpiry = 0,
+  onConsumePill
+}) => {
+  const [hoveredItem, setHoveredItem] = useState<ItemConfig | null>(null);
+  const [hoveredHerb, setHoveredHerb] = useState<HerbConfig | null>(null);
   const [isPressing, setIsPressing] = useState(false);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const qtyRef = useRef(qty);
-  qtyRef.current = qty;
 
-  const isTalismItem = item.isBuff;
-  const isForgeBoosterItem = item.isForgeBooster;
-  const isActiveTalisman = isTalismItem && isTalismanActive;
-  const isSelectedBooster = isForgeBoosterItem && selectedForgeBooster === item.id && qty > 0;
-  const disabled = qty === 0 || isActiveTalisman;
+  const activeItem = hoveredItem || ITEM_CONFIG.find(i => (inventory[i.id] || 0) > 0) || ITEM_CONFIG[0];
+  const activeQty = inventory[activeItem.id] || 0;
+  const isTalismItem = activeItem.isBuff;
+  const isForgeBoosterItem = activeItem.isForgeBooster;
+  const disabled = activeQty === 0;
 
   const stopHold = () => {
     setIsPressing(false);
@@ -43,29 +179,22 @@ const PillItemButton: React.FC<PillItemButtonProps> = ({
     }
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const handlePointerDownAction = (e: React.PointerEvent) => {
     if (disabled || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
 
-    // Consume 1 immediately
-    onConsumePill(item.id);
+    onConsumePill(activeItem.id);
     setIsPressing(true);
 
-    // Buffs / Forge boosters are single-activate items
     if (isTalismItem || isForgeBoosterItem) {
       setIsPressing(false);
       return;
     }
 
-    // Start holding interval for continuous pill consumption
     timerRef.current = setTimeout(() => {
       intervalRef.current = setInterval(() => {
-        if (qtyRef.current <= 0) {
-          stopHold();
-          return;
-        }
-        onConsumePill(item.id);
+        onConsumePill(activeItem.id);
       }, 90);
     }, 280);
   };
@@ -74,164 +203,6 @@ const PillItemButton: React.FC<PillItemButtonProps> = ({
     return () => stopHold();
   }, []);
 
-  return (
-    <button
-      onPointerDown={handlePointerDown}
-      onPointerUp={stopHold}
-      onPointerLeave={stopHold}
-      onPointerCancel={stopHold}
-      onContextMenu={e => e.preventDefault()}
-      disabled={disabled}
-      title={`${item.description} • [Nhấn giữ để cắn liên tục ⚡]`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        background: isPressing
-          ? 'linear-gradient(135deg, rgba(234,179,8,0.3), rgba(168,85,247,0.3))'
-          : (isActiveTalisman || isSelectedBooster)
-          ? 'rgba(253,224,71,0.15)'
-          : disabled
-          ? 'rgba(30,35,50,0.5)'
-          : 'rgba(245,158,11,0.1)',
-        border: `1.5px solid ${
-          isPressing
-            ? '#fde047'
-            : (isActiveTalisman || isSelectedBooster)
-            ? '#fde047aa'
-            : disabled
-            ? 'rgba(100,116,139,0.2)'
-            : RARITY_COLORS[item.rarity] + '66'
-        }`,
-        borderRadius: '10px',
-        padding: '6px 10px',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        width: '100%',
-        opacity: disabled && !isActiveTalisman ? 0.5 : 1,
-        transition: 'transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease',
-        transform: isPressing ? 'scale(0.96)' : 'scale(1)',
-        boxShadow: isPressing
-          ? '0 0 20px rgba(253,224,71,0.6), inset 0 0 10px rgba(253,224,71,0.3)'
-          : (isActiveTalisman || isSelectedBooster)
-          ? '0 0 14px rgba(253,224,71,0.45)'
-          : 'none',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        touchAction: 'none'
-      }}
-    >
-      {item.iconImage ? (
-        <img
-          src={item.iconImage}
-          alt={item.name}
-          style={{
-            width: '28px',
-            height: '28px',
-            objectFit: 'contain',
-            flexShrink: 0,
-            filter: isPressing ? 'drop-shadow(0 0 6px #fde047)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))'
-          }}
-        />
-      ) : (
-        <span style={{ fontSize: '18px', flexShrink: 0 }}>{item.emoji}</span>
-      )}
-      <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-        <div
-          style={{
-            color: isPressing ? '#fde047' : RARITY_COLORS[item.rarity],
-            fontWeight: 800,
-            fontSize: '11.5px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}
-        >
-          {item.name}
-          {isActiveTalisman && (
-            <span
-              style={{
-                color: '#fde047',
-                fontSize: '9px',
-                marginLeft: '4px',
-                background: 'rgba(253,224,71,0.2)',
-                padding: '1px 4px',
-                borderRadius: '4px'
-              }}
-            >
-              ● DÙNG
-            </span>
-          )}
-          {isSelectedBooster && (
-            <span
-              style={{
-                color: '#fde047',
-                fontSize: '9px',
-                marginLeft: '4px',
-                background: 'rgba(253,224,71,0.2)',
-                padding: '1px 4px',
-                borderRadius: '4px'
-              }}
-            >
-              ● ĐANG CHỌN
-            </span>
-          )}
-        </div>
-        <div
-          style={{
-            color: '#94a3b8',
-            fontSize: '10px',
-            marginTop: '1px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}
-        >
-          {item.isBuff
-            ? isActiveTalisman
-              ? `⏱️ Còn ${Math.ceil(talismanCountdown / 60)}p${talismanCountdown % 60}s`
-              : `+${(item.buffSuccessBonus || 0.25) * 100}% Độ Kiếp`
-            : item.isForgeBooster
-            ? `+${Math.round((item.forgeSuccessBonus || 0.20) * 100)}% Rèn Pháp Bảo`
-            : `+${item.xpValue} Linh Lực`}
-        </div>
-      </div>
-      <div
-        style={{
-          background: qty > 0 ? (isPressing ? 'rgba(234,179,8,0.4)' : RARITY_COLORS[item.rarity] + '33') : 'rgba(100,116,139,0.2)',
-          color: qty > 0 ? (isPressing ? '#fde047' : RARITY_COLORS[item.rarity]) : '#94a3b8',
-          border: `1px solid ${qty > 0 ? (isPressing ? '#fde047' : RARITY_COLORS[item.rarity] + '66') : 'transparent'}`,
-          borderRadius: '8px',
-          padding: '2px 8px',
-          fontSize: '11.5px',
-          fontWeight: 800,
-          flexShrink: 0
-        }}
-      >
-        {qty}
-      </div>
-    </button>
-  );
-};
-
-export const InventoryPanel: React.FC<{
-  isOpen: boolean;
-  inventory: Inventory;
-  herbsInventory: Record<HerbId, number>;
-  spiritStones: number;
-  selectedForgeBooster: ForgeBoosterId;
-  isTalismanActive: boolean;
-  talismanCountdown: number;
-  onConsumePill: (itemId: ItemId) => void;
-}> = ({
-  isOpen,
-  inventory,
-  herbsInventory,
-  spiritStones,
-  selectedForgeBooster,
-  isTalismanActive,
-  talismanCountdown,
-  onConsumePill
-}) => {
   if (!isOpen) return null;
 
   return (
@@ -247,19 +218,23 @@ export const InventoryPanel: React.FC<{
         border: '1.5px solid rgba(245,158,11,0.5)',
         borderRadius: '18px',
         padding: '16px 18px',
-        width: 'min(640px, calc(100vw - 24px))',
+        width: 'min(780px, calc(100vw - 20px))',
+        maxHeight: 'min(780px, 85vh)',
+        overflowY: 'auto',
         zIndex: 200,
-        boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 20px rgba(245,158,11,0.2)',
-        backdropFilter: 'blur(20px)'
+        boxShadow: '0 12px 48px rgba(0,0,0,0.9), 0 0 24px rgba(245,158,11,0.25)',
+        backdropFilter: 'blur(20px)',
+        boxSizing: 'border-box'
       }}
       onPointerDown={e => e.stopPropagation()}
     >
+      {/* Header Bar */}
       <div
         style={{
           color: '#fbbf24',
           fontWeight: 900,
           fontSize: '13px',
-          marginBottom: '10px',
+          marginBottom: '12px',
           letterSpacing: '0.06em',
           textTransform: 'uppercase',
           display: 'flex',
@@ -292,164 +267,277 @@ export const InventoryPanel: React.FC<{
         </span>
       </div>
 
+      {/* ─── HOVERED ITEM DETAIL & CONSUME BUTTON POPUP CARD ────────────────── */}
       <div
         style={{
+          background: 'rgba(0,0,0,0.4)',
+          border: `1.5px solid ${hoveredHerb ? RARITY_COLORS[hoveredHerb.rarity] : RARITY_COLORS[activeItem.rarity]}66`,
+          borderRadius: '12px',
+          padding: '12px 14px',
+          marginBottom: '12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '6px'
+          gap: '14px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
         }}
       >
-        <div
-          style={{
-            color: '#fde68a',
-            fontWeight: 800,
-            fontSize: '11px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          }}
-        >
-          💊 Linh Đan Đã Tích Nạp
-        </div>
-        <span style={{ fontSize: '10px', color: '#fde047', fontWeight: 600 }}>
-          ⚡ Nhấn giữ để cắn đan liên tục
-        </span>
+        {hoveredHerb ? (
+          /* Display Herb Info */
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '10px',
+                background: 'rgba(0,0,0,0.5)',
+                border: `1px solid ${RARITY_COLORS[hoveredHerb.rarity]}66`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              {hoveredHerb.iconImage ? (
+                <img src={hoveredHerb.iconImage} alt={hoveredHerb.name} style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '24px' }}>{hoveredHerb.emoji}</span>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 900, fontSize: '13.5px', color: RARITY_COLORS[hoveredHerb.rarity] }}>
+                {hoveredHerb.name} (Có: {herbsInventory[hoveredHerb.id] || 0}x)
+              </div>
+              <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px', lineHeight: '1.4' }}>
+                {hoveredHerb.description}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Display Item / Pill Info & Action Button */
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '10px',
+                  background: 'rgba(0,0,0,0.5)',
+                  border: `1px solid ${RARITY_COLORS[activeItem.rarity]}66`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                {activeItem.iconImage ? (
+                  <img src={activeItem.iconImage} alt={activeItem.name} style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+                ) : (
+                  <span style={{ fontSize: '24px' }}>{activeItem.emoji}</span>
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 900, fontSize: '14px', color: RARITY_COLORS[activeItem.rarity] }}>
+                    {activeItem.name}
+                  </span>
+                  <span style={{ background: 'rgba(255,255,255,0.08)', color: '#86efac', fontSize: '10px', fontWeight: 900, padding: '1px 6px', borderRadius: '4px' }}>
+                    Có trong kho: {activeQty}x
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '2px', lineHeight: '1.4' }}>
+                  {activeItem.description}
+                </div>
+              </div>
+            </div>
+
+            {/* Consume Action Button */}
+            <button
+              onPointerDown={handlePointerDownAction}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              onPointerCancel={stopHold}
+              onContextMenu={e => e.preventDefault()}
+              disabled={disabled}
+              style={{
+                background: disabled
+                  ? 'rgba(50,50,50,0.4)'
+                  : isPressing
+                  ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+                  : 'linear-gradient(135deg, #10b981, #059669)',
+                border: `1px solid ${disabled ? 'transparent' : '#86efac'}`,
+                borderRadius: '10px',
+                padding: '8px 14px',
+                color: disabled ? '#64748b' : '#fff',
+                fontWeight: 900,
+                fontSize: '11.5px',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                boxShadow: disabled ? 'none' : '0 0 14px rgba(16,185,129,0.4)',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                userSelect: 'none'
+              }}
+            >
+              <Flame style={{ width: '14px', height: '14px' }} />
+              {disabled ? 'HẾT HÀNG' : 'DÙNG ĐAN (GIỮ LIÊN TỤC)'}
+            </button>
+          </>
+        )}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '8px',
-          maxHeight: '240px',
-          overflowY: 'auto',
-          paddingRight: '2px'
-        }}
-      >
-        {ITEM_CONFIG.map(item => {
-          const qty = inventory[item.id] || 0;
-          return (
-            <PillItemButton
-              key={item.id}
-              item={item}
-              qty={qty}
-              isTalismanActive={isTalismanActive}
-              talismanCountdown={talismanCountdown}
-              selectedForgeBooster={selectedForgeBooster}
-              onConsumePill={onConsumePill}
-            />
-          );
-        })}
-      </div>
-
-      {/* Dược Liệu & Quặng Tiên Gia section */}
-      <div style={{ marginTop: '12px', borderTop: '1px solid rgba(245,158,11,0.2)', paddingTop: '10px' }}>
-        <div
-          style={{
-            color: '#6ee7b7',
-            fontWeight: 800,
-            fontSize: '11px',
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em'
-          }}
-        >
-          🌿 Kho Dược Liệu & Quặng (Dùng Luyện Đan)
+      {/* ─── 12xN GRID: LINH ĐAN & PHỤ BẢO ──────────────────────────────────── */}
+      <div style={{ marginBottom: '14px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 900, color: '#fde68a', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          💊 LINH ĐAN & PHỤ BẢO (RÊ CHUỘT XEM THÔNG TIN & CẮN ĐAN)
         </div>
+
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateColumns: 'repeat(12, 1fr)',
             gap: '6px',
-            maxHeight: '200px',
+            maxHeight: '300px',
             overflowY: 'auto',
-            paddingRight: '2px'
+            paddingRight: '2px',
+            paddingBottom: '4px'
           }}
         >
-          {HERB_CONFIG.map(herb => {
-            const count = herbsInventory[herb.id] || 0;
+          {ITEM_CONFIG.map(item => {
+            const qty = inventory[item.id] || 0;
+            const isHovered = activeItem.id === item.id && !hoveredHerb;
+
+            const isSpecificActive = Boolean(
+              (item.id === 'talisman' && isTalismanActive) ||
+              (item.id === 'revive' && Date.now() < reviveBuffExpiry) ||
+              (item.id === 'pill_vo_cuc' && Date.now() < voCucBuffExpiry) ||
+              (item.id === activeRealmPillId && Date.now() < (realmPillExpiry || 0)) ||
+              (item.isForgeBooster && selectedForgeBooster === item.id && qty > 0)
+            );
+
             return (
-              <div
-                key={herb.id}
-                title={herb.description}
-                style={{
-                  background: count > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.25)',
-                  border: `1px solid ${count > 0 ? '#10b98166' : 'rgba(255,255,255,0.06)'}`,
-                  borderRadius: '8px',
-                  padding: '5px 7px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  opacity: count > 0 ? 1 : 0.45,
-                  minWidth: 0,
-                  gap: '4px'
+              <PillSlot
+                key={item.id}
+                item={item}
+                qty={qty}
+                isSpecificActive={isSpecificActive}
+                selectedForgeBooster={selectedForgeBooster}
+                isHovered={isHovered}
+                onHover={() => {
+                  setHoveredHerb(null);
+                  setHoveredItem(item);
                 }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    overflow: 'hidden',
-                    minWidth: 0,
-                    flex: 1
-                  }}
-                >
-                  {herb.iconImage ? (
-                    <img
-                      src={herb.iconImage}
-                      alt={herb.name}
-                      style={{ width: '18px', height: '18px', objectFit: 'contain', flexShrink: 0 }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '12px', flexShrink: 0 }}>{herb.emoji}</span>
-                  )}
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      color: RARITY_COLORS[herb.rarity],
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {herb.name}
-                  </span>
-                </div>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 900,
-                    color: count > 0 ? '#86efac' : '#64748b',
-                    marginLeft: '2px',
-                    background: 'rgba(0,0,0,0.3)',
-                    padding: '1px 5px',
-                    borderRadius: '4px',
-                    flexShrink: 0
-                  }}
-                >
-                  {count}
-                </span>
-              </div>
+                onLeave={() => {}}
+                onConsumePill={onConsumePill}
+              />
             );
           })}
         </div>
       </div>
 
-      <div style={{ marginTop: '12px', borderTop: '1px solid rgba(245,158,11,0.15)', paddingTop: '8px' }}>
-        <div style={{ color: '#94a3b8', fontSize: '10px', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div>
-            💎 <strong style={{ color: '#38bdf8' }}>Linh Thạch:</strong> Quay rương Gacha Thần Thú & Rèn Pháp Bảo
-          </div>
-          <div>
-            🌿 <strong style={{ color: '#6ee7b7' }}>Dược Liệu & Quặng:</strong> Rớt tối đa 1 loại / 1 phút bế quan (có tỉ lệ trượt)
-          </div>
-          <div>
-            🧪 <strong style={{ color: '#f59e0b' }}>Lò Bát Quái:</strong> Dùng Dược Liệu chế đan dược & Hộ Kiếp Phù
-          </div>
+      {/* ─── 12xN GRID: DƯỢC LIỆU & QUẶNG ──────────────────────────────────── */}
+      <div>
+        <div style={{ fontSize: '11px', fontWeight: 900, color: '#6ee7b7', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          🌿 DƯỢC LIỆU & QUẶNG THÁI CỔ (KHO NGUYÊN LIỆU)
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gap: '6px',
+            maxHeight: '200px',
+            overflowY: 'auto',
+            paddingRight: '2px',
+            paddingBottom: '4px'
+          }}
+        >
+          {HERB_CONFIG.map(herb => {
+            const count = herbsInventory[herb.id] || 0;
+            const isHovered = hoveredHerb?.id === herb.id;
+
+            return (
+              <HerbSlot
+                key={herb.id}
+                herb={herb}
+                count={count}
+                isHovered={isHovered}
+                onHover={() => setHoveredHerb(herb)}
+              />
+            );
+          })}
         </div>
       </div>
+    </div>
+  );
+};
+
+const HerbSlot: React.FC<{
+  herb: HerbConfig;
+  count: number;
+  isHovered: boolean;
+  onHover: () => void;
+}> = ({ herb, count, isHovered, onHover }) => {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <div
+      onMouseEnter={onHover}
+      onClick={onHover}
+      style={{
+        position: 'relative',
+        aspectRatio: '1 / 1',
+        width: '100%',
+        borderRadius: '10px',
+        background: isHovered
+          ? 'radial-gradient(circle, rgba(16,185,129,0.3) 0%, rgba(10,13,22,0.95) 100%)'
+          : count > 0
+          ? 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, rgba(10,13,22,0.95) 100%)'
+          : 'rgba(0,0,0,0.3)',
+        border: `1.5px solid ${
+          isHovered
+            ? '#86efac'
+            : count > 0
+            ? `${RARITY_COLORS[herb.rarity]}66`
+            : 'rgba(255,255,255,0.06)'
+        }`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        opacity: count > 0 ? 1 : 0.4,
+        transition: 'all 0.15s ease',
+        transform: isHovered ? 'scale(1.08)' : 'scale(1)'
+      }}
+    >
+      {herb.iconImage && !imgError ? (
+        <img
+          src={herb.iconImage}
+          alt={herb.name}
+          onError={() => setImgError(true)}
+          style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}
+        />
+      ) : (
+        <span style={{ fontSize: '20px' }}>{herb.emoji}</span>
+      )}
+
+      <span
+        style={{
+          position: 'absolute',
+          bottom: '2px',
+          right: '2px',
+          background: 'rgba(0,0,0,0.85)',
+          color: count > 0 ? '#86efac' : '#64748b',
+          fontSize: '9px',
+          fontWeight: 900,
+          padding: '0.5px 4px',
+          borderRadius: '4px'
+        }}
+      >
+        {count}
+      </span>
     </div>
   );
 };

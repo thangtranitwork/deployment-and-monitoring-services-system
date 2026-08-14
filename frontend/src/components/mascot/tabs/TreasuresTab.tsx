@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Hammer, Lock, BookOpen } from 'lucide-react';
 import { ForgeBoosterId, Inventory } from '../types';
 import { LEVEL_CONFIG, ITEM_CONFIG } from '../constants';
 import { getTreasureExpBonusPercent, getTreasureUpgradeSuccessRate } from '../utils';
@@ -30,351 +30,350 @@ export const TreasuresTab: React.FC<{
   onUpgradeTreasure,
   onSwitchToCrafting
 }) => {
+  const [selectedTreasureId, setSelectedTreasureId] = useState<number>(activeTreasureId || 1);
+
   const activeBoosterConfig = effectiveBoosterId !== 'none' ? ITEM_CONFIG.find(i => i.id === effectiveBoosterId) : null;
+  const selectedLvlConfig = LEVEL_CONFIG.find(l => l.level === selectedTreasureId) || LEVEL_CONFIG[0];
+  const isSelectedUnlocked = xp >= selectedLvlConfig.reqXp;
+  const isSelectedEquipped = activeTreasureId === selectedTreasureId;
+
+  const forgeTalismanQty = inventory.forge_talisman || 0;
+  const skyStoneQty = inventory.sky_stone || 0;
+
+  const currentTreasureLvl = treasureLevels[selectedTreasureId] || 1;
+  const nextLvl = currentTreasureLvl + 1;
+  const curBonus = getTreasureExpBonusPercent(selectedTreasureId, currentTreasureLvl);
+  const nextBonus = getTreasureExpBonusPercent(selectedTreasureId, nextLvl);
+  const upgradeCost = Math.round(selectedLvlConfig.reqXp * 0.12);
+  const baseRate = getTreasureUpgradeSuccessRate(currentTreasureLvl);
+  const effectiveRate = Math.min(1.0, baseRate + boosterBonusRate);
+  const effectiveRatePercent = Math.round(effectiveRate * 100);
 
   return (
-    <>
+    <div style={{ display: 'flex', gap: '14px', height: '460px' }}>
+      {/* ─── LEFT COLUMN: Master List ────────────────────────────────────────── */}
       <div
         style={{
-          fontSize: '11px',
-          fontWeight: 800,
-          color: 'rgba(56,189,248,0.85)',
-          marginBottom: '10px',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
+          width: '250px',
+          flexShrink: 0,
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}
-      >
-        <span>DANH SÁCH 17 PHÁP BẢO HỘ THỂ (MỖI CẤP TĂNG BUFF EXP)</span>
-        <span style={{ color: '#38bdf8' }}>💎 {spiritStones} Linh Thạch</span>
-      </div>
-
-      {/* Booster Selector Bar (Tiêu hao theo từng lần rèn) */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,41,59,0.85))',
-          border: '1px solid rgba(56,189,248,0.3)',
+          flexDirection: 'column',
+          gap: '7px',
+          background: 'rgba(0,0,0,0.3)',
+          border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '12px',
-          padding: '10px 12px',
-          marginBottom: '12px'
+          padding: '10px',
+          overflowY: 'auto'
         }}
       >
         <div
           style={{
+            fontSize: '11px',
+            fontWeight: 900,
+            color: '#38bdf8',
+            marginBottom: '4px',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: '8px',
-            flexWrap: 'wrap',
-            gap: '4px'
+            alignItems: 'center'
           }}
         >
-          <div
-            style={{
-              fontSize: '11px',
-              fontWeight: 800,
-              color: '#fde68a',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              textTransform: 'uppercase'
-            }}
-          >
-            <Sparkles style={{ width: '13px', height: '13px', color: '#fde047' }} />
-            <span>VẬT PHẨM BỔ TRỢ RÈN (TIÊU HAO 1 CÁI / LẦN RÈN)</span>
-          </div>
-          {inventory.forge_talisman === 0 && inventory.sky_stone === 0 && (
-            <button
-              onClick={onSwitchToCrafting}
-              style={{
-                background: 'rgba(16,185,129,0.18)',
-                border: '1px solid #10b98166',
-                color: '#86efac',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              🧪 Luyện bùa trong Lò Bát Quái ➔
-            </button>
-          )}
+          <span>🔮 DANH SÁCH PHÁP BẢO</span>
+          <span style={{ color: '#fde047', fontSize: '10.5px', fontWeight: 900 }}>💎 {spiritStones}</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-          {/* Option 1: Không dùng */}
-          <button
-            onClick={() => onSelectBooster('none')}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px',
-              padding: '6px 8px',
-              borderRadius: '8px',
-              background: effectiveBoosterId === 'none' ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.3)',
-              border: `1.5px solid ${effectiveBoosterId === 'none' ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
-              color: effectiveBoosterId === 'none' ? '#38bdf8' : '#94a3b8',
-              cursor: 'pointer',
-              textAlign: 'center'
-            }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 800 }}>⚪ Không Dùng</span>
-            <span style={{ fontSize: '9px', color: '#64748b' }}>Tỉ lệ gốc</span>
-          </button>
-
-          {/* Option 2: Thần Luyện Phù */}
-          {(() => {
-            const qty = inventory.forge_talisman || 0;
-            const isSelected = effectiveBoosterId === 'forge_talisman';
-            const disabled = qty <= 0;
-            return (
-              <button
-                onClick={() => !disabled && onSelectBooster('forge_talisman')}
-                disabled={disabled}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2px',
-                  padding: '6px 8px',
-                  borderRadius: '8px',
-                  background: isSelected
-                    ? 'rgba(234,179,8,0.25)'
-                    : disabled
-                    ? 'rgba(0,0,0,0.2)'
-                    : 'rgba(234,179,8,0.08)',
-                  border: `1.5px solid ${
-                    isSelected ? '#fde047' : disabled ? 'rgba(100,116,139,0.2)' : '#fde04755'
-                  }`,
-                  color: isSelected ? '#fde047' : disabled ? '#64748b' : '#fde68a',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  opacity: disabled ? 0.5 : 1,
-                  textAlign: 'center',
-                  boxShadow: isSelected ? '0 0 10px rgba(253,224,71,0.3)' : 'none'
-                }}
-              >
-                <span style={{ fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <img src="/items/18_than_luyen_phu.png" alt="Thần Luyện Phù" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                  Thần Luyện Phù
-                </span>
-                <span
-                  style={{
-                    fontSize: '9.5px',
-                    color: isSelected ? '#86efac' : disabled ? '#64748b' : '#cbd5e1',
-                    fontWeight: 700
-                  }}
-                >
-                  +20% TC • (Có: {qty})
-                </span>
-              </button>
-            );
-          })()}
-
-          {/* Option 3: Bổ Thiên Thạch */}
-          {(() => {
-            const qty = inventory.sky_stone || 0;
-            const isSelected = effectiveBoosterId === 'sky_stone';
-            const disabled = qty <= 0;
-            return (
-              <button
-                onClick={() => !disabled && onSelectBooster('sky_stone')}
-                disabled={disabled}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '2px',
-                  padding: '6px 8px',
-                  borderRadius: '8px',
-                  background: isSelected
-                    ? 'rgba(192,132,252,0.25)'
-                    : disabled
-                    ? 'rgba(0,0,0,0.2)'
-                    : 'rgba(192,132,252,0.08)',
-                  border: `1.5px solid ${
-                    isSelected ? '#c084fc' : disabled ? 'rgba(100,116,139,0.2)' : '#c084fc55'
-                  }`,
-                  color: isSelected ? '#e9d5ff' : disabled ? '#64748b' : '#d8b4fe',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  opacity: disabled ? 0.5 : 1,
-                  textAlign: 'center',
-                  boxShadow: isSelected ? '0 0 10px rgba(192,132,252,0.3)' : 'none'
-                }}
-              >
-                <span style={{ fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <img src="/items/25_bo_thien_thach.png" alt="Bổ Thiên Thạch" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                  Bổ Thiên Thạch
-                </span>
-                <span
-                  style={{
-                    fontSize: '9.5px',
-                    color: isSelected ? '#86efac' : disabled ? '#64748b' : '#cbd5e1',
-                    fontWeight: 700
-                  }}
-                >
-                  +35% TC & Hoàn 50% • ({qty})
-                </span>
-              </button>
-            );
-          })()}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: '10px',
-          maxHeight: '430px',
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          paddingRight: '4px'
-        }}
-      >
         {LEVEL_CONFIG.map(lvl => {
+          const tId = lvl.level;
           const unlocked = xp >= lvl.reqXp;
-          const equipped = activeTreasureId === lvl.treasureId;
-          const tLvl = treasureLevels[lvl.treasureId] || 1;
-          const upgradeCost = tLvl * 100;
-          const canAfford = spiritStones >= upgradeCost && tLvl < 10;
-          const currentBonus = getTreasureExpBonusPercent(lvl.treasureId, tLvl);
-          const nextBonus = getTreasureExpBonusPercent(lvl.treasureId, tLvl + 1);
+          const equipped = activeTreasureId === tId;
+          const isSelected = selectedTreasureId === tId;
+          const tLvl = treasureLevels[tId] || 1;
+          const tBonus = getTreasureExpBonusPercent(tId, tLvl);
 
           return (
-            <div
-              key={lvl.treasureId}
+            <button
+              key={tId}
+              onClick={() => setSelectedTreasureId(tId)}
               style={{
-                padding: '10px 12px',
-                borderRadius: '12px',
+                padding: '9px 11px',
+                borderRadius: '10px',
                 textAlign: 'left',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                background: equipped
-                  ? 'rgba(56,189,248,0.18)'
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: isSelected
+                  ? 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(168,85,247,0.25))'
+                  : equipped
+                  ? 'rgba(56,189,248,0.12)'
                   : unlocked
-                  ? 'rgba(255,255,255,0.04)'
-                  : 'rgba(0,0,0,0.35)',
+                  ? 'rgba(255,255,255,0.03)'
+                  : 'rgba(0,0,0,0.25)',
                 border: `1px solid ${
-                  equipped ? '#38bdf8' : unlocked ? 'rgba(56,189,248,0.25)' : 'rgba(255,255,255,0.04)'
+                  isSelected
+                    ? '#38bdf8'
+                    : equipped
+                    ? 'rgba(56,189,248,0.4)'
+                    : unlocked
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'transparent'
                 }`,
-                opacity: unlocked ? 1 : 0.5
+                color: isSelected ? '#bae6fd' : unlocked ? '#e2e8f0' : '#64748b',
+                cursor: 'pointer',
+                opacity: unlocked ? 1 : 0.6,
+                transition: 'all 0.15s'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                  <TreasureSprite treasureId={lvl.treasureId} size={42} />
-                  <div style={{ overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        fontWeight: 800,
-                        fontSize: '12px',
-                        color: equipped ? '#38bdf8' : unlocked ? '#f1f5f9' : '#64748b'
-                      }}
-                    >
-                      {lvl.skinName}
-                    </div>
-                    <div style={{ fontSize: '10.5px', color: unlocked ? '#38bdf8' : '#475569', fontWeight: 700 }}>
-                      ⚡ Cấp {tLvl}/10 <span style={{ color: '#86efac' }}>(+{currentBonus}% EXP)</span>
-                    </div>
-                  </div>
-                </div>
-                {unlocked && (
-                  <button
-                    onClick={() => onSelectTreasure(lvl.treasureId, lvl.skinName, currentBonus)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                <TreasureSprite treasureId={tId} size={38} />
+                <div style={{ overflow: 'hidden' }}>
+                  <div
                     style={{
-                      background: equipped ? '#38bdf8' : 'rgba(56,189,248,0.15)',
-                      color: equipped ? '#000' : '#38bdf8',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontSize: '9.5px',
-                      fontWeight: 900,
-                      border: 'none',
-                      cursor: 'pointer'
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      color: isSelected ? '#38bdf8' : unlocked ? '#f1f5f9' : '#64748b',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
-                    {equipped ? 'Đang Ngự' : 'Ngự'}
-                  </button>
-                )}
+                    {lvl.skinName}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: unlocked ? '#86efac' : '#64748b' }}>
+                    {unlocked ? `Cấp ${tLvl} (+${tBonus}% XP)` : `${lvl.reqXp.toLocaleString()} XP`}
+                  </div>
+                </div>
               </div>
 
-              {unlocked &&
-                tLvl < 10 &&
-                (() => {
-                  const baseRate = getTreasureUpgradeSuccessRate(tLvl + 1);
-                  const effectiveRate = Math.min(1.0, baseRate + boosterBonusRate);
-                  const ratePercent = Math.round(effectiveRate * 100);
-                  const basePercent = Math.round(baseRate * 100);
-                  const bonusPercent = Math.round(boosterBonusRate * 100);
-                  const rateColor = ratePercent >= 70 ? '#86efac' : ratePercent >= 45 ? '#fde047' : '#f87171';
-
-                  return (
-                    <button
-                      onClick={() => onUpgradeTreasure(lvl.treasureId)}
-                      disabled={!canAfford}
-                      style={{
-                        width: '100%',
-                        padding: '6px 8px',
-                        borderRadius: '8px',
-                        fontWeight: 800,
-                        fontSize: '10.5px',
-                        background: canAfford
-                          ? 'linear-gradient(135deg,#0284c7,#0369a1)'
-                          : 'rgba(100,116,139,0.2)',
-                        border: `1px solid ${canAfford ? '#38bdf8' : 'transparent'}`,
-                        color: canAfford ? '#fff' : '#64748b',
-                        cursor: canAfford ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      <span>
-                        🔨 Rèn Cấp {tLvl + 1} (+{nextBonus}% EXP)
-                      </span>
-                      <span
-                        style={{
-                          color: canAfford ? rateColor : '#64748b',
-                          fontSize: '9.5px',
-                          background: 'rgba(0,0,0,0.35)',
-                          padding: '2px 6px',
-                          borderRadius: '4px'
-                        }}
-                      >
-                        {ratePercent}% TC{' '}
-                        {boosterBonusRate > 0 &&
-                          `(${basePercent}%+${bonusPercent}% ${activeBoosterConfig?.emoji})`}{' '}
-                        • {upgradeCost} 💎
-                      </span>
-                    </button>
-                  );
-                })()}
-              {unlocked && tLvl >= 10 && (
-                <div
+              {equipped ? (
+                <span
                   style={{
-                    fontSize: '10px',
-                    color: '#c084fc',
-                    fontWeight: 800,
-                    textAlign: 'center',
-                    background: 'rgba(192,132,252,0.12)',
-                    padding: '4px',
-                    borderRadius: '6px'
+                    background: '#38bdf8',
+                    color: '#000',
+                    padding: '3px 7px',
+                    borderRadius: '5px',
+                    fontSize: '9.5px',
+                    fontWeight: 900
                   }}
                 >
-                  ✨ PHÁP BẢO TỐI CAO (CẤP 10: +{currentBonus}% EXP) — HÀO QUANG 3D
-                </div>
-              )}
-            </div>
+                  Dùng
+                </span>
+              ) : !unlocked ? (
+                <Lock style={{ width: '13px', height: '13px', color: '#475569', flexShrink: 0 }} />
+              ) : null}
+            </button>
           );
         })}
       </div>
-    </>
+
+      {/* ─── RIGHT COLUMN: Detail & Action Panel ─────────────────────────────── */}
+      <div
+        style={{
+          flex: 1,
+          background: 'rgba(15,23,42,0.6)',
+          border: '1px solid rgba(56,189,248,0.25)',
+          borderRadius: '14px',
+          padding: '18px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: '0 0 30px rgba(0,0,0,0.5)',
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          {/* Header Preview & Info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '18px',
+                background: 'radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(0,0,0,0.6) 80%)',
+                border: '1.5px solid rgba(56,189,248,0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 0 24px rgba(56,189,248,0.3)'
+              }}
+            >
+              <TreasureSprite treasureId={selectedTreasureId} size={64} />
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 900, fontSize: '17px', color: '#38bdf8', marginBottom: '3px' }}>
+                {selectedLvlConfig.skinName}
+              </div>
+              <div style={{ fontSize: '12px', color: '#cbd5e1', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span>Cấp Rèn: <strong style={{ color: '#fde047' }}>Cấp {currentTreasureLvl}</strong></span>
+                <span>Buff EXP: <strong style={{ color: '#86efac' }}>+{curBonus}%</strong></span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
+                Dành cho tiên gia đạt cảnh giới <strong>{selectedLvlConfig.name}</strong> ({selectedLvlConfig.reqXp.toLocaleString()} XP)
+              </div>
+            </div>
+          </div>
+
+          {/* Treasure Lore Data Box */}
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#38bdf8', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <BookOpen style={{ width: '13px', height: '13px' }} /> TRUYỀN THUYẾT PHÁP BẢO HỘ THỂ:
+            </div>
+            <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.5' }}>
+              Pháp bảo hộ thể thái cổ được rèn từ tinh hoa linh mạch núi thiêng. Mỗi lần tôi luyện thành công sẽ kích hoạt thêm linh văn hộ ấn, gia tăng đáng kể linh lực thu hoạch cho chủ nhân.
+            </div>
+          </div>
+
+          {/* Booster Selection Bar */}
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 14px', borderRadius: '10px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#fde68a', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Sparkles style={{ width: '13px', height: '13px', color: '#fde047' }} /> VẬT PHẨM BỔ TRỢ RÈN (TIÊU HAO 1 CÁI / LẦN RÈN)
+              </span>
+              {forgeTalismanQty === 0 && skyStoneQty === 0 && (
+                <button
+                  onClick={onSwitchToCrafting}
+                  style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid #10b981', color: '#86efac', borderRadius: '5px', padding: '2px 8px', fontSize: '10px', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  + Chế Tạo
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              <button
+                onClick={() => onSelectBooster('none')}
+                style={{
+                  background: effectiveBoosterId === 'none' ? 'rgba(56,189,248,0.2)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${effectiveBoosterId === 'none' ? '#38bdf8' : 'rgba(255,255,255,0.08)'}`,
+                  color: effectiveBoosterId === 'none' ? '#38bdf8' : '#94a3b8',
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                Không Dùng
+              </button>
+
+              <button
+                onClick={() => onSelectBooster('forge_talisman')}
+                disabled={forgeTalismanQty === 0}
+                style={{
+                  background: effectiveBoosterId === 'forge_talisman' ? 'rgba(245,158,11,0.2)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${effectiveBoosterId === 'forge_talisman' ? '#f59e0b' : 'rgba(255,255,255,0.08)'}`,
+                  color: forgeTalismanQty > 0 ? '#fde68a' : '#64748b',
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  cursor: forgeTalismanQty > 0 ? 'pointer' : 'not-allowed',
+                  opacity: forgeTalismanQty > 0 ? 1 : 0.5
+                }}
+              >
+                📜 Thần Luyện Phù ({forgeTalismanQty})
+              </button>
+
+              <button
+                onClick={() => onSelectBooster('sky_stone')}
+                disabled={skyStoneQty === 0}
+                style={{
+                  background: effectiveBoosterId === 'sky_stone' ? 'rgba(168,85,247,0.2)' : 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${effectiveBoosterId === 'sky_stone' ? '#a855f7' : 'rgba(255,255,255,0.08)'}`,
+                  color: skyStoneQty > 0 ? '#d8b4fe' : '#64748b',
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  cursor: skyStoneQty > 0 ? 'pointer' : 'not-allowed',
+                  opacity: skyStoneQty > 0 ? 1 : 0.5
+                }}
+              >
+                💠 Bổ Thiên Thạch ({skyStoneQty})
+              </button>
+            </div>
+          </div>
+
+          {/* Upgrade Forecast Specs */}
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 14px', borderRadius: '10px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '5px' }}>
+              <span style={{ color: '#cbd5e1' }}>Mục Tiêu Tôi Luyện:</span>
+              <span style={{ color: '#fde047', fontWeight: 800 }}>Cấp {currentTreasureLvl} ➔ Cấp {nextLvl} (+{nextBonus}% EXP)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '5px' }}>
+              <span style={{ color: '#cbd5e1' }}>Tỉ Lệ Thành Công:</span>
+              <span style={{ color: effectiveRatePercent >= 80 ? '#86efac' : effectiveRatePercent >= 50 ? '#fde047' : '#fca5a5', fontWeight: 900 }}>
+                {effectiveRatePercent}% {activeBoosterConfig ? `(+${Math.round(boosterBonusRate * 100)}% từ ${activeBoosterConfig.name})` : ''}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px' }}>
+              <span style={{ color: '#cbd5e1' }}>Chi Phí Rèn:</span>
+              <span style={{ color: spiritStones >= upgradeCost ? '#38bdf8' : '#ef4444', fontWeight: 900 }}>💎 {upgradeCost.toLocaleString()} Linh Thạch</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={() => {
+              if (isSelectedUnlocked) {
+                onSelectTreasure(selectedTreasureId, selectedLvlConfig.skinName, curBonus);
+              }
+            }}
+            disabled={!isSelectedUnlocked || isSelectedEquipped}
+            style={{
+              flex: 1,
+              background: isSelectedEquipped
+                ? 'rgba(100,116,139,0.3)'
+                : isSelectedUnlocked
+                ? 'rgba(56,189,248,0.2)'
+                : 'rgba(50,50,50,0.4)',
+              border: `1px solid ${isSelectedUnlocked && !isSelectedEquipped ? '#38bdf8' : 'transparent'}`,
+              borderRadius: '12px',
+              padding: '12px',
+              color: isSelectedEquipped ? '#94a3b8' : isSelectedUnlocked ? '#bae6fd' : '#64748b',
+              fontWeight: 800,
+              fontSize: '12.5px',
+              cursor: isSelectedUnlocked && !isSelectedEquipped ? 'pointer' : 'not-allowed'
+            }}
+          >
+            {isSelectedEquipped ? 'ĐANG DÙNG' : isSelectedUnlocked ? '🔮 DÙNG PHÁP BẢO' : '🔒 CHƯA MỞ'}
+          </button>
+
+          <button
+            onClick={() => {
+              if (isSelectedUnlocked && spiritStones >= upgradeCost) {
+                onUpgradeTreasure(selectedTreasureId);
+              }
+            }}
+            disabled={!isSelectedUnlocked || spiritStones < upgradeCost}
+            style={{
+              flex: 1.4,
+              background: isSelectedUnlocked && spiritStones >= upgradeCost
+                ? 'linear-gradient(135deg, #f59e0b, #d97706)'
+                : 'rgba(50,50,50,0.4)',
+              border: `1px solid ${isSelectedUnlocked && spiritStones >= upgradeCost ? '#fde047' : 'transparent'}`,
+              borderRadius: '12px',
+              padding: '12px',
+              color: isSelectedUnlocked && spiritStones >= upgradeCost ? '#000' : '#64748b',
+              fontWeight: 900,
+              fontSize: '12.5px',
+              cursor: isSelectedUnlocked && spiritStones >= upgradeCost ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: isSelectedUnlocked && spiritStones >= upgradeCost ? '0 0 20px rgba(245,158,11,0.4)' : 'none'
+            }}
+          >
+            <Hammer style={{ width: '15px', height: '15px' }} />
+            RÈN CẤP {nextLvl} ({upgradeCost} 💎)
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };

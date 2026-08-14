@@ -84,7 +84,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [totalPillsConsumed, setTotalPillsConsumed] = useState<number>(() => loadSaved().totalPillsConsumed ?? 0);
   const [deployedServices, setDeployedServices] = useState<string[]>(() => loadSaved().deployedServices ?? []);
   const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>(() => loadSaved().unlockedAchievements ?? []);
+  const [activeRealmPillId, setActiveRealmPillId] = useState<string | null>(() => loadSaved().activeRealmPillId ?? null);
+  const [realmPillExpiry, setRealmPillExpiry] = useState<number>(() => loadSaved().realmPillExpiry ?? 0);
   const [talismanBuffExpiry, setTalismanBuffExpiry] = useState<number>(() => loadSaved().talismanBuffExpiry ?? 0);
+  const [reviveBuffExpiry, setReviveBuffExpiry] = useState<number>(() => loadSaved().reviveBuffExpiry ?? 0);
+  const [voCucBuffExpiry, setVoCucBuffExpiry] = useState<number>(() => loadSaved().voCucBuffExpiry ?? 0);
   const [talismanCountdown, setTalismanCountdown] = useState<number>(0);
   const [failCountAtCurrentLevel, setFailCountAtCurrentLevel] = useState<number>(
     () => loadSaved().failCountAtCurrentLevel ?? 0
@@ -100,6 +104,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [spiritStones, setSpiritStones] = useState<number>(() => loadSaved().spiritStones ?? 500);
   const [ownedMounts, setOwnedMounts] = useState<string[]>(() => loadSaved().ownedMounts ?? ['wolf']);
   const [activeMountId, setActiveMountId] = useState<string | null>(() => loadSaved().activeMountId ?? 'wolf');
+  const [mountLevels, setMountLevels] = useState<Record<string, number>>(() => loadSaved().mountLevels ?? {});
+  const [mountExp, setMountExp] = useState<Record<string, number>>(() => loadSaved().mountExp ?? {});
   const [gachaSpinCount, setGachaSpinCount] = useState<number>(() => loadSaved().gachaSpinCount ?? 0);
   const [recentGachaRewards, setRecentGachaRewards] = useState<GachaRewardItem[] | null>(null);
 
@@ -157,14 +163,28 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const nextLevelInfo = LEVEL_CONFIG.find(l => l.level === currentLevel + 1);
   const isReadyToBreakthrough = Boolean(nextLevelInfo && xp >= nextLevelInfo.reqXp - 1);
   const isTribulationLevel = currentLevel >= 2;
+
+  // Buff computations (CỘNG DỒN CÁC LOẠI BUFF)
+  const isRealmPillActive = Date.now() < realmPillExpiry && Boolean(activeRealmPillId);
+  const activeRealmPillConfig = isRealmPillActive ? ITEM_CONFIG.find(i => i.id === activeRealmPillId) : null;
+  const isRealmPillMatched = activeRealmPillConfig?.targetRealmIndex === currentLevel;
+  const realmPillBonus = isRealmPillMatched ? (activeRealmPillConfig?.breakthroughBonus ?? 0.25) : 0;
+
   const isTalismanActive = Date.now() < talismanBuffExpiry;
-  const talismanCfg = ITEM_CONFIG.find(i => i.id === 'talisman')!;
+  const talismanBonus = isTalismanActive ? 0.25 : 0;
+
+  const isReviveActive = Date.now() < reviveBuffExpiry;
+  const reviveBonus = isReviveActive ? 0.35 : 0;
+
+  const isVoCucActive = Date.now() < voCucBuffExpiry;
+  const voCucBonus = isVoCucActive ? 0.20 : 0;
 
   const baseSuccessRate = getSuccessRate(currentLevel);
-  const talismanBonus = isTalismanActive ? talismanCfg.buffSuccessBonus ?? 0 : 0;
   const pityBonus = failCountAtCurrentLevel * 0.05;
   const mountBonus = activeMountConfig?.breakthroughBonus ?? 0;
-  const effectiveSuccessRate = Math.min(0.95, baseSuccessRate + talismanBonus + pityBonus + mountBonus);
+
+  const totalSuccessRate = baseSuccessRate + realmPillBonus + talismanBonus + reviveBonus + voCucBonus + pityBonus + mountBonus;
+  const effectiveSuccessRate = Math.min(1.0, totalSuccessRate);
   const currentSuccessRatePercent = Math.round(effectiveSuccessRate * 100);
 
   // Forge Booster Computed
@@ -208,6 +228,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           spiritStones,
           ownedMounts,
           activeMountId,
+          mountLevels,
+          mountExp,
           gachaSpinCount,
           treasureLevels,
           craftCount,
@@ -241,6 +263,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     spiritStones,
     ownedMounts,
     activeMountId,
+    mountLevels,
+    mountExp,
     gachaSpinCount,
     treasureLevels,
     craftCount,
@@ -360,6 +384,60 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       if (newOwnedMounts.length >= 1) unlockAchievement('mount_owner_1');
     } else {
       setBubbleText(`✨ Mở Rương thu hoạch ${count} linh đan & bảo vật!`);
+    }
+  };
+
+  // ─── Mount Nurturing & Leveling ──────────────────────────────────────────────
+  const handleFeedMount = (mountId: string, herbId: HerbId | 'spirit_stone', amount: number) => {
+    const mount = MOUNT_CONFIG.find(m => m.id === mountId);
+    if (!mount || !ownedMounts.includes(mountId)) return;
+
+    let expGain = 0;
+    let costMsg = '';
+
+    if (herbId === 'spirit_stone') {
+      const cost = 50 * amount;
+      if (spiritStones < cost) {
+        setBubbleText(`😢 Không đủ Linh Thạch! Cần ${cost} 💎 để nuôi [${mount.name}]!`);
+        return;
+      }
+      addSpiritStones(-cost);
+      expGain = 25 * amount;
+      costMsg = `${cost} 💎 Linh Thạch`;
+    } else {
+      const herb = HERB_CONFIG.find(h => h.id === herbId);
+      if (!herb) return;
+      const have = herbsInventory[herbId] || 0;
+      if (have < amount) {
+        setBubbleText(`😢 Không đủ [${herb.name}]! Cần ${amount}x!`);
+        return;
+      }
+      const expPerHerb =
+        herb.rarity === 'supreme' ? 500 : herb.rarity === 'legendary' ? 200 : herb.rarity === 'rare' ? 80 : herb.rarity === 'uncommon' ? 35 : 15;
+      expGain = expPerHerb * amount;
+      costMsg = `${amount}x [${herb.name}]`;
+      setHerbsInventory(prev => ({ ...prev, [herbId]: Math.max(0, (prev[herbId] || 0) - amount) }));
+    }
+
+    const curLvl = mountLevels[mountId] || 1;
+    const curExp = mountExp[mountId] || 0;
+    const reqExp = curLvl * 100;
+    let newExp = curExp + expGain;
+    let newLvl = curLvl;
+
+    while (newExp >= newLvl * 100 && newLvl < 10) {
+      newExp -= newLvl * 100;
+      newLvl += 1;
+    }
+
+    setMountLevels(prev => ({ ...prev, [mountId]: newLvl }));
+    setMountExp(prev => ({ ...prev, [mountId]: newExp }));
+
+    if (newLvl > curLvl) {
+      setBubbleText(`✨ [THẦN THÚ] [${mount.name}] đã hấp thụ ${costMsg} và THĂNG CẤP Cấp ${newLvl}! Bonus Drag XP: +${(newLvl - 1) * 5 + mount.dragXpBonus} XP/kéo! 🦄✨`);
+      unlockAchievement('secret_mount_level_up');
+    } else {
+      setBubbleText(`🥩 Đã cho [${mount.name}] ăn ${costMsg}! (+${expGain} EXP) Tiến độ: ${newExp}/${reqExp} EXP ✨`);
     }
   };
 
@@ -756,20 +834,68 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       return;
     }
 
-    if (cfg.isBuff || cfg.category === 'breakthrough') {
-      const bonus = cfg.buffSuccessBonus || cfg.breakthroughBonus || 0.25;
+    // 1. Đan Dược Đột Phá Theo Cảnh Giới (Realm-Specific Breakthrough Pill)
+    if (cfg.category === 'breakthrough' && cfg.targetRealmIndex !== undefined) {
+      if (cfg.targetRealmIndex !== currentLevel) {
+        const targetLvl = LEVEL_CONFIG.find(l => l.level === cfg.targetRealmIndex) || LEVEL_CONFIG[0];
+        setBubbleText(`😢 [${cfg.name}] chỉ có tác dụng khi đột phá cảnh giới [${targetLvl.name}]! Cảnh giới hiện tại của bạn là [${currentLevelInfo.name}]!`);
+        return;
+      }
+
+      const bonus = cfg.breakthroughBonus || 0.25;
       const duration = cfg.buffDurationMs || 300_000;
       const expiry = Date.now() + duration;
 
-      setTalismanBuffExpiry(expiry);
-      setInventory(prev => ({ ...prev, [itemId]: (prev[itemId] || 1) - 1 }));
+      setActiveRealmPillId(itemId);
+      setRealmPillExpiry(expiry);
+      setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }));
       setTotalPillsConsumed(prev => prev + 1);
       if (cfg.xpValue > 0) addXP(cfg.xpValue);
 
       setState('dance');
       setFrame(0);
-      setBubbleText(`${cfg.emoji} [${cfg.name}] KÍCH HOẠT! +${Math.round(bonus * 100)}% Tỉ lệ Độ Kiếp trong ${Math.round(duration / 60000)} phút! ✨`);
+      setBubbleText(`🌱 [${cfg.name}] KÍCH HOẠT ĐÚNG CẢNH GIỚI! +${Math.round(bonus * 100)}% Tỉ lệ Đột Phá [${currentLevelInfo.name}] trong ${Math.round(duration / 60000)} phút! (CỘNG DỒN ĐƯỢC VỚI HỘ KIẾP PHÙ) ✨`);
       unlockAchievement('secret_first_talisman');
+      setShowInventory(false);
+      return;
+    }
+
+    // 2. Hộ Kiếp Phù (Cộng Dồn Không Phụ Thuộc Cấp Bậc)
+    if (itemId === 'talisman') {
+      const duration = cfg.buffDurationMs || 300_000;
+      setTalismanBuffExpiry(Date.now() + duration);
+      setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }));
+      setTotalPillsConsumed(prev => prev + 1);
+      setState('dance');
+      setFrame(0);
+      setBubbleText(`🔱 [Hộ Kiếp Phù] KÍCH HOẠT! +25% Tỉ lệ Đột Phá (CỘNG DỒN DÙNG CHO MỌI CẢNH GIỚI)! ✨`);
+      unlockAchievement('secret_first_talisman');
+      setShowInventory(false);
+      return;
+    }
+
+    // 3. Cửu Chuyển Hoàn Hồn Đan (Cộng Dồn Không Phụ Thuộc Cấp Bậc)
+    if (itemId === 'revive') {
+      const duration = cfg.buffDurationMs || 600_000;
+      setReviveBuffExpiry(Date.now() + duration);
+      setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }));
+      setTotalPillsConsumed(prev => prev + 1);
+      setState('dance');
+      setFrame(0);
+      setBubbleText(`🔮 [Cửu Chuyển Hoàn Hồn Đan] KÍCH HOẠT! +35% Tỉ lệ & BẢO HỘ 100% KHÔNG RỚT XP! (CỘNG DỒN MỌI CẢNH GIỚI) ✨`);
+      setShowInventory(false);
+      return;
+    }
+
+    // 4. Vô Cực Đan (Cộng Dồn Không Phụ Thuộc Cấp Bậc)
+    if (itemId === 'pill_vo_cuc') {
+      const duration = cfg.buffDurationMs || 600_000;
+      setVoCucBuffExpiry(Date.now() + duration);
+      setInventory(prev => ({ ...prev, [itemId]: Math.max(0, (prev[itemId] || 1) - 1) }));
+      setTotalPillsConsumed(prev => prev + 1);
+      setState('dance');
+      setFrame(0);
+      setBubbleText(`☯️ [Vô Cực Đan] KÍCH HOẠT! +20% Tỉ lệ Đột Phá & +20% Rèn Bằng Pháp Bảo (CỘNG DỒN CHÍ TÔN)! ✨`);
       setShowInventory(false);
       return;
     }
@@ -832,20 +958,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           setState('dance');
           setFrame(0);
           setBubbleText(`🎉 ĐỘ KIẾP THÀNH CÔNG! Bổn Thỏ thăng hoa lên [${target.name}]! ⚡✨`);
-          if (isTalismanActive) unlockAchievement('secret_talisman_kiep');
+          if (isTalismanActive || isRealmPillActive || isReviveActive) unlockAchievement('secret_talisman_kiep');
           grantItem('great', 1, `🎁 Độ Kiếp đắc đạo! Nhận thưởng +1 🌸 Đại Hoàn Đan!`);
         } else {
           setFailCountAtCurrentLevel(f => f + 1);
           setBreakthroughFailCount(f => f + 1);
           unlockAchievement('secret_fail_kiep');
-          const lossPercent = 0.15;
+          const lossPercent = isReviveActive ? 0 : 0.15;
           const currentProgress = xp - prevReq;
           const lostXp = Math.floor(currentProgress * lossPercent);
           setXp(Math.max(prevReq, xp - lostXp));
           setState('sleep');
           setFrame(0);
           setBubbleText(
-            `🌩️ THIÊN KIẾP ĐÁNH RƠI! Độ Kiếp thất bại! Mất ${lostXp} XP. Tích lũy thêm +5% may mắn lần sau! 😢`
+            isReviveActive
+              ? `🌩️ THIÊN KIẾP DẬY SÓNG! Độ Kiếp thất bại nhưng CỬU CHUYỂN HOÀN HỒN ĐAN BẢO VỆ 100% KHÔNG MẤT XP! (+5% may mắn lần sau) 🔮`
+              : `🌩️ THIÊN KIẾP ĐÁNH RƠI! Độ Kiếp thất bại! Mất ${lostXp} XP. Tích lũy thêm +5% may mắn lần sau! 😢`
           );
         }
       }, 3000);
@@ -1214,6 +1342,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           currentSuccessRatePercent={currentSuccessRatePercent}
           failCountAtCurrentLevel={failCountAtCurrentLevel}
           isTalismanActive={isTalismanActive}
+          isRealmPillActive={isRealmPillActive}
+          isReviveActive={isReviveActive}
+          isVoCucActive={isVoCucActive}
           totalInventory={totalInventory}
           onOpenCostumePicker={() => setShowCostumePicker(p => !p)}
           onBreakthrough={handleBreakthroughOrKiep}
@@ -1235,6 +1366,10 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           selectedForgeBooster={selectedForgeBooster}
           isTalismanActive={isTalismanActive}
           talismanCountdown={talismanCountdown}
+          activeRealmPillId={activeRealmPillId}
+          realmPillExpiry={realmPillExpiry}
+          reviveBuffExpiry={reviveBuffExpiry}
+          voCucBuffExpiry={voCucBuffExpiry}
           onConsumePill={handleConsumePill}
         />
 
@@ -1664,12 +1799,16 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
               />
             )}
 
-            {/* TAB 5: Mounts Gacha & Collection */}
+            {/* TAB 5: Mounts Gacha & Collection & Nurturing */}
             {modalTab === 'mounts' && (
               <MountsTab
                 ownedMounts={ownedMounts}
                 activeMountId={activeMountId}
                 gachaSpinCount={gachaSpinCount}
+                mountLevels={mountLevels}
+                mountExp={mountExp}
+                herbsInventory={herbsInventory}
+                spiritStones={spiritStones}
                 onSpinGacha={handleSpinGacha}
                 onToggleMount={(mountId, name) => {
                   if (activeMountId === mountId) {
@@ -1681,6 +1820,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
                     setBubbleText(`✨ Đã cưỡi Thần Thú [${name}] phi hành! 🐴✨`);
                   }
                 }}
+                onFeedMount={handleFeedMount}
               />
             )}
 

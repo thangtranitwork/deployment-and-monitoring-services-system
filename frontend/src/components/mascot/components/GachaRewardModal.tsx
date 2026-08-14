@@ -13,27 +13,29 @@ export const GachaRewardModal: React.FC<{
   return (
     <div
       className="fixed inset-0 z-[1002] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(12px)' }}
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
       onClick={onClose}
     >
       <div
         style={{
-          background: '#0d1322',
+          background: 'linear-gradient(135deg, #0d1322, #111827)',
           border: '2px solid #f59e0b',
           borderRadius: '20px',
-          padding: '24px',
-          maxWidth: '520px',
-          width: '100%',
+          padding: '20px 16px',
+          maxWidth: '640px',
+          width: 'min(640px, calc(100vw - 24px))',
           textAlign: 'center',
-          boxShadow: '0 0 50px rgba(245,158,11,0.5)',
-          color: '#fff'
+          boxShadow: '0 0 60px rgba(245,158,11,0.5)',
+          color: '#fff',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
         }}
         onClick={e => e.stopPropagation()}
       >
         <div
           style={{
             color: '#fbbf24',
-            fontSize: '18px',
+            fontSize: '16px',
             fontWeight: 900,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
@@ -44,15 +46,18 @@ export const GachaRewardModal: React.FC<{
             gap: '8px'
           }}
         >
-          <Sparkles style={{ width: '22px', height: '22px', color: '#fde047' }} />
+          <Sparkles style={{ width: '20px', height: '20px', color: '#fde047' }} />
           KẾT QUẢ MỞ RƯƠNG LINH THÚ!
         </div>
+
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: rewards.length > 1 ? 'repeat(5, 1fr)' : '1fr',
-            gap: '10px',
-            marginBottom: '16px'
+            gridTemplateColumns: rewards.length > 1 ? 'repeat(5, minmax(0, 1fr))' : '1fr',
+            gap: '8px',
+            marginBottom: '18px',
+            width: '100%',
+            boxSizing: 'border-box'
           }}
         >
           {rewards.map((r, idx) => (
@@ -62,28 +67,33 @@ export const GachaRewardModal: React.FC<{
                 background: 'rgba(255,255,255,0.05)',
                 border: `1px solid ${RARITY_COLORS[r.rarity] || '#f59e0b'}`,
                 borderRadius: '12px',
-                padding: '10px 6px',
+                padding: '8px 4px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px'
+                justifyContent: 'center',
+                gap: '4px',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+                boxShadow: `0 0 10px ${RARITY_COLORS[r.rarity]}22`
               }}
             >
               {r.type === 'mount' && r.mountId ? (
                 <div
                   style={{
-                    height: rewards.length > 1 ? '40px' : '64px',
+                    height: rewards.length > 1 ? '38px' : '60px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
                 >
-                  <AnimatedMountSprite mountId={r.mountId} size={rewards.length > 1 ? 44 : 64} />
+                  <AnimatedMountSprite mountId={r.mountId} size={rewards.length > 1 ? 40 : 60} />
                 </div>
               ) : r.iconImage ? (
                 <div
                   style={{
-                    height: rewards.length > 1 ? '40px' : '64px',
+                    height: rewards.length > 1 ? '38px' : '60px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -93,33 +103,37 @@ export const GachaRewardModal: React.FC<{
                     src={r.iconImage}
                     alt={r.name}
                     style={{
-                      width: rewards.length > 1 ? '32px' : '52px',
-                      height: rewards.length > 1 ? '32px' : '52px',
+                      width: rewards.length > 1 ? '30px' : '48px',
+                      height: rewards.length > 1 ? '30px' : '48px',
                       objectFit: 'contain',
                       filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.8))'
                     }}
                   />
                 </div>
               ) : (
-                <span style={{ fontSize: rewards.length > 1 ? '28px' : '48px', lineHeight: 1 }}>{r.icon}</span>
+                <span style={{ fontSize: rewards.length > 1 ? '24px' : '44px', lineHeight: 1 }}>{r.icon}</span>
               )}
               <span
                 style={{
-                  fontSize: '10px',
+                  fontSize: '9.5px',
                   fontWeight: 800,
                   color: RARITY_COLORS[r.rarity],
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
-                  maxWidth: '90px'
+                  width: '100%',
+                  display: 'block',
+                  padding: '0 2px'
                 }}
+                title={r.name}
               >
                 {r.name}
               </span>
             </div>
           ))}
         </div>
+
         <button
           onClick={onClose}
           style={{
@@ -130,7 +144,8 @@ export const GachaRewardModal: React.FC<{
             color: '#000',
             fontWeight: 900,
             fontSize: '13px',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(245,158,11,0.4)'
           }}
         >
           THU NHẬN TẤT CẢ ✨

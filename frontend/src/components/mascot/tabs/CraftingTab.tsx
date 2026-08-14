@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CraftingRecipe, HerbId, IngredientId, Inventory, ItemCategory } from '../types';
 import { CRAFTING_RECIPES, RARITY_COLORS, ITEM_CONFIG, HERB_CONFIG } from '../constants';
+import { Check, X, Flame, BookOpen } from 'lucide-react';
 
 export const CraftingTab: React.FC<{
   spiritStones: number;
@@ -9,6 +10,12 @@ export const CraftingTab: React.FC<{
   onCraftPill: (recipe: CraftingRecipe, count: number) => void;
 }> = ({ spiritStones, inventory, herbsInventory, onCraftPill }) => {
   const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all');
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string>(CRAFTING_RECIPES[0].id);
+  const [craftBatchCount, setCraftBatchCount] = useState<number>(1);
+
+  const filteredRecipes = CRAFTING_RECIPES.filter(r => filterCategory === 'all' || r.category === filterCategory);
+  const selectedRecipe = CRAFTING_RECIPES.find(r => r.id === selectedRecipeId) || filteredRecipes[0] || CRAFTING_RECIPES[0];
+
   const getIngredientQty = (ingId: IngredientId): number => {
     if (ingId.startsWith('herb_') || ingId.startsWith('mineral_')) {
       return herbsInventory[ingId as HerbId] || 0;
@@ -34,268 +41,338 @@ export const CraftingTab: React.FC<{
     return Math.max(1, max);
   };
 
+  const maxCraftPossible = getMaxCraftCount(selectedRecipe);
+  const canAffordStones = spiritStones >= selectedRecipe.spiritStonesCost * craftBatchCount;
+  const canAffordItems = selectedRecipe.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount * craftBatchCount);
+  const canCraft = canAffordStones && canAffordItems;
+
   return (
-    <>
+    <div style={{ display: 'flex', gap: '14px', height: '460px' }}>
+      {/* ─── LEFT COLUMN: Master List ────────────────────────────────────────── */}
       <div
         style={{
-          fontSize: '11px',
-          fontWeight: 800,
-          color: '#10b981',
-          marginBottom: '10px',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
+          width: '260px',
+          flexShrink: 0,
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          flexDirection: 'column',
+          gap: '7px',
+          background: 'rgba(0,0,0,0.3)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '12px',
+          padding: '10px',
+          overflowY: 'auto'
         }}
       >
-        <span>🧪 LÒ LUYỆN ĐAN BÁT QUÁI TIÊN GIA</span>
-        <span style={{ color: '#38bdf8', fontSize: '12px' }}>💎 Linh Thạch: {spiritStones}</span>
-      </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 900, color: '#10b981', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            🧪 CÔNG THỨC LUYỆN ĐAN
+          </span>
+          <span style={{ fontSize: '10.5px', color: '#38bdf8', fontWeight: 900 }}>💎 {spiritStones}</span>
+        </div>
 
-      {/* Category Filter Tabs */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
-        {[
-          { key: 'all', label: 'Tất Cả' },
-          { key: 'xp', label: '💊 Tăng Tu Vi (XP)' },
-          { key: 'breakthrough', label: '⚡ Đột Phá Cảnh Giới' },
-          { key: 'buff', label: '🌟 Đạo Cảnh & Buff' },
-          { key: 'forge', label: '📜 Bổ Trợ Rèn' }
-        ].map(cat => (
-          <button
-            key={cat.key}
-            onClick={() => setFilterCategory(cat.key as any)}
-            style={{
-              background: filterCategory === cat.key ? 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(168,85,247,0.25))' : 'rgba(0,0,0,0.25)',
-              border: `1px solid ${filterCategory === cat.key ? '#fde047' : 'rgba(255,255,255,0.08)'}`,
-              color: filterCategory === cat.key ? '#fde047' : '#94a3b8',
-              borderRadius: '8px',
-              padding: '4px 10px',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s'
-            }}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: '12px',
-          maxHeight: '430px',
-          overflowY: 'auto',
-          paddingRight: '4px'
-        }}
-      >
-        {CRAFTING_RECIPES.filter(r => filterCategory === 'all' || r.category === filterCategory).map(recipe => {
-          const canAffordStones = spiritStones >= recipe.spiritStonesCost;
-          const canAffordItems = recipe.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount);
-          const canCraft = canAffordStones && canAffordItems;
-
-          return (
-            <div
-              key={recipe.id}
+        {/* Category Filter Tabs */}
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
+          {[
+            { key: 'all', label: 'Tất Cả' },
+            { key: 'xp', label: '💊 Tu Vi' },
+            { key: 'breakthrough', label: '⚡ Đột Phá' },
+            { key: 'buff', label: '🌟 Buff' },
+            { key: 'forge', label: '📜 Rèn' }
+          ].map(cat => (
+            <button
+              key={cat.key}
+              onClick={() => setFilterCategory(cat.key as any)}
               style={{
-                padding: '12px',
-                borderRadius: '14px',
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '10px',
-                background: 'rgba(255,255,255,0.04)',
-                border: `1px solid ${RARITY_COLORS[recipe.rarity]}55`,
-                boxShadow: `0 0 15px ${RARITY_COLORS[recipe.rarity]}20`
+                background: filterCategory === cat.key ? 'rgba(16,185,129,0.25)' : 'rgba(0,0,0,0.2)',
+                border: `1px solid ${filterCategory === cat.key ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+                color: filterCategory === cat.key ? '#86efac' : '#94a3b8',
+                borderRadius: '6px',
+                padding: '3px 7px',
+                fontSize: '10px',
+                fontWeight: 800,
+                cursor: 'pointer'
               }}
             >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                  {recipe.iconImage ? (
-                    <div
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '10px',
-                        background: 'rgba(0,0,0,0.4)',
-                        border: `1px solid ${RARITY_COLORS[recipe.rarity]}88`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        boxShadow: `0 0 10px ${RARITY_COLORS[recipe.rarity]}44`
-                      }}
-                    >
-                      <img
-                        src={recipe.iconImage}
-                        alt={recipe.name}
-                        style={{ width: '36px', height: '36px', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}
-                      />
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '24px' }}>{recipe.emoji}</span>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '13px', color: RARITY_COLORS[recipe.rarity] }}>
-                      {recipe.name}
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>
-                      Chế tạo {recipe.resultAmount}x {ITEM_CONFIG.find(i => i.id === recipe.resultItemId)?.name}
-                    </div>
-                  </div>
-                </div>
+              {cat.label}
+            </button>
+          ))}
+        </div>
 
-                <div style={{ fontSize: '10.5px', color: '#cbd5e1', marginBottom: '8px', lineHeight: '1.4' }}>
-                  {recipe.description}
-                </div>
+        {filteredRecipes.map(recipe => {
+          const isSelected = selectedRecipeId === recipe.id;
+          const readyToCraft = spiritStones >= recipe.spiritStonesCost && recipe.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount);
 
+          return (
+            <button
+              key={recipe.id}
+              onClick={() => {
+                setSelectedRecipeId(recipe.id);
+                setCraftBatchCount(1);
+              }}
+              style={{
+                padding: '9px 11px',
+                borderRadius: '10px',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: isSelected
+                  ? 'linear-gradient(135deg, rgba(16,185,129,0.25), rgba(245,158,11,0.25))'
+                  : readyToCraft
+                  ? 'rgba(16,185,129,0.08)'
+                  : 'rgba(0,0,0,0.25)',
+                border: `1px solid ${
+                  isSelected
+                    ? '#10b981'
+                    : readyToCraft
+                    ? 'rgba(16,185,129,0.3)'
+                    : 'rgba(255,255,255,0.06)'
+                }`,
+                color: isSelected ? '#86efac' : readyToCraft ? '#e2e8f0' : '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
                 <div
                   style={{
-                    fontSize: '10px',
-                    color: '#94a3b8',
-                    background: 'rgba(0,0,0,0.3)',
-                    padding: '6px 8px',
-                    borderRadius: '8px'
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: 'rgba(0,0,0,0.4)',
+                    border: `1px solid ${RARITY_COLORS[recipe.rarity]}66`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                   }}
                 >
-                  <div style={{ fontWeight: 700, color: '#fde68a', marginBottom: '4px' }}>
-                    Nguyên Liệu Dược Liệu/Quặng Cần:
-                  </div>
-                  {recipe.ingredients.map(ing => {
-                    const info = getIngredientInfo(ing.id);
-                    const hasEnough = info.qty >= ing.amount;
-                    return (
-                      <div
-                        key={ing.id}
-                        style={{
-                          color: hasEnough ? '#86efac' : '#ef4444',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: '3px'
-                        }}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          {info.iconImage ? (
-                            <img
-                              src={info.iconImage}
-                              alt={info.name}
-                              style={{ width: '16px', height: '16px', objectFit: 'contain' }}
-                            />
-                          ) : (
-                            <span>{info.emoji}</span>
-                          )}
-                          <span>{info.name} x{ing.amount}</span>
-                        </span>
-                        <span>
-                          ({info.qty}/{ing.amount})
-                        </span>
-                      </div>
-                    );
-                  })}
+                  {recipe.iconImage ? (
+                    <img src={recipe.iconImage} alt={recipe.name} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontSize: '18px' }}>{recipe.emoji}</span>
+                  )}
+                </div>
+                <div style={{ overflow: 'hidden' }}>
                   <div
                     style={{
-                      color: canAffordStones ? '#38bdf8' : '#ef4444',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginTop: '4px',
-                      borderTop: '1px solid rgba(255,255,255,0.06)',
-                      paddingTop: '3px'
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      color: isSelected ? '#86efac' : RARITY_COLORS[recipe.rarity],
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
-                    <span>💎 Linh Thạch</span>
-                    <span>{recipe.spiritStonesCost} 💎</span>
+                    {recipe.name}
+                  </div>
+                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>
+                    💎 {recipe.spiritStonesCost} Linh Thạch
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <button
-                  disabled={!canCraft}
-                  onClick={() => onCraftPill(recipe, 1)}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    fontWeight: 800,
-                    fontSize: '11px',
-                    background: canCraft ? 'linear-gradient(135deg,#ef4444,#dc2626)' : 'rgba(100,116,139,0.2)',
-                    border: `1px solid ${canCraft ? '#f87171' : 'transparent'}`,
-                    color: canCraft ? '#fff' : '#64748b',
-                    cursor: canCraft ? 'pointer' : 'not-allowed',
-                    boxShadow: canCraft ? '0 0 12px rgba(239,68,68,0.4)' : 'none'
-                  }}
-                >
-                  {canCraft ? '🔥 LUYỆN ĐAN (x1)' : 'Thiếu Nguyên Liệu / Linh Thạch'}
-                </button>
-
-                {canCraft && (
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      onClick={() => onCraftPill(recipe, 5)}
-                      style={{
-                        flex: 1,
-                        padding: '5px',
-                        borderRadius: '6px',
-                        fontSize: '9.5px',
-                        fontWeight: 800,
-                        background: 'rgba(239,68,68,0.18)',
-                        border: '1px solid #ef444466',
-                        color: '#fca5a5',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🔥 x5
-                    </button>
-                    <button
-                      onClick={() => onCraftPill(recipe, 10)}
-                      style={{
-                        flex: 1,
-                        padding: '5px',
-                        borderRadius: '6px',
-                        fontSize: '9.5px',
-                        fontWeight: 800,
-                        background: 'rgba(239,68,68,0.18)',
-                        border: '1px solid #ef444466',
-                        color: '#fca5a5',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🔥 x10
-                    </button>
-                    {(() => {
-                      const maxAfford = getMaxCraftCount(recipe);
-                      return (
-                        <button
-                          onClick={() => onCraftPill(recipe, maxAfford)}
-                          style={{
-                            flex: 1.2,
-                            padding: '5px',
-                            borderRadius: '6px',
-                            fontSize: '9.5px',
-                            fontWeight: 900,
-                            background: 'linear-gradient(135deg,#f59e0b,#d97706)',
-                            border: '1px solid #fde68a',
-                            color: '#000',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          ⚡ MAX (x{maxAfford})
-                        </button>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-            </div>
+              {readyToCraft && (
+                <span style={{ background: 'rgba(16,185,129,0.2)', border: '1px solid #10b981', color: '#86efac', borderRadius: '5px', padding: '2px 6px', fontSize: '9px', fontWeight: 900 }}>
+                  Đủ Dược
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
-    </>
+
+      {/* ─── RIGHT COLUMN: Detail & Action Panel ─────────────────────────────── */}
+      <div
+        style={{
+          flex: 1,
+          background: 'rgba(15,23,42,0.6)',
+          border: `1px solid ${RARITY_COLORS[selectedRecipe.rarity]}44`,
+          borderRadius: '14px',
+          padding: '18px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: `0 0 25px ${RARITY_COLORS[selectedRecipe.rarity]}15`,
+          overflowY: 'auto'
+        }}
+      >
+        <div>
+          {/* Recipe Header Info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px', background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '16px',
+                background: 'radial-gradient(circle, rgba(16,185,129,0.25) 0%, rgba(0,0,0,0.6) 80%)',
+                border: `1.5px solid ${RARITY_COLORS[selectedRecipe.rarity]}66`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              {selectedRecipe.iconImage ? (
+                <img src={selectedRecipe.iconImage} alt={selectedRecipe.name} style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '40px' }}>{selectedRecipe.emoji}</span>
+              )}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontWeight: 900, fontSize: '17px', color: RARITY_COLORS[selectedRecipe.rarity] }}>
+                  {selectedRecipe.name}
+                </span>
+                <span style={{ background: 'rgba(16,185,129,0.18)', border: '1px solid #10b98166', color: '#86efac', fontSize: '10.5px', fontWeight: 800, padding: '2px 8px', borderRadius: '5px' }}>
+                  Tỉ lệ: {Math.round(selectedRecipe.successRate * 100)}%
+                </span>
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#cbd5e1', marginTop: '4px', lineHeight: '1.5' }}>
+                {selectedRecipe.description}
+              </div>
+            </div>
+          </div>
+
+          {/* Recipe Lore Data Box */}
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: '10px', marginBottom: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 900, color: '#10b981', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <BookOpen style={{ width: '13px', height: '13px' }} /> DƯỢC LÝ & ĐAN PHƯƠNG BÁT QUÁI:
+            </div>
+            <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.5' }}>
+              Luyện chế đan dược tại Thái Cổ Bát Quái Lò đòi hỏi sự hòa hợp giữa dược liệu linh thảo và linh thạch trấn định. Khi luyện thành công, linh đan sẽ mang lại năng lượng tu vi đột phá mạnh mẽ.
+            </div>
+          </div>
+
+          {/* Required Ingredients Checklist */}
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 14px', borderRadius: '10px', marginBottom: '14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: '11.5px', fontWeight: 900, color: '#fde68a', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+              <span>🧪 NGUYÊN LIỆU YÊU CẦU:</span>
+              <span style={{ color: canAffordStones ? '#38bdf8' : '#ef4444' }}>
+                💎 {(selectedRecipe.spiritStonesCost * craftBatchCount).toLocaleString()} Linh Thạch
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {selectedRecipe.ingredients.map(ing => {
+                const info = getIngredientInfo(ing.id);
+                const reqTotal = ing.amount * craftBatchCount;
+                const hasEnough = info.qty >= reqTotal;
+
+                return (
+                  <div
+                    key={ing.id}
+                    style={{
+                      background: hasEnough ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                      border: `1px solid ${hasEnough ? '#10b98155' : '#ef444455'}`,
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '11.5px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {info.iconImage ? (
+                        <img src={info.iconImage} alt={info.name} style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: '16px' }}>{info.emoji}</span>
+                      )}
+                      <span style={{ fontWeight: 800, color: '#e2e8f0' }}>{info.name}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: 900, color: hasEnough ? '#86efac' : '#fca5a5' }}>
+                        {info.qty} / {reqTotal}
+                      </span>
+                      {hasEnough ? (
+                        <Check style={{ width: '14px', height: '14px', color: '#10b981' }} />
+                      ) : (
+                        <X style={{ width: '14px', height: '14px', color: '#ef4444' }} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Batch Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)', padding: '8px 14px', borderRadius: '10px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 800 }}>Số lượng luyện:</span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[1, 5, 10].map(cnt => (
+                <button
+                  key={cnt}
+                  onClick={() => setCraftBatchCount(cnt)}
+                  style={{
+                    background: craftBatchCount === cnt ? '#10b98133' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${craftBatchCount === cnt ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+                    color: craftBatchCount === cnt ? '#86efac' : '#94a3b8',
+                    borderRadius: '6px',
+                    padding: '3px 10px',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {cnt}x
+                </button>
+              ))}
+              <button
+                onClick={() => setCraftBatchCount(maxCraftPossible)}
+                style={{
+                  background: 'rgba(245,158,11,0.2)',
+                  border: '1px solid #f59e0b',
+                  color: '#fde68a',
+                  borderRadius: '6px',
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  cursor: 'pointer'
+                }}
+              >
+                Max ({maxCraftPossible}x)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Primary Action Button */}
+        <button
+          onClick={() => {
+            if (canCraft) {
+              onCraftPill(selectedRecipe, craftBatchCount);
+            }
+          }}
+          disabled={!canCraft}
+          style={{
+            width: '100%',
+            background: canCraft
+              ? 'linear-gradient(135deg, #10b981, #059669)'
+              : 'rgba(50,50,50,0.4)',
+            border: `1.5px solid ${canCraft ? '#86efac' : 'transparent'}`,
+            borderRadius: '12px',
+            padding: '13px',
+            color: canCraft ? '#fff' : '#64748b',
+            fontWeight: 900,
+            fontSize: '13.5px',
+            cursor: canCraft ? 'pointer' : 'not-allowed',
+            boxShadow: canCraft ? '0 0 20px rgba(16,185,129,0.4)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          <Flame style={{ width: '18px', height: '18px' }} />
+          {canCraft
+            ? `🧪 LUYỆN ${craftBatchCount}X ${selectedRecipe.name.toUpperCase()} (LÒ BÁT QUÁI)`
+            : '🔒 THIẾU NGUYÊN LIỆU HOẶC LINH THẠCH'}
+        </button>
+      </div>
+    </div>
   );
 };
