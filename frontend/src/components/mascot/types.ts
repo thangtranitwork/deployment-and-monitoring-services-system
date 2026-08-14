@@ -26,33 +26,7 @@ export interface LevelInfo {
 }
 
 // ─── Item System ───────────────────────────────────────────────────────────────
-export type ItemId =
-  | 'basic'
-  | 'recover'
-  | 'great'
-  | 'talisman'
-  | 'revive'
-  | 'forge_talisman'
-  | 'sky_stone'
-  | 'pill_truc_co'
-  | 'pill_kim_dan'
-  | 'pill_nguyen_anh'
-  | 'pill_hoa_than'
-  | 'pill_luyen_hu'
-  | 'pill_hop_the'
-  | 'pill_dai_thua'
-  | 'pill_do_kiep'
-  | 'pill_chan_tien'
-  | 'pill_huyen_tien'
-  | 'pill_kim_tien'
-  | 'pill_thai_at'
-  | 'pill_thai_at_kim'
-  | 'pill_dai_la'
-  | 'pill_hon_nguyen'
-  | 'pill_tien_de'
-  | 'pill_ngo_dao'
-  | 'pill_thien_dao'
-  | 'pill_vo_cuc';
+export type ItemId = string;
 
 export type ForgeBoosterId = 'none' | 'forge_talisman' | 'sky_stone';
 
@@ -80,6 +54,7 @@ export interface ItemConfig {
   isForgeBooster?: boolean;
   forgeSuccessBonus?: number;
   refundOnFailRatio?: number;
+  refundOnFailPercent?: number;
   buyPrice?: number;
   sellPrice?: number;
 }

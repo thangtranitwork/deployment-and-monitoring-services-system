@@ -63,15 +63,22 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const [xp, setXp] = useState<number>(() => loadSaved().xp ?? 0);
   const [activeSkin, setActiveSkin] = useState<string>(() => loadSaved().activeSkin ?? 'none');
   const [activeTreasureId, setActiveTreasureId] = useState<number>(() => loadSaved().activeTreasureId ?? 1);
-  const [inventory, setInventory] = useState<Inventory>(() => ({
-    basic: loadSaved().inventory?.basic ?? 5,
-    recover: loadSaved().inventory?.recover ?? 2,
-    great: loadSaved().inventory?.great ?? 1,
-    talisman: loadSaved().inventory?.talisman ?? 1,
-    revive: loadSaved().inventory?.revive ?? 0,
-    forge_talisman: loadSaved().inventory?.forge_talisman ?? 1,
-    sky_stone: loadSaved().inventory?.sky_stone ?? 0
-  }));
+  const [inventory, setInventory] = useState<Inventory>(() => {
+    const saved = loadSaved().inventory ?? {};
+    return {
+      '01_tu_linh_dan': saved['01_tu_linh_dan'] ?? saved['basic'] ?? 10,
+      '04_hoi_khi_dan': saved['04_hoi_khi_dan'] ?? saved['recover'] ?? 5,
+      '24_dai_hoi_khi_dan': saved['24_dai_hoi_khi_dan'] ?? saved['great'] ?? 3,
+      '09_truc_co_dan': saved['09_truc_co_dan'] ?? saved['pill_truc_co'] ?? 1,
+      '18_kim_nguyen_dan': saved['18_kim_nguyen_dan'] ?? saved['pill_kim_dan'] ?? 1,
+      '25_ngung_anh_dan': saved['25_ngung_anh_dan'] ?? saved['pill_nguyen_anh'] ?? 1,
+      talisman: saved.talisman ?? 2,
+      revive: saved.revive ?? 0,
+      forge_talisman: saved.forge_talisman ?? 1,
+      sky_stone: saved.sky_stone ?? 1,
+      ...saved
+    };
+  });
   const [selectedForgeBooster, setSelectedForgeBooster] = useState<ForgeBoosterId>(
     () => loadSaved().selectedForgeBooster ?? 'none'
   );
@@ -212,7 +219,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const prevReq = currentLevelInfo.reqXp;
   const nextReq = nextLevelInfo ? nextLevelInfo.reqXp : prevReq + 20000;
   const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / (nextReq - prevReq)) * 100));
-  const totalInventory = Object.values(inventory).reduce((a, b) => a + b, 0);
+  const totalInventory = Object.values(inventory).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
 
   // Persist to localStorage
   useEffect(() => {
@@ -299,8 +306,30 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   };
 
   const grantItem = (itemId: ItemId, amount: number, msg?: string) => {
-    const cfg = ITEM_CONFIG.find(i => i.id === itemId)!;
-    setInventory(prev => ({ ...prev, [itemId]: Math.min(cfg.maxStack, (prev[itemId] ?? 0) + amount) }));
+    const aliasMap: Record<string, string> = {
+      basic: '01_tu_linh_dan',
+      recover: '04_hoi_khi_dan',
+      great: '24_dai_hoi_khi_dan',
+      pill_truc_co: '09_truc_co_dan',
+      pill_kim_dan: '18_kim_nguyen_dan',
+      pill_nguyen_anh: '25_ngung_anh_dan',
+      pill_hoa_than: '29_hoa_than_dan',
+      pill_luyen_hu: '33_luyen_hu_dan',
+      pill_hop_the: '35_hop_the_dan',
+      pill_dai_thua: '37_dai_thua_dan',
+      pill_do_kiep: '41_do_kiep_dan',
+      pill_chan_tien: '43_chan_tien_dan',
+      pill_huyen_tien: '49_huyen_tien_dan',
+      pill_kim_tien: '51_kim_tien_dan',
+      pill_thai_at: '53_thai_at_ngoc_tien_dan',
+      pill_thai_at_kim: '54_thai_at_kim_tien_dan',
+      pill_dai_la: '57_dai_la_kim_dan',
+      pill_hon_nguyen: '58_hon_nguyen_dan',
+      pill_tien_de: '63_tien_de_dao_dan'
+    };
+    const targetId = aliasMap[itemId] || itemId;
+    const cfg = ITEM_CONFIG.find(i => i.id === targetId) || ITEM_CONFIG[0];
+    setInventory(prev => ({ ...prev, [targetId]: Math.min(cfg.maxStack || 999, (prev[targetId] ?? 0) + amount) }));
     if (msg) setBubbleText(msg);
   };
 
