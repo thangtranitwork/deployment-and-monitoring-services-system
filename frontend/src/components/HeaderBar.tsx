@@ -40,8 +40,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         <span>
           <span className="text-[#10b981]">Internal</span> Deploy System
         </span>
-        <span className="text-[11px] opacity-50 font-normal ml-1.5 px-2 py-0.5 rounded bg-white/5 border border-[#232a3f]/75">
-          v2.3.0
+        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 tracking-wide font-mono">
+          v2.3.1
         </span>
       </div>
 
