@@ -1419,6 +1419,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           reviveBuffExpiry={reviveBuffExpiry}
           voCucBuffExpiry={voCucBuffExpiry}
           activeMountId={activeMountId}
+          isReadyToBreakthrough={isReadyToBreakthrough}
           onConsumePill={handleConsumePill}
           onFeedMount={handleFeedMount}
         />

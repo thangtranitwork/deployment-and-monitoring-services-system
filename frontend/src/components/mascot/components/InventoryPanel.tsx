@@ -327,6 +327,7 @@ export const InventoryPanel: React.FC<{
   reviveBuffExpiry?: number;
   voCucBuffExpiry?: number;
   activeMountId?: string | null;
+  isReadyToBreakthrough?: boolean;
   onConsumePill: (itemId: ItemId) => void;
   onFeedMount?: (mountId: string, foodId: string, amount: number) => void;
 }> = ({
@@ -342,9 +343,17 @@ export const InventoryPanel: React.FC<{
   reviveBuffExpiry = 0,
   voCucBuffExpiry = 0,
   activeMountId = "wolf",
+  isReadyToBreakthrough = false,
   onConsumePill,
   onFeedMount
 }) => {
+  const visiblePills = ITEM_CONFIG.filter(item => {
+    if (item.category === 'breakthrough' && !isReadyToBreakthrough) {
+      return false;
+    }
+    return true;
+  });
+
   const [hoveredItem, setHoveredItem] = useState<ItemConfig | null>(null);
   const [hoveredHerb, setHoveredHerb] = useState<HerbConfig | null>(null);
   const [hoveredFood, setHoveredFood] = useState<FoodConfig | null>(null);
@@ -353,7 +362,7 @@ export const InventoryPanel: React.FC<{
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const activeItem = hoveredItem || ITEM_CONFIG.find(i => (inventory[i.id] || 0) > 0) || ITEM_CONFIG[0];
+  const activeItem = hoveredItem || visiblePills.find(i => (inventory[i.id] || 0) > 0) || visiblePills[0] || ITEM_CONFIG[0];
   const activeQty = inventory[activeItem.id] || 0;
   const isTalismItem = activeItem.isBuff;
   const isForgeBoosterItem = activeItem.isForgeBooster;
@@ -638,8 +647,15 @@ export const InventoryPanel: React.FC<{
 
       {/* ─── 12xN GRID: LINH ĐAN & PHỤ BẢO ──────────────────────────────────── */}
       <div style={{ marginBottom: "14px" }}>
-        <div style={{ fontSize: "11px", fontWeight: 900, color: "#fde68a", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-          💊 LINH ĐAN & PHỤ BẢO (NHẤN / NHẤN GIỮ ICON ĐỂ CẮN ĐAN)
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#fde68a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            💊 LINH ĐAN & PHỤ BẢO (NHẤN / NHẤN GIỮ ICON ĐỂ CẮN ĐAN)
+          </div>
+          {isReadyToBreakthrough && (
+            <span style={{ fontSize: "10px", fontWeight: 900, color: "#34d399", background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.4)", padding: "1px 8px", borderRadius: "6px" }}>
+              ⚡ CÁN MỐC ĐỘT PHÁ: ĐÃ MỞ ĐAN DƯỢC TĂNG TỈ LỆ
+            </span>
+          )}
         </div>
 
         <div
@@ -653,7 +669,7 @@ export const InventoryPanel: React.FC<{
             paddingBottom: "4px"
           }}
         >
-          {ITEM_CONFIG.map(item => {
+          {visiblePills.map(item => {
             const qty = inventory[item.id] || 0;
             const isHovered = activeItem.id === item.id && !hoveredHerb && !hoveredFood;
 
