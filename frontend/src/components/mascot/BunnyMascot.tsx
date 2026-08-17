@@ -46,6 +46,8 @@ import { CraftingTab } from './tabs/CraftingTab';
 import { MarketTab } from './tabs/MarketTab';
 import { MountsTab } from './tabs/MountsTab';
 import { AchievementsTab } from './tabs/AchievementsTab';
+import { VoiceCommandButton } from './components/VoiceCommandButton';
+import { useVoiceCommand, VoiceCommandResult } from './hooks/useVoiceCommand';
 
 export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   isDeploying = false,
@@ -222,6 +224,45 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const currentLevelGap = Math.max(1000, nextReq - prevReq);
   const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / currentLevelGap) * 100));
   const totalInventory = Object.values(inventory).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
+
+  // ── Voice Command Hook (Gemini MCP Engine) ──
+  const handleVoiceResult = (result: VoiceCommandResult) => {
+    setIsDismissed(false);
+    setBubbleText(result.bunny_message);
+    if (result.action_type === 'deploy') {
+      setState('run_left');
+    } else if (result.action_type === 'status' || result.action_type === 'list' || result.action_type === 'stats') {
+      setState('dance');
+    } else if (result.action_type === 'git_pull' || result.action_type === 'git_checkout') {
+      setState('walk_right');
+    } else {
+      setState('idle');
+    }
+  };
+
+  const availableServiceNames = activeDeployServices.length > 0
+    ? activeDeployServices
+    : (selectedService ? [selectedService] : []);
+
+  const {
+    isListening,
+    isProcessing,
+    transcript,
+    isSupported: isVoiceSupported,
+    startListening,
+    stopListening
+  } = useVoiceCommand({
+    availableServices: availableServiceNames,
+    onCommandResult: handleVoiceResult
+  });
+
+  const toggleVoiceCommand = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening(availableServiceNames);
+    }
+  };
 
   // Persist to localStorage
   useEffect(() => {
@@ -1394,6 +1435,15 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           isReviveActive={isReviveActive}
           isVoCucActive={isVoCucActive}
           totalInventory={totalInventory}
+          voiceControlNode={
+            <VoiceCommandButton
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isSupported={isVoiceSupported}
+              transcript={transcript}
+              onToggleVoice={toggleVoiceCommand}
+            />
+          }
           onOpenCostumePicker={() => setShowCostumePicker(p => !p)}
           onBreakthrough={handleBreakthroughOrKiep}
           onToggleInventory={e => {

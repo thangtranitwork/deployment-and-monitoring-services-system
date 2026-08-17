@@ -19,6 +19,7 @@ export const SpeechBubble: React.FC<{
   isReviveActive?: boolean;
   isVoCucActive?: boolean;
   totalInventory: number;
+  voiceControlNode?: React.ReactNode;
   onOpenCostumePicker: () => void;
   onBreakthrough: (e: React.MouseEvent) => void;
   onToggleInventory: (e: React.MouseEvent) => void;
@@ -39,6 +40,7 @@ export const SpeechBubble: React.FC<{
   isReviveActive,
   isVoCucActive,
   totalInventory,
+  voiceControlNode,
   onOpenCostumePicker,
   onBreakthrough,
   onToggleInventory,
@@ -241,6 +243,9 @@ export const SpeechBubble: React.FC<{
         />
         {totalInventory > 0 && <span>{totalInventory}</span>}
       </button>
+
+      {/* Voice Command Button Node */}
+      {voiceControlNode}
 
       {/* Dismiss button */}
       <button

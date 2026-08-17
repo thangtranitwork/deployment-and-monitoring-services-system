@@ -87,6 +87,7 @@ func main() {
 	mux.HandleFunc("/api/stats", statsHandler)
 	mux.HandleFunc("/api/agent-metrics", agentMetricsHandler)
 	mux.HandleFunc("/api/deploy", deployHandler)
+	mux.HandleFunc("/api/voice/command", voiceCommandHandler)
 
 	// New Git features
 	mux.HandleFunc("/api/git/stash/{service_name}", gitStashHandler)
