@@ -1058,8 +1058,11 @@ func getVPNDiagnostics() *VPNDiagnosticsResponse {
 }
 
 func killAllOpenVPNProcesses() (*VPNDiagnosticsResponse, error) {
-	_ = exec.Command("sudo", "pkill", "-9", "-f", "openvpn").Run()
-	_ = exec.Command("sudo", "killall", "-9", "openvpn").Run()
+	_ = exec.Command("pkill", "-9", "-f", "openvpn").Run()
+	_ = exec.Command("pkill", "-9", "-x", "openvpn").Run()
+	_ = exec.Command("killall", "-9", "openvpn").Run()
+	_ = exec.Command("sudo", "-n", "pkill", "-9", "-f", "openvpn").Run()
+	_ = exec.Command("sudo", "-n", "killall", "-9", "openvpn").Run()
 	time.Sleep(400 * time.Millisecond)
 
 	vpnState.Lock()
