@@ -26,7 +26,8 @@ import {
   getSuccessRate,
   getTreasureExpBonusPercent,
   getTreasureUpgradeSuccessRate,
-  getDeployCommentary
+  getDeployCommentary,
+  formatNumber
 } from './utils';
 import { BunnySkinSprite } from './components/BunnySkinSprite';
 import { TreasureSprite } from './components/TreasureSprite';
@@ -218,7 +219,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
   const prevReq = currentLevelInfo.reqXp;
   const nextReq = nextLevelInfo ? nextLevelInfo.reqXp : prevReq + 20000;
-  const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / (nextReq - prevReq)) * 100));
+  const currentLevelGap = Math.max(1000, nextReq - prevReq);
+  const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / currentLevelGap) * 100));
   const totalInventory = Object.values(inventory).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
 
   // Persist to localStorage
@@ -561,16 +563,18 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           return next;
         });
         unlockAchievement('secret_tro_dan');
-        addXP(2 * failCount, `🌪️ Tro Đan (x${failCount}): Nổ lò nhưng ngộ ra quy luật (+${2 * failCount} XP)`);
+        const troDanXp = Math.max(10, Math.round(currentLevelGap * 0.001)) * failCount;
+        addXP(troDanXp, `🌪️ Tro Đan (x${failCount}): Nổ lò nhưng ngộ ra quy luật (+${formatNumber(troDanXp)} XP)`);
       }
 
       const isOverallSuccess = successCount > 0;
+      const troDanSingleXp = Math.max(10, Math.round(currentLevelGap * 0.001));
       const resultMessage =
         actualCount > 1
-          ? `🔥 LUYỆN BÁT QUÁI HÀNG LOẠT (x${actualCount})\n✅ Thành công: ${successCount * recipe.resultAmount}x ${recipe.name}\n💥 Nổ lò thất bại: ${failCount}x (Nhận ${failCount}x Tro Đan +${failCount * 2} XP)`
+          ? `🔥 LUYỆN BÁT QUÁI HÀNG LOẠT (x${actualCount})\n✅ Thành công: ${successCount * recipe.resultAmount}x ${recipe.name}\n💥 Nổ lò thất bại: ${failCount}x (Nhận ${failCount}x Tro Đan +${formatNumber(troDanSingleXp * failCount)} XP)`
           : isOverallSuccess
           ? `🔥 LUYỆN ĐAN THÀNH CÔNG! Ngưng tụ tinh hoa đất trời thành ${recipe.resultAmount}x ${recipe.name}!`
-          : `💥 THẤT BẠI NỔ LÒ! Dược lực không cân bằng bùng khói đen! Mất nguyên liệu & nhận 1x Tro Đan (+2 XP)!`;
+          : `💥 THẤT BẠI NỔ LÒ! Dược lực không cân bằng bùng khói đen! Mất nguyên liệu & nhận 1x Tro Đan (+${formatNumber(troDanSingleXp)} XP)!`;
 
       setCraftingResult({
         success: isOverallSuccess,
@@ -1032,27 +1036,29 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
     }
   };
 
-  // Idle minute loop: +10 Spirit Stones & Herb/Mineral Drops
+  // Idle minute loop: +10 Spirit Stones & Herb/Mineral Drops & XP
   useEffect(() => {
     const id = setInterval(() => {
       setTotalMinutes(m => m + 1);
       addSpiritStones(10);
+      const afkXp = Math.max(10, Math.round(currentLevelGap * 0.001));
+      addXP(afkXp);
 
       const roll = Math.random();
       if (roll < 0.55) {
         const randomFood = FOOD_CONFIG[Math.floor(Math.random() * FOOD_CONFIG.length)];
         const qty = Math.random() < 0.3 ? 2 : 1;
         setHerbsInventory(prev => ({ ...prev, [randomFood.id]: (prev[randomFood.id] || 0) + qty }));
-        setBubbleText(`🍲 Bế quan kỳ ngộ! Thu hoạch thức ăn: ${randomFood.emoji} ${randomFood.name} x${qty}! ✨ (+10 💎)`);
+        setBubbleText(`🍲 Bế quan kỳ ngộ! Thu hoạch: ${randomFood.emoji} ${randomFood.name} x${qty}! ✨ (+${formatNumber(afkXp)} XP & +10 💎)`);
       } else {
         const pickedHerb = HERB_CONFIG[Math.floor(Math.random() * HERB_CONFIG.length)];
         const qty = Math.random() < 0.2 ? 2 : 1;
         setHerbsInventory(prev => ({ ...prev, [pickedHerb.id]: (prev[pickedHerb.id] || 0) + qty }));
-        setBubbleText(`🌿 Bế quan kỳ ngộ! Thu hoạch: ${pickedHerb.emoji} ${pickedHerb.name} x${qty}! ✨ (+10 💎)`);
+        setBubbleText(`🌿 Bế quan kỳ ngộ! Thu hoạch: ${pickedHerb.emoji} ${pickedHerb.name} x${qty}! ✨ (+${formatNumber(afkXp)} XP & +10 💎)`);
       }
     }, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [currentLevelGap]);
 
   // Deploy Reaction Engine (+50 Spirit Stones per deploy)
   const wasDeployingRef = useRef(false);
@@ -1068,10 +1074,12 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       wasDeployingRef.current = true;
       setDirection('left');
       setState('run_left');
+      const baseDeployXp = Math.max(50, Math.round(currentLevelGap * 0.02));
+      const totalDeployXp = baseDeployXp * deployCount;
       if (deployCount > 1) {
-        addXP(25 * deployCount, `🚀 Vạn Kiếm Quy Tông! Thần tốc deploy ${deployCount} microservices (+${25 * deployCount} XP)`);
+        addXP(totalDeployXp, `🚀 Vạn Kiếm Quy Tông! Thần tốc deploy ${deployCount} microservices (+${formatNumber(totalDeployXp)} XP)`);
       } else {
-        addXP(25, `🚀 Phân Thần Thuật! Thần tốc deploy ${deployList[0] || 'Service'} (+25 XP)`);
+        addXP(totalDeployXp, `🚀 Phân Thần Thuật! Thần tốc deploy ${deployList[0] || 'Service'} (+${formatNumber(totalDeployXp)} XP)`);
       }
     } else if (!isDeploying && wasDeployingRef.current) {
       wasDeployingRef.current = false;
@@ -1139,8 +1147,9 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           tid = setTimeout(next, Math.random() * 4000 + 4000);
         } else if (r < 0.70) {
           setState('sleep');
-          addXP(3);
-          setBubbleText('🧘 Tọa thiền bế quan... Khô Thiền Cảnh... Zzz');
+          const sleepXp = Math.max(5, Math.round(currentLevelGap * 0.0005));
+          addXP(sleepXp);
+          setBubbleText(`🧘 Tọa thiền bế quan... Khô Thiền Cảnh (+${formatNumber(sleepXp)} XP)... Zzz`);
           tid = setTimeout(next, Math.random() * 8000 + 10000);
         } else if (r < 0.85) {
           setState('eat');
@@ -1243,9 +1252,10 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         if (elapsedRide >= RIDE_COOLDOWN_MS) {
           setLastRideRewardTime(now);
           addSpiritStones(5);
-          const mountBonusXp = activeMountConfig ? activeMountConfig.dragXpBonus : 0;
-          const totalEarnedXp = 10 + mountBonusXp;
-          addXP(totalEarnedXp, `🎉 Đáp đất an toàn cùng ${activeMountConfig?.name ?? 'Thỏ'}! (+${totalEarnedXp} XP & +5 💎)`);
+          const baseDragXp = Math.max(15, Math.round(currentLevelGap * 0.003));
+          const mountBonusPercent = activeMountConfig ? activeMountConfig.dragXpBonus : 0;
+          const totalEarnedXp = Math.round(baseDragXp * (1 + mountBonusPercent / 100));
+          addXP(totalEarnedXp, `🎉 Đáp đất an toàn cùng ${activeMountConfig?.name ?? 'Thỏ'}! (+${formatNumber(totalEarnedXp)} XP & +5 💎)`);
 
           if (newDrags % 5 === 0) grantItem('basic', 1, `🏅 5 lần ngự kiếm! +1 💊 Tụ Linh Đan!`);
         } else {
@@ -1267,7 +1277,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           addSpiritStones(15);
           const randomFood = FOOD_CONFIG[Math.floor(Math.random() * FOOD_CONFIG.length)];
           setHerbsInventory(prev => ({ ...prev, [randomFood.id]: (prev[randomFood.id] || 0) + 1 }));
-          addXP(20, `🥰 Vuốt ve Thỏ Tiên! (+20 XP, +15 💎 Linh Thạch & nhận ${randomFood.emoji} ${randomFood.name} x1)`);
+          const petXp = Math.max(20, Math.round(currentLevelGap * 0.002));
+          addXP(petXp, `🥰 Vuốt ve Thỏ Tiên! (+${formatNumber(petXp)} XP, +15 💎 Linh Thạch & nhận ${randomFood.emoji} ${randomFood.name} x1)`);
         } else {
           const remSec = Math.ceil((PET_COOLDOWN_MS - elapsed) / 1000);
           const min = Math.floor(remSec / 60);
