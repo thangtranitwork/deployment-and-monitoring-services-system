@@ -118,6 +118,7 @@ func main() {
 	mux.HandleFunc("/api/terminal/ws/{service_name}", terminalWebSocketHandler)
 	mux.HandleFunc("/api/terminal/snippets", terminalSnippetsHandler)
 	mux.HandleFunc("/api/terminal/cwd/{service_name}", terminalCwdHandler)
+	mux.HandleFunc("/api/tts", ttsHandler)
 
 	// VPN Integration Routes
 	mux.HandleFunc("/api/configs", handleConfigs)

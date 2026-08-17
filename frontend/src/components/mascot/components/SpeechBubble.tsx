@@ -1,5 +1,5 @@
-import React from 'react';
-import { Package, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, X, Volume2, VolumeX } from 'lucide-react';
 import { LevelInfo } from '../types';
 import { formatNumber } from '../utils';
 
@@ -46,6 +46,17 @@ export const SpeechBubble: React.FC<{
   onToggleInventory,
   onDismiss
 }) => {
+  const [isTtsMuted, setIsTtsMuted] = useState<boolean>(() => localStorage.getItem('ids_bunny_tts_muted') === 'true');
+
+  const toggleTtsMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextState = !isTtsMuted;
+    setIsTtsMuted(nextState);
+    localStorage.setItem('ids_bunny_tts_muted', String(nextState));
+    if (nextState && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  };
   return (
     <div
       className="mascot-bubble"
@@ -246,6 +257,29 @@ export const SpeechBubble: React.FC<{
 
       {/* Voice Command Button Node */}
       {voiceControlNode}
+
+      {/* TTS Speech Synthesis Toggle Button */}
+      <button
+        onClick={toggleTtsMute}
+        onPointerDown={e => e.stopPropagation()}
+        title={isTtsMuted ? "Bật Giọng Đọc Tiên Gia (Speech Synthesis)" : "Tắt Giọng Đọc Tiên Gia (Speech Synthesis)"}
+        style={{
+          background: isTtsMuted ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
+          border: `1px solid ${isTtsMuted ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}`,
+          borderRadius: '8px',
+          padding: '2px 6px',
+          fontSize: '10px',
+          fontWeight: 800,
+          color: isTtsMuted ? '#fca5a5' : '#6ee7b7',
+          cursor: 'pointer',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '2px'
+        }}
+      >
+        {isTtsMuted ? <VolumeX style={{ width: '12px', height: '12px' }} /> : <Volume2 style={{ width: '12px', height: '12px' }} />}
+      </button>
 
       {/* Dismiss button */}
       <button

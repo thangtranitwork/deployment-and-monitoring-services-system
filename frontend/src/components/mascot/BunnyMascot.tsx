@@ -27,7 +27,8 @@ import {
   getTreasureExpBonusPercent,
   getTreasureUpgradeSuccessRate,
   getDeployCommentary,
-  formatNumber
+  formatNumber,
+  speakBunnyMessage
 } from './utils';
 import { BunnySkinSprite } from './components/BunnySkinSprite';
 import { TreasureSprite } from './components/TreasureSprite';
@@ -250,6 +251,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const handleVoiceResult = (result: VoiceCommandResult) => {
     if (result.bunny_message) {
       setPersistentBubbleMessage(result.bunny_message, 8000);
+      speakBunnyMessage(result.bunny_message);
     }
 
     const intent = resolveUIIntent(result);

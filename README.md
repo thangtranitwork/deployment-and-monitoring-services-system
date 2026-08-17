@@ -1,6 +1,6 @@
 # 🚀 Internal Deploy System (IDS) - v2.4.0
 
-A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an **AI Voice Command Agent & Model Context Protocol (MCP)** system, an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 120 achievements, Pill Crafting Alchemy Altar, 10-level Artifact Forge with 3D Bát Quái glowing auras, 10 Xianxia Spirit Mounts, 64-item Pill Atlas, 64-item Mount Food Atlas, tab search & filter controls, achievement hover popups, and press-and-hold inventory consumption.
+A high-performance, aesthetic deployment automation, monitoring, and developer utility stack built with **Go** and **React (Vite + TypeScript + Tailwind CSS)**. Features an **AI Voice Command Agent & Model Context Protocol (MCP)** system, Speech Synthesis TTS Engine with Server Proxy, an interactive **Tu Tien Cultivation Mascot (BunnyMascot)** with 120 achievements, Pill Crafting Alchemy Altar, 10-level Artifact Forge with 3D Bát Quái glowing auras, 10 Xianxia Spirit Mounts, 64-item Pill Atlas, 64-item Mount Food Atlas, tab search & filter controls, achievement hover popups, and press-and-hold inventory consumption.
 
 ---
 
@@ -13,6 +13,16 @@ A high-performance, aesthetic deployment automation, monitoring, and developer u
 - **📊 Live Console Grid View**: Multi-service deploy voice commands automatically launch the `MultiDeployModal` in Live Console Grid View with parallel real-time log streams for each service.
 - **🔒 Production Safety Confirmation**: Production deployments trigger an interactive safety confirmation modal before execution.
 - **💬 Speech Bubble Lock**: 8-second persistent lock for Thỏ Tiên voice responses, preventing background loops from overwriting mascot messages prematurely.
+
+### 🔊 Speech Synthesis TTS Engine & Server Proxy (`/api/tts`)
+- **Web Speech Synthesis API**: High-pitched, lively Vietnamese voice persona for Thỏ Tiên (`vi-VN`, pitch `1.2`, rate `1.05`).
+- **Same-Origin Server TTS Proxy (`/api/tts`)**: Server-side Go proxy fetching Google TTS audio MP3 streams for Linux/headless Chrome browsers without OS local voices.
+- **Clean Error Text Formatting**: Automatically simplifies complex technical stack traces into friendly Vietnamese voice commentary.
+- **🔊 / 🔇 Audio Mute Toggle Button**: Speech Bubble toggle button allowing users to mute or unmute Thỏ Tiên's voice reading at any time.
+
+### 🐰 Elevated Mascot Layout (`z-[9999]`) & Defensive LocalStorage
+- **Top Z-Index Layer (`z-[9999]`)**: Ensures Thỏ Mascot and her Speech Bubble always float on top of all modal dialogs, backdrops, and overlay panels.
+- **Defensive State Recovery**: Robust type-checking for localStorage progress data (`ids_bunny_progress_v5`), preventing state corruption from invalid entries.
 
 ---
 
@@ -52,7 +62,7 @@ Rebuild and restart instantly using the root script:
 ```text
 deploy-tool/
 ├── cmd/
-│   ├── ids-commander/      # Main Go Backend (Standard Library, SSE, PTY, Git & SQL Proxy)
+│   ├── ids-commander/      # Main Go Backend (Standard Library, SSE, PTY, TTS Proxy & Git)
 │   ├── ids-health/         # Health Metrics Agent (Deploys on remote servers)
 │   └── ids-mcp/            # Autonomous MCP Server Binary (JSON-RPC 2.0)
 ├── frontend/               # React SPA Architecture (Vite + TypeScript + Tailwind CSS)
@@ -60,7 +70,7 @@ deploy-tool/
 │   │   ├── rabbit/         # Rabbit UI Controller & Command Schemas
 │   │   ├── components/     # UI Components (HeaderBar, ServiceSidebar, DeploymentPanel, TerminalView)
 │   │   ├── components/modals/ # Modals (GitModal, MultiDeployModal, CompareModal, VPNModal, HealthMonitorModal, GlobalSettingsModal, ShortcutsModal, ToolsModal)
-│   │   ├── components/mascot/ # Tu Tien Mascot Persona & Voice Controller
+│   │   ├── components/mascot/ # Tu Tien Mascot Persona, Speech Bubble & Voice Controller
 │   │   ├── pages/          # Standalone Pages (ToolsPage)
 │   │   ├── types/          # TypeScript Type Definitions
 │   │   └── utils/          # Key-Value & UI Intent Parsers
