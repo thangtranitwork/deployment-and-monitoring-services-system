@@ -90,3 +90,87 @@ export const formatNumber = (num: number): string => {
   }
   return num.toLocaleString('vi-VN');
 };
+
+// ─── Speech Synthesis TTS Engine for Thỏ Tiên ──────────────────────────
+export const speakBunnyMessage = (text: string): void => {
+  if (typeof window === 'undefined') return;
+
+  if (localStorage.getItem('ids_bunny_tts_muted') === 'true') {
+    console.log('🔊 [SpeechSynthesis] Muted by user setting (ids_bunny_tts_muted = true)');
+    return;
+  }
+
+  // Strip out emojis and markdown symbols for natural Vietnamese speech
+  let cleanText = text
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[🚀🐰⚡🔮✨🌱💫⭐🛡️🧘💥💨🌿🌸🌱🪵💧💪🔴]/g, '')
+    .replace(/[\(\)\[\]\{\}\*\_]/g, ' ')
+    .trim();
+
+  // If text contains technical error / 503 / stacktrace, simplify it for speech
+  if (cleanText.includes('API Error') || cleanText.includes('503') || cleanText.includes('synthesis-failed')) {
+    cleanText = 'Bổn Thỏ gặp sự cố kết nối linh lực Gemini, ngài vui lòng thử lại sau ạ.';
+  }
+
+  if (!cleanText) return;
+
+  // Fallback function using HTML5 Audio element + Same-Origin Server TTS Proxy (/api/tts)
+  const playAudioFallback = () => {
+    console.log('🔊 [SpeechSynthesis] Using Same-Origin Server TTS Proxy (/api/tts)...');
+    try {
+      const encodedText = encodeURIComponent(cleanText.slice(0, 180));
+      const ttsUrl = `/api/tts?text=${encodedText}`;
+      const audio = new Audio(ttsUrl);
+      audio.play().then(() => {
+        console.log('🔊 [SpeechSynthesis] ▶️ STARTED playing Same-Origin TTS Audio MP3 successfully!');
+      }).catch(err => {
+        console.warn('🔊 [SpeechSynthesis] Online Audio playback blocked or failed:', err);
+      });
+    } catch (err) {
+      console.error('🔊 [SpeechSynthesis] Audio Fallback error:', err);
+    }
+  };
+
+  // Check Web Speech Synthesis API
+  if ('speechSynthesis' in window) {
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel();
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        console.log('🔊 [SpeechSynthesis] System Voices count: 0 (Linux OS without speech-dispatcher) -> Switching to Online Audio MP3 Fallback');
+        playAudioFallback();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'vi-VN';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.2;
+
+      const viVoice = voices.find(v => v.lang.toLowerCase().includes('vi'));
+      if (viVoice) {
+        utterance.voice = viVoice;
+      }
+
+      utterance.onstart = () => {
+        console.log('🔊 [SpeechSynthesis] ▶️ STARTED playing WebSpeech Utterance:', cleanText);
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('🔊 [SpeechSynthesis] WebSpeech Utterance error (synthesis-failed) -> Switching to Online Audio MP3 Fallback:', e);
+        playAudioFallback();
+      };
+
+      window.speechSynthesis.speak(utterance);
+      return;
+    } catch (e) {
+      console.warn('🔊 [SpeechSynthesis] WebSpeech Exception -> Switching to Online Audio MP3 Fallback:', e);
+    }
+  }
+
+  playAudioFallback();
+};

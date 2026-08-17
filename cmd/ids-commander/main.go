@@ -44,6 +44,7 @@ func main() {
 	log.Printf("[Init] DEV_AGENT_URL: %s", os.Getenv("DEV_AGENT_URL"))
 	log.Printf("[Init] STG_AGENT_URL: %s", os.Getenv("STG_AGENT_URL"))
 	startMetricsCollector()
+	initMCPTools()
 
 	u, _ := user.Current()
 	h, _ := os.UserHomeDir()
@@ -87,6 +88,7 @@ func main() {
 	mux.HandleFunc("/api/stats", statsHandler)
 	mux.HandleFunc("/api/agent-metrics", agentMetricsHandler)
 	mux.HandleFunc("/api/deploy", deployHandler)
+	mux.HandleFunc("/api/voice/command", voiceCommandHandler)
 
 	// New Git features
 	mux.HandleFunc("/api/git/stash/{service_name}", gitStashHandler)
@@ -116,6 +118,7 @@ func main() {
 	mux.HandleFunc("/api/terminal/ws/{service_name}", terminalWebSocketHandler)
 	mux.HandleFunc("/api/terminal/snippets", terminalSnippetsHandler)
 	mux.HandleFunc("/api/terminal/cwd/{service_name}", terminalCwdHandler)
+	mux.HandleFunc("/api/tts", ttsHandler)
 
 	// VPN Integration Routes
 	mux.HandleFunc("/api/configs", handleConfigs)

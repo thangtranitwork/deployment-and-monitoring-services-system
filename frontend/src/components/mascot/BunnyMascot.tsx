@@ -27,7 +27,8 @@ import {
   getTreasureExpBonusPercent,
   getTreasureUpgradeSuccessRate,
   getDeployCommentary,
-  formatNumber
+  formatNumber,
+  speakBunnyMessage
 } from './utils';
 import { BunnySkinSprite } from './components/BunnySkinSprite';
 import { TreasureSprite } from './components/TreasureSprite';
@@ -46,16 +47,26 @@ import { CraftingTab } from './tabs/CraftingTab';
 import { MarketTab } from './tabs/MarketTab';
 import { MountsTab } from './tabs/MountsTab';
 import { AchievementsTab } from './tabs/AchievementsTab';
+import { VoiceCommandButton } from './components/VoiceCommandButton';
+import { useVoiceCommand, VoiceCommandResult } from './hooks/useVoiceCommand';
+import { resolveUIIntent } from '../../utils/uiIntentResolver';
 
 export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   isDeploying = false,
   selectedService = '',
-  activeDeployServices = []
+  activeDeployServices = [],
+  onOpenMultiDeploy,
+  onExecuteUIIntent
 }) => {
   const loadSaved = () => {
     try {
       const s = localStorage.getItem(BUNNY_STORAGE_KEY);
-      return s ? JSON.parse(s) : {};
+      if (!s) return {};
+      const parsed = JSON.parse(s);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return {};
+      }
+      return parsed;
     } catch {
       return {};
     }
@@ -222,6 +233,91 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
   const currentLevelGap = Math.max(1000, nextReq - prevReq);
   const progressPercent = Math.min(100, Math.max(0, ((xp - prevReq) / currentLevelGap) * 100));
   const totalInventory = Object.values(inventory).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
+
+  const bubbleLockTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const setPersistentBubbleMessage = (msg: string, durationMs: number = 8000) => {
+    if (bubbleLockTimerRef.current) {
+      clearTimeout(bubbleLockTimerRef.current);
+    }
+    setIsDismissed(false);
+    setBubbleText(msg);
+    bubbleLockTimerRef.current = setTimeout(() => {
+      bubbleLockTimerRef.current = null;
+    }, durationMs);
+  };
+
+  // ── Voice Command Hook (Gemini MCP Engine) ──
+  const handleVoiceResult = (result: VoiceCommandResult) => {
+    if (result.bunny_message) {
+      setPersistentBubbleMessage(result.bunny_message, 8000);
+      speakBunnyMessage(result.bunny_message);
+    }
+
+    const intent = resolveUIIntent(result);
+    console.log('🐰 [VoiceCommand] Resolved UI Intent:', intent);
+
+    if (intent.type === 'OPEN_DEPLOYMENT_TERMINAL' || intent.type === 'OPEN_MULTI_DEPLOY_MODAL' || result.action_type === 'deploy') {
+      setState('run_left');
+      if (intent.type === 'OPEN_MULTI_DEPLOY_MODAL' && onOpenMultiDeploy) {
+        onOpenMultiDeploy();
+      }
+    } else if (intent.type === 'SHOW_SYSTEM_STATS' || result.action_type === 'status' || result.action_type === 'list' || result.action_type === 'stats') {
+      setState('dance');
+    } else if (intent.type === 'SHOW_GIT_STATUS' || result.action_type === 'git_pull' || result.action_type === 'git_checkout') {
+      setState('walk_right');
+    } else {
+      setState('idle');
+    }
+
+    if (onExecuteUIIntent) {
+      onExecuteUIIntent(intent);
+    }
+  };
+
+  const availableServiceNames = activeDeployServices;
+
+  const {
+    isListening,
+    isProcessing,
+    transcript,
+    audioUrl,
+    isSupported: isVoiceSupported,
+    startListening,
+    stopListening,
+    playLastAudio
+  } = useVoiceCommand({
+    availableServices: availableServiceNames,
+    onCommandResult: handleVoiceResult
+  });
+
+  const toggleVoiceCommand = () => {
+    console.log('🎙️ [VoiceCommand] toggleVoiceCommand triggered. Current isListening:', isListening);
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening(availableServiceNames);
+    }
+  };
+
+  // ── Global Keyboard Shortcut (= key to toggle voice) ──
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if (e.key === '=' || e.code === 'Equal') {
+        e.preventDefault();
+        console.log('🎙️ [VoiceCommand] Global shortcut key "=" pressed!');
+        toggleVoiceCommand();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isListening, isProcessing, activeDeployServices, selectedService]);
 
   // Persist to localStorage
   useEffect(() => {
@@ -1372,7 +1468,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
       {/* ── Bunny + Bubble ── */}
       <div
-        className={`mascot-root fixed z-[95] flex flex-col items-center select-none ${
+        className={`mascot-root fixed z-[9999] flex flex-col items-center select-none ${
           isDragging ? 'cursor-grabbing transition-none' : 'cursor-grab transition-all duration-300 ease-linear'
         }`}
         style={{ left: `${posX}%`, bottom: `${posYBottom}px`, transform: 'translateX(-50%)' }}
@@ -1394,6 +1490,15 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           isReviveActive={isReviveActive}
           isVoCucActive={isVoCucActive}
           totalInventory={totalInventory}
+          voiceControlNode={
+            <VoiceCommandButton
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isSupported={isVoiceSupported}
+              transcript={transcript}
+              onToggleVoice={toggleVoiceCommand}
+            />
+          }
           onOpenCostumePicker={() => setShowCostumePicker(p => !p)}
           onBreakthrough={handleBreakthroughOrKiep}
           onToggleInventory={e => {

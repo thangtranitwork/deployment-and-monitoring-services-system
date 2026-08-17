@@ -9,6 +9,8 @@ interface MultiDeployModalProps {
   onTriggerMultiDeploy?: (selectedServices: string[], env: string, msg: string, gitResetMode?: string) => void;
   activeWorkspaceId?: string;
   onDeployComplete?: () => void;
+  initialSelectedServices?: string[];
+  autoStart?: boolean;
 }
 
 export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
@@ -17,7 +19,9 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
   services,
   onTriggerMultiDeploy,
   activeWorkspaceId,
-  onDeployComplete
+  onDeployComplete,
+  initialSelectedServices,
+  autoStart
 }) => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [targetEnv, setTargetEnv] = useState<string>('Development');
@@ -34,9 +38,28 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
   // Reset to Selection View whenever modal opens
   useEffect(() => {
     if (isOpen) {
-      setShowConsoleGrid(false);
+      if (initialSelectedServices && initialSelectedServices.length > 0 && autoStart) {
+        console.log('🚀 [MultiDeployModal] Voice Auto-Start triggered for services:', initialSelectedServices);
+        setSelectedServices(initialSelectedServices);
+        setDeployingServices(initialSelectedServices);
+        const initialLogs: Record<string, { status: 'pending' | 'deploying' | 'success' | 'failed'; log: string }> = {};
+        initialSelectedServices.forEach(name => {
+          initialLogs[name] = {
+            status: 'pending',
+            log: `⏳ [${new Date().toLocaleTimeString()}] Voice Command Batch Queued [${name}]...\n`
+          };
+        });
+        setServiceLogs(initialLogs);
+        setShowConsoleGrid(true);
+
+        initialSelectedServices.forEach(name => {
+          deploySingleService(name, targetEnv, deployMsg, gitResetMode);
+        });
+      } else {
+        setShowConsoleGrid(false);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialSelectedServices, autoStart]);
 
   // Load workspace-isolated selection and environment
   useEffect(() => {

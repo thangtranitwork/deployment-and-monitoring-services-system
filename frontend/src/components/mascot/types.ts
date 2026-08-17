@@ -2,6 +2,8 @@ export interface BunnyMascotProps {
   isDeploying?: boolean;
   selectedService?: string;
   activeDeployServices?: string[];
+  onOpenMultiDeploy?: () => void;
+  onExecuteUIIntent?: (intent: any) => void;
 }
 
 export type BunnyState =
