@@ -34,9 +34,10 @@ else
     echo "ℹ️  [1/3] Skipping React Build (APP_MODE=$APP_MODE)"
 fi
 
-# 2. Build Go Binary
-echo "🔨 [2/3] Compiling Go Backend (ids-commander)..."
+# 2. Build Go Binaries
+echo "🔨 [2/3] Compiling Go Binaries (ids-commander & ids-mcp)..."
 go build -o ids-commander ./cmd/ids-commander
+go build -o ids-mcp ./cmd/ids-mcp
 
 # 3. Restart Process
 echo "🔄 [3/3] Restarting IDS Process..."

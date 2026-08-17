@@ -44,6 +44,7 @@ func main() {
 	log.Printf("[Init] DEV_AGENT_URL: %s", os.Getenv("DEV_AGENT_URL"))
 	log.Printf("[Init] STG_AGENT_URL: %s", os.Getenv("STG_AGENT_URL"))
 	startMetricsCollector()
+	initMCPTools()
 
 	u, _ := user.Current()
 	h, _ := os.UserHomeDir()

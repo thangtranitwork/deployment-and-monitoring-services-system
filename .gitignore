@@ -8,6 +8,7 @@ ids.service
 # Binaries & Executables
 ids-commander
 ids-health
+ids-mcp
 *.exe
 *.dll
 *.so

@@ -17,6 +17,7 @@ import { ToolsPage } from './pages/ToolsPage';
 import { CyberLoader } from './components/CyberLoader';
 import { BunnyMascot } from './components/BunnyMascot';
 import { Service, Settings } from './types';
+import { UIIntentAction } from './utils/uiIntentResolver';
 
 export const App: React.FC = () => {
   const navigate = useNavigate();
@@ -62,6 +63,8 @@ export const App: React.FC = () => {
   // Modals visibility
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isMultiDeployOpen, setIsMultiDeployOpen] = useState<boolean>(false);
+  const [multiDeployInitialServices, setMultiDeployInitialServices] = useState<string[]>([]);
+  const [multiDeployAutoStart, setMultiDeployAutoStart] = useState<boolean>(false);
   const [isCompareOpen, setIsCompareOpen] = useState<boolean>(false);
   const [isGitOpen, setIsGitOpen] = useState<boolean>(false);
   const [isVPNOpen, setIsVPNOpen] = useState<boolean>(false);
@@ -393,10 +396,137 @@ export const App: React.FC = () => {
   };
 
   const handleTriggerMultiDeploy = async (selectedNames: string[], env: string, msg: string, gitResetMode: string = 'none') => {
+    console.log('🚀 [App] handleTriggerMultiDeploy EXECUTING for services:', { selectedNames, env, msg, gitResetMode });
     setTerminalTab('deploy');
     setActiveDeployServices(selectedNames);
     setIsDeploying(true);
     setDeployLogs(prev => prev + `⚡ [${new Date().toLocaleTimeString()}] Multi-deploy initiated for (${selectedNames.length}) services on ${env} (Git Mode: ${gitResetMode})...\nBatch Services: ${selectedNames.join(', ')}\n\n`);
+
+    for (let i = 0; i < selectedNames.length; i++) {
+      const name = selectedNames[i];
+      console.log(`🚀 [App] Deploying batch service (${i + 1}/${selectedNames.length}): ${name}...`);
+      setDeployLogs(prev => prev + `----------------------------------------\n🚀 [${i + 1}/${selectedNames.length}] Starting deployment for [${name}] on ${env}...\n----------------------------------------\n`);
+
+      try {
+        const res = await fetch('/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: name,
+            env: env,
+            message: msg || `Multi-deploy: ${name}`,
+            git_reset_mode: gitResetMode,
+            workspace_id: activeWorkspaceId
+          })
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          setDeployLogs(prev => prev + `❌ [${name}] Deployment failed: ${errText}\n\n`);
+          continue;
+        }
+
+        if (!res.body) {
+          setDeployLogs(prev => prev + `❌ [${name}] Stream unreadable.\n\n`);
+          continue;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const events = chunk.split('\n\n');
+          for (const event of events) {
+            const trimmed = event.trimStart();
+            if (trimmed.startsWith('data: ')) {
+              const content = trimmed.slice(6);
+              if (content.trim() === '[EOF]') {
+                setDeployLogs(prev => prev + `✅ [${name}] Deployed successfully!\n\n`);
+              } else {
+                setDeployLogs(prev => prev + `[${name}] ${content}\n`);
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error(`🚀 [App] Multi-deploy error for ${name}:`, err);
+        setDeployLogs(prev => prev + `❌ [${name}] Network error: ${err.message || 'Failed'}\n\n`);
+      }
+    }
+
+    setIsDeploying(false);
+    fetchServicesForWorkspace();
+    console.log('🚀 [App] Multi-deploy batch COMPLETED for all services!');
+  };
+
+  const handleExecuteVoiceUIIntent = (intent: UIIntentAction) => {
+    console.log('🖥️ [App] Executing Voice UI Intent:', intent);
+    switch (intent.type) {
+      case 'OPEN_DEPLOYMENT_TERMINAL':
+        console.log('🖥️ [App] Handling OPEN_DEPLOYMENT_TERMINAL for service:', intent.serviceName);
+        if (intent.serviceName) {
+          const targetSvc = services.find(s => s.name === intent.serviceName);
+          if (targetSvc) {
+            console.log('🖥️ [App] Selected target service:', targetSvc.name);
+            setSelectedService(targetSvc);
+          }
+          setActiveDeployServices([intent.serviceName]);
+        }
+        setTerminalTab('deploy');
+        if (intent.serviceName) {
+          console.log('🖥️ [App] Triggering executeRealDeploy for single service:', intent.serviceName);
+          executeRealDeploy(`Voice Command Deploy: ${intent.serviceName}`);
+        }
+        break;
+
+      case 'OPEN_MULTI_DEPLOY_MODAL':
+        console.log('🖥️ [App] Handling OPEN_MULTI_DEPLOY_MODAL with autoStart for services:', intent.services);
+        if (intent.services && intent.services.length > 0) {
+          setActiveDeployServices(intent.services);
+          setMultiDeployInitialServices(intent.services);
+          setMultiDeployAutoStart(true);
+          console.log('🖥️ [App] Triggering handleTriggerMultiDeploy for batch services...');
+          handleTriggerMultiDeploy(intent.services, intent.environment || currentEnv, `Voice Multi-Deploy: ${intent.services.join(', ')}`);
+        }
+        setIsMultiDeployOpen(true);
+        break;
+
+      case 'SHOW_PROD_CONFIRMATION':
+        console.log('🖥️ [App] Handling SHOW_PROD_CONFIRMATION for service:', intent.serviceName);
+        if (intent.serviceName) {
+          setPendingDeployMsg(`Voice Deploy Prod: ${intent.serviceName}`);
+        }
+        setIsProdPassOpen(true);
+        break;
+
+      case 'SELECT_SERVICE':
+        console.log('🖥️ [App] Handling SELECT_SERVICE for service:', intent.serviceName);
+        if (intent.serviceName) {
+          const targetSvc = services.find(s => s.name === intent.serviceName);
+          if (targetSvc) {
+            setSelectedService(targetSvc);
+          }
+        }
+        break;
+
+      case 'SHOW_GIT_STATUS':
+        console.log('🖥️ [App] Handling SHOW_GIT_STATUS for service:', intent.serviceName);
+        if (intent.serviceName) {
+          const targetSvc = services.find(s => s.name === intent.serviceName);
+          if (targetSvc) {
+            setSelectedService(targetSvc);
+          }
+        }
+        setIsGitOpen(true);
+        break;
+
+      default:
+        console.log('🖥️ [App] Default intent case reached:', intent.type);
+        break;
+    }
   };
 
   const handleSaveSettings = async (newSettings: Settings) => {
@@ -509,12 +639,16 @@ export const App: React.FC = () => {
               isOpen={isMultiDeployOpen}
               onClose={() => {
                 setIsMultiDeployOpen(false);
+                setMultiDeployAutoStart(false);
+                setMultiDeployInitialServices([]);
                 fetchServicesForWorkspace();
               }}
               services={services}
               onTriggerMultiDeploy={handleTriggerMultiDeploy}
               activeWorkspaceId={activeWorkspaceId}
               onDeployComplete={fetchServicesForWorkspace}
+              initialSelectedServices={multiDeployInitialServices}
+              autoStart={multiDeployAutoStart}
             />
 
             <CompareModal
@@ -571,6 +705,8 @@ export const App: React.FC = () => {
       isDeploying={isDeploying}
       selectedService={selectedService?.name}
       activeDeployServices={activeDeployServices}
+      onOpenMultiDeploy={() => setIsMultiDeployOpen(true)}
+      onExecuteUIIntent={handleExecuteVoiceUIIntent}
     />
   </>
 );
