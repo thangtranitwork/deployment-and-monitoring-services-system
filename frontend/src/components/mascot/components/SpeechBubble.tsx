@@ -59,8 +59,8 @@ export const SpeechBubble: React.FC<{
         fontSize: '11px',
         display: 'flex',
         alignItems: 'center',
-        gap: '6px',
-        maxWidth: 'min(480px, calc(100vw - 24px))',
+        gap: '8px',
+        maxWidth: 'min(850px, calc(100vw - 32px))',
         width: 'max-content'
       }}
     >
@@ -147,11 +147,8 @@ export const SpeechBubble: React.FC<{
         style={{
           color: '#fde68a',
           fontWeight: 500,
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
+          whiteSpace: 'nowrap',
           lineHeight: 1.35,
-          maxHeight: '80px',
-          overflowY: 'auto',
           flex: '1 1 auto',
           minWidth: '60px',
           paddingRight: '2px'
