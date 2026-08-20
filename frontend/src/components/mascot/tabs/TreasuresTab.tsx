@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Hammer, Lock, BookOpen } from 'lucide-react';
 import { ForgeBoosterId, Inventory } from '../types';
-import { LEVEL_CONFIG, ITEM_CONFIG } from '../constants';
+import { LEVEL_CONFIG, ITEM_CONFIG, TREASURE_UPGRADE_COST } from '../constants';
 import { getTreasureExpBonusPercent, getTreasureUpgradeSuccessRate } from '../utils';
 import { TreasureSprite } from '../components/TreasureSprite';
 
@@ -44,7 +44,7 @@ export const TreasuresTab: React.FC<{
   const nextLvl = currentTreasureLvl + 1;
   const curBonus = getTreasureExpBonusPercent(selectedTreasureId, currentTreasureLvl);
   const nextBonus = getTreasureExpBonusPercent(selectedTreasureId, nextLvl);
-  const upgradeCost = Math.round(selectedLvlConfig.reqXp * 0.12);
+  const upgradeCost = currentTreasureLvl * 100;
   const baseRate = getTreasureUpgradeSuccessRate(currentTreasureLvl);
   const effectiveRate = Math.min(1.0, baseRate + boosterBonusRate);
   const effectiveRatePercent = Math.round(effectiveRate * 100);

@@ -44,6 +44,79 @@ export const getTreasureUpgradeSuccessRate = (targetLevel: number): number => {
   return rates[targetLevel] ?? 0.10;
 };
 
+// ─── Realm-based Pill Drop Selector ─────────────────────────────────────────
+export const getRealmAppropriatePillId = (level: number = 1): string => {
+  const realmPillsMap: Record<number, string[]> = {
+    1:  ['01_tu_linh_dan', '02_duong_khi_dan', '04_hoi_khi_dan', '05_luyen_the_dan'],
+    2:  ['09_truc_co_dan', '10_co_nguyen_dan', '11_tay_tuy_dan', '12_thong_mach_dan'],
+    3:  ['17_ket_dan_dan', '18_kim_nguyen_dan', '19_tu_kim_dan', '24_dai_hoi_khi_dan'],
+    4:  ['25_ngung_anh_dan', '26_anh_linh_dan', '27_duong_hon_dan', '28_ho_hon_dan'],
+    5:  ['29_hoa_than_dan', '30_than_niem_dan', '31_loi_hon_dan', '32_than_luc_dan'],
+    6:  ['33_luyen_hu_dan', '34_hu_khong_dan'],
+    7:  ['35_hop_the_dan', '36_am_duong_dan'],
+    8:  ['37_dai_thua_dan', '38_thien_co_dan', '39_ngo_dao_dan', '40_pha_canh_dan'],
+    9:  ['41_do_kiep_dan', '42_loi_kiep_ho_menh_dan'],
+    10: ['43_chan_tien_dan', '44_tien_linh_dan', '45_tien_cot_dan', '48_cuu_chuyen_tien_dan'],
+    11: ['49_huyen_tien_dan', '50_phap_tac_dan'],
+    12: ['51_kim_tien_dan', '52_kim_tien_bat_diet_dan'],
+    13: ['53_thai_at_ngoc_tien_dan', '54_thai_at_kim_tien_dan'],
+    14: ['55_van_phap_dan', '56_dai_la_dao_dan'],
+    15: ['57_dai_la_kim_dan', '58_hon_nguyen_dan'],
+    16: ['59_hon_don_dao_dan', '60_vo_cuc_dan'],
+    17: ['61_hong_mong_dan', '62_tao_hoa_dan', '63_tien_de_dao_dan', '64_vo_cuc_hong_mong_tien_de_dan']
+  };
+
+  const currentLvl = Math.max(1, Math.min(17, level));
+
+  // Determine relative weights for candidate target realms R (1..17)
+  const candidateRealms: { realm: number; weight: number }[] = [];
+
+  for (let r = 1; r <= 17; r++) {
+    const diff = r - currentLvl; // relative level difference
+    let weight = 0;
+
+    if (diff === 0) {
+      // Cùng cảnh giới: Tỉ lệ cao nhất (~54%)
+      weight = 50;
+    } else if (diff < 0) {
+      // Đan level thấp: Tỉ lệ giảm dần theo khoảng cách level
+      const gap = Math.abs(diff); // gap = 1, 2, 3, 4...
+      if (gap === 1) weight = 22;       // 1 level thấp hơn (~24%)
+      else if (gap === 2) weight = 10;  // 2 level thấp hơn (~11%)
+      else if (gap === 3) weight = 4;   // 3 level thấp hơn (~4.3%)
+      else if (gap === 4) weight = 1.5; // 4 level thấp hơn (~1.6%)
+      else weight = 0.5;                // 5+ level thấp hơn
+    } else if (diff > 0) {
+      // Đan trên level:
+      // 1 level cao hơn -> tương ứng tỉ lệ đan nhỏ hơn 3 cảnh giới (weight 4)
+      // 2 level cao hơn -> tương ứng tỉ lệ đan nhỏ hơn 4 cảnh giới (weight 1.5)
+      if (diff === 1) weight = 4;
+      else if (diff === 2) weight = 1.5;
+      else weight = 0; // Trên 3+ level không rớt
+    }
+
+    if (weight > 0) {
+      candidateRealms.push({ realm: r, weight });
+    }
+  }
+
+  // Weighted random selection
+  const totalWeight = candidateRealms.reduce((acc, curr) => acc + curr.weight, 0);
+  let rand = Math.random() * totalWeight;
+
+  let selectedRealm = currentLvl;
+  for (const candidate of candidateRealms) {
+    if (rand < candidate.weight) {
+      selectedRealm = candidate.realm;
+      break;
+    }
+    rand -= candidate.weight;
+  }
+
+  const pool = realmPillsMap[selectedRealm] || realmPillsMap[1];
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
 // ─── Deploy Voice Lines ────────────────────────────────────────────────────────
 export const getDeployCommentary = (serviceName: string, multiServices?: string[]): string => {
   if (multiServices && multiServices.length > 1) {

@@ -13,7 +13,9 @@ import { VPNModal } from './components/modals/VPNModal';
 import { HealthMonitorModal } from './components/modals/HealthMonitorModal';
 import { ProdPasswordModal } from './components/modals/ProdPasswordModal';
 import { ShortcutsModal } from './components/modals/ShortcutsModal';
+import { MultiWebviewLogsModal } from './components/modals/MultiWebviewLogsModal';
 import { ToolsPage } from './pages/ToolsPage';
+import { WebviewLogsPage } from './pages/WebviewLogsPage';
 import { CyberLoader } from './components/CyberLoader';
 import { BunnyMascot } from './components/BunnyMascot';
 import { Service, Settings } from './types';
@@ -71,6 +73,9 @@ export const App: React.FC = () => {
   const [isHealthOpen, setIsHealthOpen] = useState<boolean>(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
   const [isProdPassOpen, setIsProdPassOpen] = useState<boolean>(false);
+  const [isMultiWebviewLogsOpen, setIsMultiWebviewLogsOpen] = useState<boolean>(false);
+  const [webviewFocusService, setWebviewFocusService] = useState<string | null>(null);
+  const [multiWebviewTargetServices, setMultiWebviewTargetServices] = useState<string[] | null>(null);
   const [pendingDeployMsg, setPendingDeployMsg] = useState<string>('');
   const [vpnState, setVpnState] = useState<string>('disconnected');
 
@@ -180,6 +185,23 @@ export const App: React.FC = () => {
       // Fast Multi Deploy: Ctrl + Alt + Shift + M
       if (e.ctrlKey && e.altKey && e.shiftKey && (e.code === 'KeyM' || e.key.toUpperCase() === 'M')) {
         e.preventDefault();
+        const selectedKey = activeWorkspaceId ? `ids_multi_deploy_selected_${activeWorkspaceId}` : 'ids_multi_deploy_selected';
+        const saved = localStorage.getItem(selectedKey);
+        let lastServices: string[] = [];
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              lastServices = parsed.filter((name: string) => services.some(s => s.name === name));
+            }
+          } catch {}
+        }
+        if (lastServices.length > 0) {
+          setMultiDeployInitialServices(lastServices);
+          setMultiDeployAutoStart(true);
+        } else {
+          setMultiDeployAutoStart(false);
+        }
         setIsMultiDeployOpen(true);
         return;
       }
@@ -545,20 +567,34 @@ export const App: React.FC = () => {
 
   const [terminalTab, setTerminalTab] = useState<'pty' | 'deploy'>('pty');
 
+  const handleOpenMultiWebviewLogs = (targetNames?: string[]) => {
+    if (targetNames && targetNames.length > 0) {
+      localStorage.setItem('ids_target_webview_services', JSON.stringify(targetNames));
+    }
+    navigate('/webview-logs');
+  };
+
+  const handleOpenSingleWebviewLog = (serviceName: string) => {
+    const metric = selectedService?.metrics?.[currentEnv];
+    if (metric && metric.stats_port && metric.stats_port !== 'N/A') {
+      const agentUrl = currentEnv === 'Development' ? settings.dev_agent_url :
+                       currentEnv === 'Staging' ? settings.stg_agent_url : settings.prod_agent_url;
+      try {
+        const host = agentUrl ? new URL(agentUrl).hostname : window.location.hostname;
+        window.open(`http://${host}:${metric.stats_port}`, '_blank');
+        return;
+      } catch {}
+    }
+    localStorage.setItem('ids_target_webview_services', JSON.stringify([serviceName]));
+    navigate('/webview-logs');
+  };
+
   const handleOpenLogs = () => {
     setTerminalTab('deploy');
     if (selectedService) {
-      const metric = selectedService.metrics?.[currentEnv];
-      if (metric && metric.stats_port && metric.stats_port !== 'N/A') {
-        const agentUrl = currentEnv === 'Development' ? settings.dev_agent_url :
-                         currentEnv === 'Staging' ? settings.stg_agent_url : settings.prod_agent_url;
-        try {
-          const host = agentUrl ? new URL(agentUrl).hostname : window.location.hostname;
-          window.open(`http://${host}:${metric.stats_port}`, '_blank');
-        } catch {
-          window.open(`http://${window.location.hostname}:${metric.stats_port}`, '_blank');
-        }
-      }
+      handleOpenSingleWebviewLog(selectedService.name);
+    } else {
+      handleOpenMultiWebviewLogs();
     }
   };
 
@@ -566,13 +602,28 @@ export const App: React.FC = () => {
     <>
       <Routes>
         {/* Route 1: Dedicated React SPA Tools Page */}
-      <Route
-        path="/tools"
-        element={<ToolsPage onBackToDashboard={() => navigate('/')} />}
-      />
+        <Route
+          path="/tools"
+          element={<ToolsPage onBackToDashboard={() => navigate('/')} />}
+        />
 
-      {/* Route 2: Main Deploy System Dashboard */}
-      <Route
+        {/* Route 2: Dedicated 2-Column Live Webview Logs Page */}
+        <Route
+          path="/webview-logs"
+          element={
+            <WebviewLogsPage
+              services={services}
+              currentEnv={currentEnv}
+              devAgentUrl={settings.dev_agent_url}
+              stgAgentUrl={settings.stg_agent_url}
+              prodAgentUrl={settings.prod_agent_url}
+              onBackToDashboard={() => navigate('/')}
+            />
+          }
+        />
+
+        {/* Route 3: Main Deploy System Dashboard */}
+        <Route
         path="*"
         element={
           <div className="flex flex-col h-screen w-screen overflow-hidden text-[#f1f5f9] font-sans antialiased">
@@ -598,8 +649,11 @@ export const App: React.FC = () => {
                 services={services}
                 selectedService={selectedService}
                 searchQuery={searchQuery}
+                currentEnv={currentEnv}
                 onSearchChange={setSearchQuery}
                 onSelectService={setSelectedService}
+                onOpenMultiWebviewLogs={handleOpenMultiWebviewLogs}
+                onOpenSingleWebviewLog={handleOpenSingleWebviewLog}
               />
 
               <main className="flex-1 p-6 flex flex-col gap-5 overflow-hidden">
@@ -687,6 +741,18 @@ export const App: React.FC = () => {
               onClose={() => setIsProdPassOpen(false)}
               onConfirm={handleConfirmProdPassword}
               targetAction={selectedService?.name || 'Service'}
+            />
+
+            <MultiWebviewLogsModal
+              isOpen={isMultiWebviewLogsOpen}
+              onClose={() => setIsMultiWebviewLogsOpen(false)}
+              services={services}
+              currentEnv={currentEnv}
+              devAgentUrl={settings.dev_agent_url}
+              stgAgentUrl={settings.stg_agent_url}
+              prodAgentUrl={settings.prod_agent_url}
+              initialFocusService={webviewFocusService}
+              targetServiceNames={multiWebviewTargetServices}
             />
 
             {(isInitialLoading || isSwitchingWorkspace) && (

@@ -839,7 +839,7 @@ button:disabled {
 }
 
 /* Layout */
-main {
+main.dashboard-legacy-grid {
     display: grid;
     grid-template-columns: 320px 1fr;
     grid-template-rows: 1fr;

@@ -359,10 +359,44 @@ export const InventoryPanel: React.FC<{
   const [hoveredFood, setHoveredFood] = useState<FoodConfig | null>(null);
   const [isPressing, setIsPressing] = useState(false);
 
+  const [sectionFilter, setSectionFilter] = useState<'all' | 'pills' | 'food' | 'herbs'>('all');
+  const [pillCategoryFilter, setPillCategoryFilter] = useState<'all' | 'owned' | 'xp' | 'breakthrough' | 'buff' | 'forge'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const filteredPills = visiblePills.filter(item => {
+    const qty = inventory[item.id] || 0;
+    if (pillCategoryFilter === 'owned' && qty <= 0) return false;
+    if (pillCategoryFilter === 'xp' && item.category !== 'xp') return false;
+    if (pillCategoryFilter === 'breakthrough' && item.category !== 'breakthrough') return false;
+    if (pillCategoryFilter === 'buff' && item.category !== 'buff') return false;
+    if (pillCategoryFilter === 'forge' && !item.isForgeBooster && item.category !== 'forge') return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return item.name.toLowerCase().includes(q) || (item.description && item.description.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  const filteredFoods = FOOD_CONFIG.filter(food => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return food.name.toLowerCase().includes(q) || (food.description && food.description.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  const filteredHerbs = HERB_CONFIG.filter(herb => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      return herb.name.toLowerCase().includes(q) || (herb.description && herb.description.toLowerCase().includes(q));
+    }
+    return true;
+  });
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const activeItem = hoveredItem || visiblePills.find(i => (inventory[i.id] || 0) > 0) || visiblePills[0] || ITEM_CONFIG[0];
+  const activeItem = hoveredItem || filteredPills.find(i => (inventory[i.id] || 0) > 0) || filteredPills[0] || visiblePills[0] || ITEM_CONFIG[0];
   const activeQty = inventory[activeItem.id] || 0;
   const isTalismItem = activeItem.isBuff;
   const isForgeBoosterItem = activeItem.isForgeBooster;
@@ -466,6 +500,85 @@ export const InventoryPanel: React.FC<{
         >
           💎 {spiritStones} Linh Thạch
         </span>
+      </div>
+
+      {/* ─── SEARCH & CATEGORY FILTER BAR ────────────────── */}
+      <div style={{ marginBottom: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="🔍 Tìm đan dược, thức ăn, dược liệu..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{
+              flex: 1,
+              background: "rgba(15,23,42,0.95)",
+              border: "1px solid rgba(245,158,11,0.3)",
+              borderRadius: "8px",
+              padding: "6px 12px",
+              fontSize: "11px",
+              color: "#fff",
+              outline: "none"
+            }}
+          />
+          <div style={{ display: "flex", gap: "4px" }}>
+            {[
+              { key: 'all', label: 'Tất Cả Kho' },
+              { key: 'pills', label: '💊 Đan Dược' },
+              { key: 'food', label: '🍱 Thức Ăn' },
+              { key: 'herbs', label: '🌿 Nguyên Liệu' }
+            ].map(sec => (
+              <button
+                key={sec.key}
+                onClick={() => setSectionFilter(sec.key as any)}
+                style={{
+                  background: sectionFilter === sec.key ? "rgba(245,158,11,0.3)" : "rgba(30,41,59,0.5)",
+                  border: `1px solid ${sectionFilter === sec.key ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+                  color: sectionFilter === sec.key ? "#fde68a" : "#94a3b8",
+                  borderRadius: "6px",
+                  padding: "4px 8px",
+                  fontSize: "10.5px",
+                  fontWeight: 800,
+                  cursor: "pointer"
+                }}
+              >
+                {sec.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Pill Sub-Category Filters (When viewing Pills or All) */}
+        {(sectionFilter === 'all' || sectionFilter === 'pills') && (
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: "10px", color: "#94a3b8", fontWeight: 800, marginRight: "2px" }}>Lọc Đan Dược:</span>
+            {[
+              { key: 'all', label: 'Tất Cả Đan' },
+              { key: 'owned', label: '📦 Có Sẵn' },
+              { key: 'xp', label: '💊 Tu Vi' },
+              { key: 'breakthrough', label: '⚡ Đột Phá' },
+              { key: 'buff', label: '🌟 Buff' },
+              { key: 'forge', label: '📜 Rèn' }
+            ].map(cat => (
+              <button
+                key={cat.key}
+                onClick={() => setPillCategoryFilter(cat.key as any)}
+                style={{
+                  background: pillCategoryFilter === cat.key ? "rgba(16,185,129,0.25)" : "rgba(0,0,0,0.3)",
+                  border: `1px solid ${pillCategoryFilter === cat.key ? "#10b981" : "rgba(255,255,255,0.06)"}`,
+                  color: pillCategoryFilter === cat.key ? "#86efac" : "#64748b",
+                  borderRadius: "5px",
+                  padding: "2px 7px",
+                  fontSize: "9.5px",
+                  fontWeight: 800,
+                  cursor: "pointer"
+                }}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ─── HOVERED ITEM DETAIL CARD ────────────────── */}
@@ -595,13 +708,8 @@ export const InventoryPanel: React.FC<{
                 )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontWeight: 900, fontSize: "14px", color: RARITY_COLORS[activeItem.rarity] }}>
-                    {activeItem.name}
-                  </span>
-                  <span style={{ background: "rgba(255,255,255,0.08)", color: "#86efac", fontSize: "10px", fontWeight: 900, padding: "1px 6px", borderRadius: "4px" }}>
-                    Có trong kho: {activeQty}x
-                  </span>
+                <div style={{ fontWeight: 900, fontSize: "13.5px", color: RARITY_COLORS[activeItem.rarity] }}>
+                  {activeItem.name} (Có: {activeQty}x)
                 </div>
                 <div style={{ fontSize: "11px", color: "#cbd5e1", marginTop: "2px", lineHeight: "1.4" }}>
                   {activeItem.description}
@@ -620,22 +728,22 @@ export const InventoryPanel: React.FC<{
                 background: disabled
                   ? "rgba(50,50,50,0.4)"
                   : isPressing
-                  ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                  : "linear-gradient(135deg, #10b981, #059669)",
-                border: `1px solid ${disabled ? "transparent" : "#86efac"}`,
+                  ? "linear-gradient(135deg, #d97706, #b45309)"
+                  : "linear-gradient(135deg, #f59e0b, #d97706)",
+                border: "1px solid #fde047",
                 borderRadius: "10px",
                 padding: "8px 14px",
-                color: disabled ? "#64748b" : "#fff",
+                color: disabled ? "#64748b" : "#000",
                 fontWeight: 900,
                 fontSize: "11.5px",
                 cursor: disabled ? "not-allowed" : "pointer",
-                boxShadow: disabled ? "none" : "0 0 14px rgba(16,185,129,0.4)",
-                flexShrink: 0,
-                whiteSpace: "nowrap",
                 display: "flex",
                 alignItems: "center",
-                gap: "5px",
-                userSelect: "none"
+                gap: "6px",
+                whiteSpace: "nowrap",
+                userSelect: "none",
+                transform: isPressing ? "scale(0.96)" : "scale(1)",
+                transition: "all 0.1s ease"
               }}
             >
               <Flame style={{ width: "14px", height: "14px" }} />
@@ -646,138 +754,149 @@ export const InventoryPanel: React.FC<{
       </div>
 
       {/* ─── 12xN GRID: LINH ĐAN & PHỤ BẢO ──────────────────────────────────── */}
-      <div style={{ marginBottom: "14px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 900, color: "#fde68a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            💊 LINH ĐAN & PHỤ BẢO (NHẤN / NHẤN GIỮ ICON ĐỂ CẮN ĐAN)
+      {(sectionFilter === 'all' || sectionFilter === 'pills') && (
+        <div style={{ marginBottom: "14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 900, color: "#fde68a", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              💊 LINH ĐAN & PHỤ BẢO ({filteredPills.length})
+            </div>
+            {isReadyToBreakthrough && (
+              <span style={{ fontSize: "10px", fontWeight: 900, color: "#34d399", background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.4)", padding: "1px 8px", borderRadius: "6px" }}>
+                ⚡ CÁN MỐC ĐỘT PHÁ: ĐÃ MỞ ĐAN DƯỢC TĂNG TỈ LỆ
+              </span>
+            )}
           </div>
-          {isReadyToBreakthrough && (
-            <span style={{ fontSize: "10px", fontWeight: 900, color: "#34d399", background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.4)", padding: "1px 8px", borderRadius: "6px" }}>
-              ⚡ CÁN MỐC ĐỘT PHÁ: ĐÃ MỞ ĐAN DƯỢC TĂNG TỈ LỆ
-            </span>
-          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(12, 1fr)",
+              gap: "6px",
+              maxHeight: "220px",
+              overflowY: "auto",
+              paddingRight: "2px",
+              paddingBottom: "4px"
+            }}
+          >
+            {filteredPills.map(item => {
+              const qty = inventory[item.id] || 0;
+              const isHovered = activeItem.id === item.id && !hoveredHerb && !hoveredFood;
+
+              const isSpecificActive = Boolean(
+                (item.id === "talisman" && isTalismanActive) ||
+                (item.id === "revive" && Date.now() < reviveBuffExpiry) ||
+                (item.id === "pill_vo_cuc" && Date.now() < voCucBuffExpiry) ||
+                (item.id === activeRealmPillId && Date.now() < (realmPillExpiry || 0)) ||
+                (item.isForgeBooster && selectedForgeBooster === item.id && qty > 0)
+              );
+
+              return (
+                <PillSlot
+                  key={item.id}
+                  item={item}
+                  qty={qty}
+                  isSpecificActive={isSpecificActive}
+                  selectedForgeBooster={selectedForgeBooster}
+                  isHovered={isHovered}
+                  onHover={() => {
+                    setHoveredHerb(null);
+                    setHoveredFood(null);
+                    setHoveredItem(item);
+                  }}
+                  onLeave={() => {}}
+                  onConsumePill={onConsumePill}
+                />
+              );
+            })}
+            {filteredPills.length === 0 && (
+              <div style={{ gridColumn: 'span 12', padding: '12px', textAlign: 'center', fontSize: '11px', color: '#94a3b8' }}>
+                Không tìm thấy đan dược nào phù hợp với bộ lọc.
+              </div>
+            )}
+          </div>
         </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gap: "6px",
-            maxHeight: "220px",
-            overflowY: "auto",
-            paddingRight: "2px",
-            paddingBottom: "4px"
-          }}
-        >
-          {visiblePills.map(item => {
-            const qty = inventory[item.id] || 0;
-            const isHovered = activeItem.id === item.id && !hoveredHerb && !hoveredFood;
-
-            const isSpecificActive = Boolean(
-              (item.id === "talisman" && isTalismanActive) ||
-              (item.id === "revive" && Date.now() < reviveBuffExpiry) ||
-              (item.id === "pill_vo_cuc" && Date.now() < voCucBuffExpiry) ||
-              (item.id === activeRealmPillId && Date.now() < (realmPillExpiry || 0)) ||
-              (item.isForgeBooster && selectedForgeBooster === item.id && qty > 0)
-            );
-
-            return (
-              <PillSlot
-                key={item.id}
-                item={item}
-                qty={qty}
-                isSpecificActive={isSpecificActive}
-                selectedForgeBooster={selectedForgeBooster}
-                isHovered={isHovered}
-                onHover={() => {
-                  setHoveredHerb(null);
-                  setHoveredFood(null);
-                  setHoveredItem(item);
-                }}
-                onLeave={() => {}}
-                onConsumePill={onConsumePill}
-              />
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {/* ─── 12xN GRID: THỨC ĂN LINH THÚ ──────────────────────────────────── */}
-      <div style={{ marginBottom: "14px" }}>
-        <div style={{ fontSize: "11px", fontWeight: 900, color: "#86efac", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-          🍱 THỨC ĂN LINH THÚ (NHẤN / NHẤN GIỮ ICON ĐỂ CHO LINH THÚ ĂN)
-        </div>
+      {(sectionFilter === 'all' || sectionFilter === 'food') && (
+        <div style={{ marginBottom: "14px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#86efac", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            🍱 THỨC ĂN LINH THÚ ({filteredFoods.length})
+          </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gap: "6px",
-            maxHeight: "180px",
-            overflowY: "auto",
-            paddingRight: "2px",
-            paddingBottom: "4px"
-          }}
-        >
-          {FOOD_CONFIG.map(food => {
-            const count = herbsInventory[food.id] || 0;
-            const isHovered = hoveredFood?.id === food.id;
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(12, 1fr)",
+              gap: "6px",
+              maxHeight: "180px",
+              overflowY: "auto",
+              paddingRight: "2px",
+              paddingBottom: "4px"
+            }}
+          >
+            {filteredFoods.map(food => {
+              const count = herbsInventory[food.id] || 0;
+              const isHovered = hoveredFood?.id === food.id;
 
-            return (
-              <FoodSlot
-                key={food.id}
-                food={food}
-                count={count}
-                isHovered={isHovered}
-                onHover={() => {
-                  setHoveredHerb(null);
-                  setHoveredItem(null);
-                  setHoveredFood(food);
-                }}
-                onFeedMount={(foodId, amt) => onFeedMount && onFeedMount(activeMountId || "wolf", foodId, amt)}
-              />
-            );
-          })}
+              return (
+                <FoodSlot
+                  key={food.id}
+                  food={food}
+                  count={count}
+                  isHovered={isHovered}
+                  onHover={() => {
+                    setHoveredHerb(null);
+                    setHoveredItem(null);
+                    setHoveredFood(food);
+                  }}
+                  onFeedMount={(foodId, amt) => onFeedMount && onFeedMount(activeMountId || "wolf", foodId, amt)}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ─── 12xN GRID: DƯỢC LIỆU & QUẶNG ──────────────────────────────────── */}
-      <div>
-        <div style={{ fontSize: "11px", fontWeight: 900, color: "#6ee7b7", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-          🌿 DƯỢC LIỆU & QUẶNG THÁI CỔ (KHO NGUYÊN LIỆU)
-        </div>
+      {(sectionFilter === 'all' || sectionFilter === 'herbs') && (
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 900, color: "#6ee7b7", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            🌿 DƯỢC LIỆU & QUẶNG THÁI CỔ ({filteredHerbs.length})
+          </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gap: "6px",
-            maxHeight: "160px",
-            overflowY: "auto",
-            paddingRight: "2px",
-            paddingBottom: "4px"
-          }}
-        >
-          {HERB_CONFIG.map(herb => {
-            const count = herbsInventory[herb.id] || 0;
-            const isHovered = hoveredHerb?.id === herb.id;
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(12, 1fr)",
+              gap: "6px",
+              maxHeight: "160px",
+              overflowY: "auto",
+              paddingRight: "2px",
+              paddingBottom: "4px"
+            }}
+          >
+            {filteredHerbs.map(herb => {
+              const count = herbsInventory[herb.id] || 0;
+              const isHovered = hoveredHerb?.id === herb.id;
 
-            return (
-              <HerbSlot
-                key={herb.id}
-                herb={herb}
-                count={count}
-                isHovered={isHovered}
-                onHover={() => {
-                  setHoveredFood(null);
-                  setHoveredItem(null);
-                  setHoveredHerb(herb);
-                }}
-              />
-            );
-          })}
+              return (
+                <HerbSlot
+                  key={herb.id}
+                  herb={herb}
+                  count={count}
+                  isHovered={isHovered}
+                  onHover={() => {
+                    setHoveredFood(null);
+                    setHoveredItem(null);
+                    setHoveredHerb(herb);
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

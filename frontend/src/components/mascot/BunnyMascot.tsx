@@ -15,6 +15,7 @@ import {
 import {
   BUNNY_STORAGE_KEY,
   MASCOT_SIZE,
+  TREASURE_UPGRADE_COST,
   LEVEL_CONFIG,
   ITEM_CONFIG,
   HERB_CONFIG,
@@ -26,6 +27,7 @@ import {
   getSuccessRate,
   getTreasureExpBonusPercent,
   getTreasureUpgradeSuccessRate,
+  getRealmAppropriatePillId,
   getDeployCommentary,
   formatNumber,
   speakBunnyMessage
@@ -492,14 +494,20 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
         } else {
           const itemRoll = Math.random();
           if (itemRoll < 0.35) {
-            grantItem('basic', 3);
-            newRewards.push({ type: 'item', name: '3x Tụ Linh Đan', icon: '💊', iconImage: '/pills/01_tu_linh_dan.png', rarity: 'common' });
+            const pillId = getRealmAppropriatePillId(currentLevelInfo.level);
+            const pillCfg = ITEM_CONFIG.find(i => i.id === pillId) || ITEM_CONFIG[0];
+            grantItem(pillId as ItemId, 3);
+            newRewards.push({ type: 'item', name: `3x ${pillCfg.name}`, icon: pillCfg.emoji || '💊', iconImage: pillCfg.iconImage, rarity: pillCfg.rarity || 'common' });
           } else if (itemRoll < 0.60) {
-            grantItem('recover', 2);
-            newRewards.push({ type: 'item', name: '2x Hồi Phục Đan', icon: '🍃', iconImage: '/pills/04_hoi_khi_dan.png', rarity: 'uncommon' });
+            const pillId = getRealmAppropriatePillId(Math.min(17, currentLevelInfo.level + 1));
+            const pillCfg = ITEM_CONFIG.find(i => i.id === pillId) || ITEM_CONFIG[0];
+            grantItem(pillId as ItemId, 2);
+            newRewards.push({ type: 'item', name: `2x ${pillCfg.name}`, icon: pillCfg.emoji || '🍃', iconImage: pillCfg.iconImage, rarity: pillCfg.rarity || 'uncommon' });
           } else if (itemRoll < 0.75) {
-            grantItem('great', 1);
-            newRewards.push({ type: 'item', name: '1x Đại Hoàn Đan', icon: '🌸', iconImage: '/pills/24_dai_hoi_khi_dan.png', rarity: 'rare' });
+            const pillId = getRealmAppropriatePillId(Math.min(17, currentLevelInfo.level + 2));
+            const pillCfg = ITEM_CONFIG.find(i => i.id === pillId) || ITEM_CONFIG[0];
+            grantItem(pillId as ItemId, 1);
+            newRewards.push({ type: 'item', name: `1x ${pillCfg.name}`, icon: pillCfg.emoji || '🌸', iconImage: pillCfg.iconImage, rarity: pillCfg.rarity || 'rare' });
           } else if (itemRoll < 0.85) {
             grantItem('talisman', 1);
             newRewards.push({ type: 'item', name: '1x Hộ Kiếp Phù', icon: '🔱', iconImage: '/items/17_ho_kiep_phu.png', rarity: 'legendary' });
@@ -649,6 +657,11 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           return nextCount;
         });
         if (recipe.resultItemId === 'revive') unlockAchievement('craft_revive');
+
+        // Grant Cultivation EXP for Crafting Pills!
+        const baseCraftXp = Math.round(recipe.spiritStonesCost * 5 + currentLevelGap * 0.005);
+        const totalCraftXp = baseCraftXp * successCount;
+        addXP(totalCraftXp, `🔥 Luyện Đan [${recipe.name}] thành công (x${successCount}): +${formatNumber(totalCraftXp)} XP Tu Vi`);
       }
 
       if (failCount > 0) {
@@ -664,12 +677,14 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       }
 
       const isOverallSuccess = successCount > 0;
+      const craftSingleXp = Math.round(recipe.spiritStonesCost * 5 + currentLevelGap * 0.005);
+      const totalCraftSuccessXp = craftSingleXp * successCount;
       const troDanSingleXp = Math.max(10, Math.round(currentLevelGap * 0.001));
       const resultMessage =
         actualCount > 1
-          ? `🔥 LUYỆN BÁT QUÁI HÀNG LOẠT (x${actualCount})\n✅ Thành công: ${successCount * recipe.resultAmount}x ${recipe.name}\n💥 Nổ lò thất bại: ${failCount}x (Nhận ${failCount}x Tro Đan +${formatNumber(troDanSingleXp * failCount)} XP)`
+          ? `🔥 LUYỆN BÁT QUÁI HÀNG LOẠT (x${actualCount})\n✅ Thành công: ${successCount * recipe.resultAmount}x ${recipe.name} (+${formatNumber(totalCraftSuccessXp)} XP Tu Vi)\n💥 Nổ lò thất bại: ${failCount}x (Nhận ${failCount}x Tro Đan +${formatNumber(troDanSingleXp * failCount)} XP)`
           : isOverallSuccess
-          ? `🔥 LUYỆN ĐAN THÀNH CÔNG! Ngưng tụ tinh hoa đất trời thành ${recipe.resultAmount}x ${recipe.name}!`
+          ? `🔥 LUYỆN ĐAN THÀNH CÔNG! Ngưng tụ tinh hoa đất trời thành ${recipe.resultAmount}x ${recipe.name} (+${formatNumber(totalCraftSuccessXp)} XP Tu Vi)!`
           : `💥 THẤT BẠI NỔ LÒ! Dược lực không cân bằng bùng khói đen! Mất nguyên liệu & nhận 1x Tro Đan (+${formatNumber(troDanSingleXp)} XP)!`;
 
       setCraftingResult({
@@ -1102,7 +1117,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
           setFrame(0);
           setBubbleText(`🎉 ĐỘ KIẾP THÀNH CÔNG! Bổn Thỏ thăng hoa lên [${target.name}]! ⚡✨`);
           if (isTalismanActive || isRealmPillActive || isReviveActive) unlockAchievement('secret_talisman_kiep');
-          grantItem('great', 1, `🎁 Độ Kiếp đắc đạo! Nhận thưởng +1 🌸 Đại Hoàn Đan!`);
+          grantItem(getRealmAppropriatePillId(target.level) as ItemId, 1, `🎁 Độ Kiếp đắc đạo! Nhận thưởng +1 Linh Đan theo cảnh giới!`);
         } else {
           setFailCountAtCurrentLevel(f => f + 1);
           setBreakthroughFailCount(f => f + 1);
@@ -1128,7 +1143,7 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
       setState('dance');
       setFrame(0);
       setBubbleText(`✨ ĐỘT PHÁ THÀNH CÔNG! Bổn Thỏ đạt [${target.name}]! 🐰🎉`);
-      grantItem('basic', 2, `🎁 Đột phá đắc đạo! Nhận +2 💊 Tụ Linh Đan!`);
+      grantItem(getRealmAppropriatePillId(target.level) as ItemId, 2, `🎁 Đột phá đắc đạo! Nhận +2 Linh Đan theo cảnh giới!`);
     }
   };
 
@@ -1185,7 +1200,8 @@ export const BunnyMascot: React.FC<BunnyMascotProps> = ({
 
       if (deployCount > 1) setMultiDeployCount(c => c + 1);
       if (deployList.length > 0) setDeployedServices(prev => Array.from(new Set([...prev, ...deployList])));
-      grantItem('recover', deployCount);
+      const droppedPillId = getRealmAppropriatePillId(currentLevelInfo.level);
+      grantItem(droppedPillId as ItemId, deployCount);
 
       const commentary = getDeployCommentary(deployList[0] || '', deployList);
       setBubbleText(`${commentary} (+${50 * deployCount} 💎)`);

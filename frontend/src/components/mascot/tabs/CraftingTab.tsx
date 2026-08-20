@@ -9,17 +9,10 @@ export const CraftingTab: React.FC<{
   herbsInventory: Record<HerbId, number>;
   onCraftPill: (recipe: CraftingRecipe, count: number) => void;
 }> = ({ spiritStones, inventory, herbsInventory, onCraftPill }) => {
-  const [filterCategory, setFilterCategory] = useState<'all' | ItemCategory>('all');
+  const [filterCategory, setFilterCategory] = useState<'all' | 'ready' | ItemCategory>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>(CRAFTING_RECIPES[0].id);
   const [craftBatchCount, setCraftBatchCount] = useState<number>(1);
-
-  const filteredRecipes = CRAFTING_RECIPES.filter(r => {
-    const matchesCat = filterCategory === 'all' || r.category === filterCategory;
-    const matchesSearch = !searchQuery.trim() || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
-  const selectedRecipe = CRAFTING_RECIPES.find(r => r.id === selectedRecipeId) || filteredRecipes[0] || CRAFTING_RECIPES[0];
 
   const getIngredientQty = (ingId: IngredientId): number => {
     if (ingId.startsWith('herb_') || ingId.startsWith('mineral_')) {
@@ -45,6 +38,15 @@ export const CraftingTab: React.FC<{
     }
     return Math.max(1, max);
   };
+
+  const filteredRecipes = CRAFTING_RECIPES.filter(r => {
+    const readyToCraft = spiritStones >= r.spiritStonesCost && r.ingredients.every(ing => getIngredientQty(ing.id) >= ing.amount);
+    if (filterCategory === 'ready' && !readyToCraft) return false;
+    const matchesCat = filterCategory === 'all' || filterCategory === 'ready' || r.category === filterCategory;
+    const matchesSearch = !searchQuery.trim() || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+  const selectedRecipe = CRAFTING_RECIPES.find(r => r.id === selectedRecipeId) || filteredRecipes[0] || CRAFTING_RECIPES[0];
 
   const maxCraftPossible = getMaxCraftCount(selectedRecipe);
   const canAffordStones = spiritStones >= selectedRecipe.spiritStonesCost * craftBatchCount;
@@ -75,10 +77,31 @@ export const CraftingTab: React.FC<{
           <span style={{ fontSize: '10.5px', color: '#38bdf8', fontWeight: 900 }}>💎 {spiritStones}</span>
         </div>
 
+        {/* Search Input Bar */}
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="🔍 Tìm công thức đan..."
+          style={{
+            width: '100%',
+            fontSize: '11px',
+            padding: '5px 8px',
+            background: 'rgba(15,23,42,0.85)',
+            border: '1px solid rgba(16,185,129,0.3)',
+            borderRadius: '7px',
+            color: '#fff',
+            outline: 'none',
+            boxSizing: 'border-box',
+            marginBottom: '4px'
+          }}
+        />
+
         {/* Category Filter Tabs */}
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '4px' }}>
           {[
             { key: 'all', label: 'Tất Cả' },
+            { key: 'ready', label: '✅ Đủ Liệu' },
             { key: 'xp', label: '💊 Tu Vi' },
             { key: 'breakthrough', label: '⚡ Đột Phá' },
             { key: 'buff', label: '🌟 Buff' },

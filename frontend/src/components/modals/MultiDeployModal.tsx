@@ -39,22 +39,20 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       if (initialSelectedServices && initialSelectedServices.length > 0 && autoStart) {
-        console.log('🚀 [MultiDeployModal] Voice Auto-Start triggered for services:', initialSelectedServices);
+        console.log('🚀 [MultiDeployModal] Auto-Start triggered with 5-worker pool for:', initialSelectedServices);
         setSelectedServices(initialSelectedServices);
         setDeployingServices(initialSelectedServices);
         const initialLogs: Record<string, { status: 'pending' | 'deploying' | 'success' | 'failed'; log: string }> = {};
         initialSelectedServices.forEach(name => {
           initialLogs[name] = {
             status: 'pending',
-            log: `⏳ [${new Date().toLocaleTimeString()}] Voice Command Batch Queued [${name}]...\n`
+            log: `⏳ [${new Date().toLocaleTimeString()}] Batch Queued [${name}] — Waiting for build worker...\n`
           };
         });
         setServiceLogs(initialLogs);
         setShowConsoleGrid(true);
 
-        initialSelectedServices.forEach(name => {
-          deploySingleService(name, targetEnv, deployMsg, gitResetMode);
-        });
+        runBatchDeployWithWorkerLimit(initialSelectedServices, targetEnv, deployMsg, gitResetMode);
       } else {
         setShowConsoleGrid(false);
       }
@@ -175,7 +173,64 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
     localStorage.setItem('lastGitResetMode', nextMode);
   };
 
-  const deploySingleService = async (name: string, env: string, message: string, resetMode: string) => {
+  // ── 5-Worker Concurrency Pool Handler ──────────────────────────────────
+  const runBatchDeployWithWorkerLimit = async (
+    serviceList: string[],
+    env: string,
+    message: string,
+    resetMode: string
+  ) => {
+    if (serviceList.length === 0) return;
+
+    const MAX_WORKERS = 5;
+    const queue = [...serviceList];
+    let activeWorkers = 0;
+
+    return new Promise<void>((resolve) => {
+      const processNext = () => {
+        if (queue.length === 0 && activeWorkers === 0) {
+          resolve();
+          return;
+        }
+
+        while (queue.length > 0 && activeWorkers < MAX_WORKERS) {
+          const serviceName = queue.shift()!;
+          activeWorkers++;
+
+          let slotReleased = false;
+          const releaseSlot = () => {
+            if (!slotReleased) {
+              slotReleased = true;
+              activeWorkers--;
+              processNext(); // Immediately trigger next queued service
+            }
+          };
+
+          deploySingleService(
+            serviceName,
+            env,
+            message,
+            resetMode,
+            /* onVerificationStarted */ () => {
+              releaseSlot();
+            }
+          ).finally(() => {
+            releaseSlot();
+          });
+        }
+      };
+
+      processNext();
+    });
+  };
+
+  const deploySingleService = async (
+    name: string,
+    env: string,
+    message: string,
+    resetMode: string,
+    onVerificationStarted?: () => void
+  ) => {
     const isNoDeploy = resetMode === 'reset_staging_no_deploy' || resetMode === 'reset_main_no_deploy';
     setServiceLogs(prev => ({
       ...prev,
@@ -249,6 +304,18 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             if (content.includes('❌') || content.includes('[ERROR]') || content.includes('Aborting')) {
               hasError = true;
             }
+
+            // If build finished & reached verification / healthcheck step, release build worker slot immediately
+            if (
+              content.includes('[Deploy script finished') ||
+              content.includes('[Verification]') ||
+              content.includes('Waiting 5 seconds')
+            ) {
+              if (onVerificationStarted) {
+                onVerificationStarted();
+              }
+            }
+
             if (content.trim() !== '[EOF]') {
               setServiceLogs(prev => ({
                 ...prev,
@@ -290,7 +357,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
     selectedServices.forEach(name => {
       initialLogs[name] = {
         status: 'pending',
-        log: `⏳ [${new Date().toLocaleTimeString()}] Queued [${name}] (Git Mode: ${gitResetMode})...\n`
+        log: `⏳ [${new Date().toLocaleTimeString()}] Queued [${name}] (Git Mode: ${gitResetMode}) — Waiting for build worker...\n`
       };
     });
     setServiceLogs(initialLogs);
@@ -300,10 +367,7 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
       onTriggerMultiDeploy(selectedServices, targetEnv, deployMsg, gitResetMode);
     }
 
-    // Execute real deployment calls in parallel
-    selectedServices.forEach(name => {
-      deploySingleService(name, targetEnv, deployMsg, gitResetMode);
-    });
+    runBatchDeployWithWorkerLimit(selectedServices, targetEnv, deployMsg, gitResetMode);
   };
 
   const handleRetrySingle = (name: string) => {
@@ -311,11 +375,20 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
   };
 
   const handleRetryAllFailed = () => {
-    Object.keys(serviceLogs).forEach(name => {
-      if (serviceLogs[name]?.status === 'failed') {
-        deploySingleService(name, targetEnv, deployMsg, gitResetMode);
-      }
+    const failedNames = Object.keys(serviceLogs).filter(name => serviceLogs[name]?.status === 'failed');
+    if (failedNames.length === 0) return;
+
+    failedNames.forEach(name => {
+      setServiceLogs(prev => ({
+        ...prev,
+        [name]: {
+          status: 'pending',
+          log: `⏳ [${new Date().toLocaleTimeString()}] Re-queued [${name}] — Waiting for build worker...\n`
+        }
+      }));
     });
+
+    runBatchDeployWithWorkerLimit(failedNames, targetEnv, deployMsg, gitResetMode);
   };
 
   if (!isOpen) return null;
@@ -627,7 +700,10 @@ export const MultiDeployModal: React.FC<MultiDeployModalProps> = ({
             <div className="flex items-center gap-3">
               <span className="text-base font-bold text-emerald-400">⚡ Live Multi-Deploy Matrix Console</span>
               <span className="text-xs px-3 py-1 rounded-full bg-white/10 text-white font-mono font-bold">
-                {deployingServices.length} Active {deployingServices.length === 1 ? 'Service' : 'Services'}
+                {deployingServices.length} Total Services
+              </span>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">
+                ⚡ Worker Pool: Max 5 Concurrent Builds
               </span>
             </div>
 
